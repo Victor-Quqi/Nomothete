@@ -196,6 +196,6 @@ url: `${this.config.baseURL}/${getModelPath(this.modelId)}:streamGenerateContent
 
 `structuredOutput` 默认 `json_schema`。按 model id 做正则自动识别，附一张预期 id 的小静态表，`structuredOutput` 作手动覆盖。上游不支持就失败。
 
-调用 `streamObject({output: 'array', schema: z.object({ name: z.string(), probability: z.number() })})`，消费 `elementStream`。`{name, probability}` 元素是为了每个流式候选到达就能按阈值筛（见 [`docs/design.md`](../design.md) 生成）。条数写在 prompt 里，不写进 schema，因为 Anthropic 会剥掉 `minItems`/`maxItems`。流结束后再校验条数。
+调用 `streamObject({output: 'array', schema: z.object({ name: z.string(), probability: z.number(), rationale: z.string() })})`，消费 `elementStream`。`probability` 用来当场按阈值筛，`rationale` 给用户打档看（见 [`docs/design.md`](../design.md) 生成）。条数写在 prompt 里，不写进 schema，因为 Anthropic 会剥掉 `minItems`/`maxItems`。流结束后再校验条数。
 
 密钥：环境变量优先，然后 `~/.config/nomothete/config.json`、权限 `0600`。浏览器只跟我们自己的服务器说话。
