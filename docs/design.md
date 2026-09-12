@@ -29,7 +29,7 @@
 
 TypeScript 全栈。后端要做的事是调 LLM、并发查注册表、维护本地索引，都是 IO 密集而非 CPU 密集，Node 合适。如果本地索引的归一化匹配变慢，再抽成 Rust 原生模块。
 
-SQLite 单文件持久化，可导出。
+SQLite 单文件，和配置、本地索引一样默认写在当前工作目录，可导出。
 
 ### 生成
 
@@ -84,7 +84,7 @@ SQLite 单文件持久化，可导出。
 
 候选用 `streamObject({output: 'array'})` 消费 `elementStream`，元素为上文的 `{name, probability, rationale}`。数量写在 prompt 里，流结束后校验条数。
 
-key：环境变量优先，其次 `~/.config/nomothete/config.json`（权限 0600）。浏览器拿不到 key。日志不打请求体和 Authorization 头。
+key 走环境变量。浏览器拿不到 key。日志不打请求体和 Authorization 头。
 
 选型依据与源码出处见 [`docs/research/provider-adapters.md`](./research/provider-adapters.md)。
 

@@ -150,7 +150,7 @@ open-webui 把服务端密钥放在 PersistentConfig 库里，管理界面可改
 - 密钥进浏览器。浏览器打上游，密钥出现在 devtools。上游调用放服务端。
 - 密钥进 docker 日志。不打请求体和 `Authorization` 头。结构化日志行之前先打码。
 - CORS。Anthropic 要从浏览器调用，必须带 `anthropic-dangerous-direct-browser-access: true`。服务端调用绕开这个。
-- 文件模式。写 `~/.config/<app>/config.json`，权限 `0600`。
+- 文件模式。默认写当前工作目录。密钥走环境变量。
 
 ## 5. 流式
 
@@ -198,4 +198,4 @@ url: `${this.config.baseURL}/${getModelPath(this.modelId)}:streamGenerateContent
 
 调用 `streamObject({output: 'array', schema: z.object({ name: z.string(), probability: z.number(), rationale: z.string() })})`，消费 `elementStream`。`probability` 用来当场按阈值筛，`rationale` 给用户打档看（见 [`docs/design.md`](../design.md) 生成）。条数写在 prompt 里，不写进 schema，因为 Anthropic 会剥掉 `minItems`/`maxItems`。流结束后再校验条数。
 
-密钥：环境变量优先，然后 `~/.config/nomothete/config.json`、权限 `0600`。浏览器只跟我们自己的服务器说话。
+密钥走环境变量。配置和数据默认写在当前工作目录。浏览器只跟我们自己的服务器说话。
