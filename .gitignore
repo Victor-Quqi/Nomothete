@@ -1,0 +1,33 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# dependencies
+node_modules/
+
+# build
+dist/
+*.tsbuildinfo
+
+# runtime data (SQLite and local indexes, written to cwd)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# logs and debug
+*.log
+npm-debug.log*
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# editors
+.idea/
+.vscode/
+*.swp
+*~
