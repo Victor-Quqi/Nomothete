@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+/**
+ * `nomothete` — start the workshop.
+ *
+ * Everything this process needs lives next to it: the SQLite file is written to
+ * the working directory, the key is read from `.env`, and the frontend is served
+ * from `dist/` by the same server that answers `/api`. So the only jobs here are
+ * to parse two flags, make sure `dist/` exists, and hand over to server/main.ts.
+ */
+import { spawn, spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const argv = process.argv.slice(2)
+
+function flagValue(...names) {
+  for (const name of names) {
+    const exact = argv.indexOf(name)
+    if (exact !== -1 && argv[exact + 1]) return argv[exact + 1]
+    const joined = argv.find(a => a.startsWith(`${name}=`))
+    if (joined) return joined.slice(name.length + 1)
+  }
+  return undefined
+}
+
+if (argv.includes('-h') || argv.includes('--help')) {
+  console.log(`
+  nomothete — 给软件项目取名字
+
+  用法
+    nomothete [选项]
+
+  选项
+    -p, --port <n>   监听端口（默认 5179，或环境变量 PORT）
+        --open       启动后用默认浏览器打开
+        --verbose    打印请求方法与路径（永远不含请求体和鉴权头）
+    -h, --help       显示这段
+
+  配置
+    在工作目录放一个 .env：BASE_URL / API_KEY / MODEL。
+    钥匙只在这个进程里用，不会进日志、不会发给浏览器。
+`)
+  process.exit(0)
+}
+
+const port = flagValue('-p', '--port') ?? process.env.PORT ?? '5179'
+
+// The server serves dist/ when it is there and falls back to an API-only mode
+// when it is not. An API-only mode is not what anyone typing `nomothete` wants,
+// so build it once instead of letting them find a blank page.
+if (!existsSync(path.join(root, 'dist', 'index.html'))) {
+  console.log('[nomothete] 没有找到 dist/，先构建一次前端…')
+  const build = spawnSync('npm', ['run', 'build'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' })
+  if (build.status !== 0) {
+    console.error('[nomothete] 构建失败。先跑 npm install，再跑 npm run build。')
+    process.exit(build.status ?? 1)
+  }
+}
+
+const env = { ...process.env, PORT: String(port) }
+if (argv.includes('--verbose')) env.NOMOTHETE_VERBOSE = '1'
+
+// Node 24 strips types from .ts on its own; tsx is only a fallback for older
+// runtimes that still choke on the annotations.
+const major = Number(process.versions.node.split('.')[0])
+const entry = path.join(root, 'server', 'main.ts')
+const child =
+  major >= 23
+    ? spawn(process.execPath, ['--experimental-strip-types', '--no-warnings', entry], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env,
+      })
+    : spawn('npx', ['tsx', entry], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env,
+        shell: process.platform === 'win32',
+      })
+
+if (argv.includes('--open')) {
+  const url = `http://localhost:${port}`
+  // Give the listener a moment so the browser does not land on a refused port.
+  setTimeout(() => {
+    const cmd =
+      process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : process.platform === 'darwin' ? ['open', [url]]
+      : ['xdg-open', [url]]
+    spawn(cmd[0], cmd[1], { stdio: 'ignore', detached: true }).unref()
+  }, 900)
+}
+
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    child.kill(sig)
+    process.exit(0)
+  })
+}
+child.on('exit', code => process.exit(code ?? 0))

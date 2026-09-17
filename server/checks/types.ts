@@ -1,0 +1,59 @@
+/**
+ * The check interface.
+ *
+ * Every check is one object in an array. Adding a check means pushing a new
+ * object; the pipeline does not change. Each one declares what it costs and
+ * when it is allowed to run, and the runner honours that — the free tier goes
+ * out for every Candidate, the rate-limited tier waits until a Candidate has
+ * earned it with a positive Verdict.
+ *
+ * Vocabulary discipline (CONTEXT.md): `clear` means "no record found" and
+ * nothing stronger. It is never rendered as 可用 or 安全.
+ */
+
+export type CheckTier = 'local' | 'free' | 'ratelimited' | 'paid'
+
+export type CheckStatus =
+  | 'clear' // 查无记录
+  | 'taken' // 注册表里已有同名记录
+  | 'blocked' // 归一化后与既有名字相撞，注册会被拒
+  | 'caution' // 有值得知道的信号，但不是硬约束
+  | 'invalid' // 这个名字在该注册表上根本不合法
+  | 'error'
+  | 'pending'
+
+export interface CheckResult {
+  checkId: string
+  label: string
+  tier: CheckTier
+  status: CheckStatus
+  /** One short line for the badge. */
+  headline: string
+  /** The reasoning, shown when the user opens the candidate. */
+  detail?: string
+  /** Anything structured the UI wants: collision lists, counts, links. */
+  data?: Record<string, unknown>
+}
+
+export interface CheckContext {
+  name: string
+  /** Set when the check is re-run after a positive Verdict. */
+  deep: boolean
+  signal: AbortSignal
+}
+
+export interface Check {
+  id: string
+  label: string
+  tier: CheckTier
+  /** Whether this check runs for every Candidate or only after an upvote. */
+  when: 'always' | 'after-upvote'
+  run(ctx: CheckContext): Promise<CheckResult | null>
+}
+
+export const TIER_LABEL: Record<CheckTier, string> = {
+  local: '本地，0ms',
+  free: '免费网络',
+  ratelimited: '限速',
+  paid: '付费',
+}
