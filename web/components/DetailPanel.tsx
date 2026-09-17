@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { REGISTRY_FORMS, syllables } from '../normalize.ts'
+import { speakName } from '../speak.ts'
 import { VerdictDial } from './VerdictDial.tsx'
 import type { Candidate, CheckResult, Family, StrategyInfo, Verdict } from '../types.ts'
 
@@ -70,7 +71,9 @@ export function DetailPanel({
 
   return (
     <>
-      <h2 className="detail__name">{candidate.name}</h2>
+      <h2 className="detail__name" onClick={() => speakName(candidate.name)} title="念一遍">
+        {candidate.name}
+      </h2>
       <div className="plate__meta" style={{ marginBottom: 14 }}>
         {strategy && (
           <span className="plate__strategy" style={{ ['--fam-hue' as string]: family?.hue ?? 38 }}>
@@ -92,24 +95,28 @@ export function DetailPanel({
 
       <div className="section-h">自报概率</div>
       <p className="check__detail">
-        模型给的是 <b style={{ color: 'var(--violet)' }}>{(candidate.probability * 100).toFixed(0)}%</b> ——
-        它自己估计，另一个助手拿到同一份简介、有多大可能也想出这个名字。本次会话留下的是低于{' '}
-        {(threshold * 100).toFixed(0)}% 的。这是自评而不是测量，只用来当一道过滤闸，不参与任何排序。
+        <b style={{ color: 'var(--violet)' }}>{(candidate.probability * 100).toFixed(0)}%</b> —— 模型自估。
+        本次留下的是低于 {(threshold * 100).toFixed(0)}% 的。只当过滤闸，不参与排序。
       </p>
 
       <div className="section-h">注册表眼里的这个名字</div>
       <div className="detail__forms">
         {REGISTRY_FORMS.map(f => (
-          <div className="detail__form" key={f.id}>
+          <button
+            className="detail__form detail__form--copy"
+            key={f.id}
+            title="复制"
+            onClick={() => navigator.clipboard?.writeText(f.fn(candidate.name)).catch(() => {})}
+          >
             <b>{f.label}</b>
             <code>{f.fn(candidate.name)}</code>
             <em>{f.note}</em>
-          </div>
+          </button>
         ))}
       </div>
       <p className="check__detail">
-        注册表比对的是归一化之后的形式，不是你输入的这一串。所以「精确查询查无记录」回答的是 Availability，
-        它比 Publishability 弱；真正能不能注册，要把所有归一化到同一形式的字符串都问一遍。
+        注册表比对归一化之后的形式，不是你输入的这一串 —— 所以「精确查询查无记录」只回答 Availability，比
+        Publishability 弱。
       </p>
 
       <div className="section-h">检查</div>
@@ -122,8 +129,7 @@ export function DetailPanel({
         deep.map(c => <CheckCard key={c.checkId} check={c} />)
       ) : (
         <p className="check__detail">
-          还没跑。归一化撞名要对每个注册表发几十个请求，GitHub 未鉴权只有 10 次/分钟 ——
-          所以它们等你先表态。给一个 ▲ 或 ▲▲ 就会自动开始。
+          还没跑。归一化撞名要对每个注册表发几十个请求，所以它们等你先表态：给一个 ▲ 或 ▲▲ 就会自动开始。
           <br />
           <button className="btn btn--ghost btn--sm" style={{ marginTop: 8, paddingLeft: 0 }} onClick={onRecheck}>
             也可以现在就跑 →

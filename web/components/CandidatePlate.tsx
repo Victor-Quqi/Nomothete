@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
-import { syllables } from '../normalize.ts'
+import { oneToken, syllables } from '../normalize.ts'
+import { speakName } from '../speak.ts'
 import type { Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
@@ -13,6 +14,16 @@ const VERDICT_CLASS: Record<number, string> = {
   [-1]: ' plate--down1',
   [-2]: ' plate--down2',
 }
+
+/**
+ * A hard rejection landed this fast is a reflex, not a judgement — the corpus is
+ * blunt about first impressions being a poor predictor of good names. The plate
+ * still records it immediately; it just offers, once, to park the name instead.
+ */
+const SECOND_LOOK_MS = 2600
+
+/** Keyboard verbs the focused plate answers to. Dispatched by Workspace. */
+export type PlateAction = 'note' | 'speak' | 'copy'
 
 interface Props {
   candidate: Candidate
@@ -26,6 +37,8 @@ interface Props {
   onVerdict: (v: Verdict) => void
   onNote: (note: string) => void
   onOpen: () => void
+  /** Run another batch down this same strategy. */
+  onMore: () => void
 }
 
 function PlateInner({
@@ -39,19 +52,57 @@ function PlateInner({
   onVerdict,
   onNote,
   onOpen,
+  onMore,
 }: Props) {
   const [noteOpen, setNoteOpen] = useState(false)
   const [draft, setDraft] = useState(candidate.note ?? '')
   const [copied, setCopied] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
   const [sweep, setSweep] = useState(0)
+  const [secondLook, setSecondLook] = useState(false)
   const lastVerdict = useRef(candidate.verdict)
+  const seenAt = useRef(0)
+  const offered = useRef(false)
   const el = useRef<HTMLDivElement>(null)
 
   // A top Verdict is worth a small piece of theatre: the plate gets gilded.
   useEffect(() => {
     if (candidate.verdict === 2 && lastVerdict.current !== 2) setSweep(s => s + 1)
+    if (candidate.verdict === -2 && lastVerdict.current !== -2 && !offered.current) {
+      const dwell = seenAt.current ? Date.now() - seenAt.current : Infinity
+      if (dwell < SECOND_LOOK_MS) {
+        offered.current = true
+        setSecondLook(true)
+      }
+    }
     lastVerdict.current = candidate.verdict
   }, [candidate.verdict])
+
+  // The offer must never become another thing to dismiss.
+  useEffect(() => {
+    if (!secondLook) return
+    const t = setTimeout(() => setSecondLook(false), 9000)
+    return () => clearTimeout(t)
+  }, [secondLook])
+
+  // When the plate actually entered the reading band — not when it mounted.
+  // Cards stream in below the fold, and a name you never looked at cannot have
+  // been rejected too quickly.
+  useEffect(() => {
+    const node = el.current
+    if (!node || seenAt.current) return
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries.some(e => e.isIntersecting) && !seenAt.current) {
+          seenAt.current = Date.now()
+          io.disconnect()
+        }
+      },
+      { rootMargin: '-25% 0px -25% 0px' },
+    )
+    io.observe(node)
+    return () => io.disconnect()
+  }, [])
 
   useEffect(() => {
     if (focused && autoScroll) el.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -65,6 +116,7 @@ function PlateInner({
 
   const rarity = 1 - candidate.probability
   const bars = Math.max(1, Math.min(5, Math.ceil(rarity * 5)))
+  const token = oneToken(candidate.name)
 
   const copy = () => {
     navigator.clipboard?.writeText(candidate.name).then(
@@ -75,6 +127,30 @@ function PlateInner({
       () => {},
     )
   }
+
+  const speak = () => {
+    if (speakName(candidate.name, () => setSpeaking(false))) setSpeaking(true)
+  }
+
+  // Keyboard verbs arrive as one event; only the focused plate answers.
+  useEffect(() => {
+    if (!focused) return
+    const onAction = (e: Event) => {
+      switch ((e as CustomEvent<PlateAction>).detail) {
+        case 'note':
+          setNoteOpen(true)
+          break
+        case 'speak':
+          speak()
+          break
+        case 'copy':
+          copy()
+          break
+      }
+    }
+    window.addEventListener('plate:action', onAction)
+    return () => window.removeEventListener('plate:action', onAction)
+  })
 
   return (
     <motion.div
@@ -103,7 +179,13 @@ function PlateInner({
       </AnimatePresence>
 
       <div className="plate__head">
-        <h3 className="plate__name">{candidate.name}</h3>
+        <h3
+          className={`plate__name${speaking ? ' plate__name--speaking' : ''}`}
+          onClick={speak}
+          title="念一遍"
+        >
+          {candidate.name}
+        </h3>
         <button className="plate__copy" onClick={copy} title="复制名字" aria-label="复制名字">
           {copied ? '✓' : '⧉'}
         </button>
@@ -113,6 +195,7 @@ function PlateInner({
         {strategy && (
           <Tip
             className="plate__strategy"
+            onClick={onMore}
             content={
               <>
                 <b>
@@ -120,12 +203,13 @@ function PlateInner({
                   {family ? ` · ${family.label}` : ''}
                 </b>
                 <p>{strategy.brief}</p>
-                <em>整批只用这一条路数，作为正向约束写进 prompt。</em>
+                <em>点一下，按这条路数再来一批。</em>
               </>
             }
           >
             <i />
             {strategy.label}
+            <b className="plate__more">＋</b>
           </Tip>
         )}
         <Tip
@@ -133,11 +217,8 @@ function PlateInner({
           content={
             <>
               <b>自报概率 {(candidate.probability * 100).toFixed(0)}%</b>
-              <p>
-                模型自己估计，换一个助手拿到同一份简介、有多大可能也想出这个名字。数字越低越是这条路数逼出来的东西。
-                本次会话的阈值是 {(threshold * 100).toFixed(0)}%，高过它的名字在流式到达的那一刻就被丢掉，不排序、不回收。
-              </p>
-              <em>这是自评，不是测量。</em>
+              <p>模型自估：换个助手拿到同一份简介，多大可能也想出这个名字。</p>
+              <em>高于 {(threshold * 100).toFixed(0)}% 的到达即丢，不排序、不回收。</em>
             </>
           }
         >
@@ -151,6 +232,31 @@ function PlateInner({
         <span className="plate__shape">
           {candidate.name.length}c · {syllables(candidate.name)}syl
         </span>
+        {token && (
+          <Tip
+            className="plate__token"
+            content={
+              <>
+                <b>三处同形</b>
+                <p className="tip__row">
+                  <span>项目名</span>
+                  {candidate.name}
+                </p>
+                <p className="tip__row">
+                  <span>仓库名</span>
+                  {candidate.name.toLowerCase()}
+                </p>
+                <p className="tip__row">
+                  <span>包名</span>
+                  {candidate.name.toLowerCase()}
+                </p>
+                <em>单个词，不用在三个地方各记一个变体。</em>
+              </>
+            }
+          >
+            三处同形
+          </Tip>
+        )}
       </div>
 
       <p className="plate__rationale">{candidate.rationale}</p>
@@ -172,6 +278,30 @@ function PlateInner({
       </div>
 
       <AnimatePresence initial={false}>
+        {secondLook && (
+          <motion.div
+            className="plate__second"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span>好名字第一眼常常并不好看。</span>
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={() => {
+                onVerdict(0)
+                setSecondLook(false)
+              }}
+            >
+              改成未定
+            </button>
+            <button className="plate__second-no" onClick={() => setSecondLook(false)}>
+              不用
+            </button>
+          </motion.div>
+        )}
+
         {noteOpen && (
           <motion.div
             className="plate__note"

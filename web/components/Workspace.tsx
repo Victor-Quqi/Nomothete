@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CandidatePlate } from './CandidatePlate.tsx'
+import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Loom } from './Loom.tsx'
 import { Tip } from './Tip.tsx'
 import type { Atelier } from '../store.ts'
@@ -45,6 +45,11 @@ export function Workspace({
   const [find, setFind] = useState('')
   const [kbd, setKbd] = useState(false)
   const findRef = useRef<HTMLInputElement>(null)
+
+  // The focused plate owns its own name, note box and voice; the keyboard just
+  // names the verb and lets it answer.
+  const plateAction = (action: PlateAction) =>
+    window.dispatchEvent(new CustomEvent<PlateAction>('plate:action', { detail: action }))
 
   const { candidates, session, batches, running } = a
 
@@ -102,6 +107,19 @@ export function Workspace({
     [visible, focusId, setFocusId],
   )
 
+  // Wrapping from the current position rather than the top: the unjudged ones
+  // you skipped are usually behind you, and starting over at the first plate
+  // every time turns one keystroke into a loop.
+  const jumpUnjudged = useCallback(() => {
+    if (visible.length === 0) return
+    const idx = visible.findIndex(c => c.id === focusId)
+    const after = visible.slice(idx + 1)
+    const target = [...after, ...visible.slice(0, idx + 1)].find(c => c.verdict === 0)
+    if (!target) return
+    setKbd(true)
+    setFocusId(target.id)
+  }, [visible, focusId, setFocusId])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement
@@ -138,6 +156,10 @@ export function Workspace({
           setTimeout(() => move(1), 130)
           break
         }
+        case 'J':
+          e.preventDefault()
+          jumpUnjudged()
+          break
         case 'Enter':
           if (focusId) {
             e.preventDefault()
@@ -147,8 +169,28 @@ export function Workspace({
         case 'n':
           if (focusId) {
             e.preventDefault()
-            openDrawer('detail', focusId)
+            plateAction('note')
           }
+          break
+        case 's':
+          if (focusId) {
+            e.preventDefault()
+            plateAction('speak')
+          }
+          break
+        case 'c':
+          if (focusId) {
+            e.preventDefault()
+            plateAction('copy')
+          }
+          break
+        case 'u':
+          e.preventDefault()
+          a.undo()
+          break
+        case 'e':
+          e.preventDefault()
+          if (session) window.open(`/api/sessions/${session.id}/export?format=md`, '_blank')
           break
         case 'g':
           e.preventDefault()
@@ -177,7 +219,7 @@ export function Workspace({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [move, focusId, a, openDrawer, running, setFocusId])
+  }, [move, jumpUnjudged, focusId, a, openDrawer, running, session, setFocusId])
 
   if (!session) return null
 
@@ -325,6 +367,9 @@ export function Workspace({
                 onVerdict={v => a.setVerdict(c.id, v)}
                 onNote={note => a.setNote(c.id, note)}
                 onOpen={() => openDrawer('detail', c.id)}
+                onMore={() => {
+                  if (!running) a.generate({ strategyIds: [c.strategyId] })
+                }}
               />
             ))}
           </AnimatePresence>
@@ -333,11 +378,7 @@ export function Workspace({
         {visible.length === 0 && ghosts.length === 0 && (
           <div className="empty">
             <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
-            <p>
-              {candidates.length === 0
-                ? '第一批还在路上。每一批都是一条路数单独跑一次，名字到一个显示一个 —— 不用等齐。'
-                : '这个筛选下什么都没有。换个档位，或者再来一批。'}
-            </p>
+            <p>{candidates.length === 0 ? '第一批还在路上，名字到一个显示一个。' : '这个筛选下什么都没有。'}</p>
           </div>
         )}
       </div>
@@ -348,11 +389,8 @@ export function Workspace({
           content={
             <>
               <b>下一批怎么选路数</b>
-              <p>
-                按你打过的档加权，但没有任何一条会被封死 ——
-                第一眼的反应是好名字的劣质预测器。每一批还会留一个名额给你完全没碰过的语义场。
-              </p>
-              <em>j/k 移动 · 1–5 打档 · ↵ 详情 · ? 全部快捷键</em>
+              <p>按你打过的档加权，但一条都不封死，并且总留一个名额给你没碰过的语义场。</p>
+              <em>j/k 移动 · 1–5 打档 · ? 全部快捷键</em>
             </>
           }
         >

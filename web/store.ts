@@ -35,6 +35,9 @@ export interface Discard {
   at: number
 }
 
+/** Same glyphs the dial uses, so an undo toast names what you will see. */
+const VERDICT_GLYPH: Record<number, string> = { 2: '▲▲', 1: '▲', 0: '·', [-1]: '▼', [-2]: '▼▼' }
+
 function hashSessionId(): string | null {
   const m = /^#\/s\/([A-Za-z0-9_-]+)/.exec(window.location.hash)
   return m ? m[1] : null
@@ -63,6 +66,11 @@ export function useAtelier() {
 
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastSeq = useRef(0)
+
+  // Judging with the keyboard is fast enough to overshoot by one row. The stack
+  // holds where each Verdict came from so a miss costs one keystroke, not a hunt
+  // back up the wall.
+  const undoStack = useRef<{ candidateId: string; name: string; from: Verdict }[]>([])
 
   const toast = useCallback((message: string, tone: Toast['tone'] = 'plain') => {
     const id = ++toastSeq.current
@@ -106,6 +114,7 @@ export function useAtelier() {
     }
     let alive = true
     setLoadingSession(true)
+    undoStack.current = []
     api
       .session(sessionId)
       .then(p => {
@@ -282,11 +291,8 @@ export function useAtelier() {
   const candidatesRef = useRef<Candidate[]>(candidates)
   candidatesRef.current = candidates
 
-  const setVerdict = useCallback(
-    async (candidateId: string, verdict: Verdict) => {
-      const before = candidatesRef.current.find(c => c.id === candidateId)
-      if (!before) return
-      const next = before.verdict === verdict ? (0 as Verdict) : verdict
+  const pushVerdict = useCallback(
+    async (candidateId: string, next: Verdict, from: Verdict) => {
       // Optimistic: the dial must move under the finger, not after a round trip.
       setCandidates(cs => cs.map(c => (c.id === candidateId ? { ...c, verdict: next } : c)))
       try {
@@ -294,12 +300,39 @@ export function useAtelier() {
         setCandidates(cs => cs.map(c => (c.id === candidateId ? { ...r.candidate, checks: r.candidate.checks } : c)))
         if (sessionId) scheduleProfile(sessionId)
       } catch (err) {
-        setCandidates(cs => cs.map(c => (c.id === candidateId ? { ...c, verdict: before.verdict } : c)))
+        setCandidates(cs => cs.map(c => (c.id === candidateId ? { ...c, verdict: from } : c)))
         toast((err as Error).message, 'error')
       }
     },
     [sessionId, scheduleProfile, toast],
   )
+
+  const setVerdict = useCallback(
+    async (candidateId: string, verdict: Verdict) => {
+      const before = candidatesRef.current.find(c => c.id === candidateId)
+      if (!before) return
+      const next = before.verdict === verdict ? (0 as Verdict) : verdict
+      if (next === before.verdict) return
+      undoStack.current = [
+        ...undoStack.current.slice(-19),
+        { candidateId, name: before.name, from: before.verdict },
+      ]
+      await pushVerdict(candidateId, next, before.verdict)
+    },
+    [pushVerdict],
+  )
+
+  const undo = useCallback(async () => {
+    const last = undoStack.current.pop()
+    if (!last) {
+      toast('没有可以撤回的评价', 'plain')
+      return
+    }
+    const now = candidatesRef.current.find(c => c.id === last.candidateId)
+    if (!now) return
+    toast(last.from === 0 ? `${last.name} 退回未定` : `${last.name} 改回 ${VERDICT_GLYPH[last.from]}`, 'plain')
+    await pushVerdict(last.candidateId, last.from, now.verdict)
+  }, [pushVerdict, toast])
 
   const setNote = useCallback(
     async (candidateId: string, note: string) => {
@@ -416,6 +449,7 @@ export function useAtelier() {
     generate,
     cancel,
     setVerdict,
+    undo,
     setNote,
     recheck,
     setPriors,

@@ -143,10 +143,7 @@ export function Loom({
                         .map(d => `${d.name} ${(d.probability * 100).toFixed(0)}%`)
                         .join('　')}
                     </p>
-                    <em>
-                      自报概率高于 {(threshold * 100).toFixed(0)}% 的名字在到达那一刻就被丢弃 ——
-                      不排序、不回收，这样流式才不用等整批跑完。
-                    </em>
+                    <em>高于 {(threshold * 100).toFixed(0)}% 的到达即丢，不排序、不回收。</em>
                   </>
                 }
               >

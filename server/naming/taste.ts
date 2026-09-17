@@ -171,9 +171,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
     })
   }
 
-  const notes = rated.filter(r => r.note?.trim()).map(r => `${r.name}：${r.note!.trim()}`)
-
-  const statement = composeStatement({ positives, negatives, traits, notes, strategyScores })
+  const statement = composeStatement({ positives, negatives })
 
   return {
     observations: rated.length,
@@ -196,32 +194,18 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
   }
 }
 
-function composeStatement(x: {
-  positives: Rated[]
-  negatives: Rated[]
-  traits: Trait[]
-  notes: string[]
-  strategyScores: { label: string; score: number; n: number }[]
-}): string {
+/**
+ * The lead sentence of the drawer — and only that.
+ *
+ * It used to restate every trait, every liked name and every note, which the
+ * panel then rendered again as rows and bars directly underneath. One paragraph
+ * of framing, and the structured parts speak for themselves.
+ */
+function composeStatement(x: { positives: Rated[]; negatives: Rated[] }): string {
   if (x.positives.length === 0 && x.negatives.length === 0) {
-    return '还没有任何 Verdict。第一批名字会横跨互不相干的构词策略和语义场，方向由你选出来 —— 打过档之后这里才会有内容。'
+    return '还没有任何 Verdict。打过档，这里才会有内容。'
   }
-  const parts: string[] = []
-  parts.push(`目前建立在 ${x.positives.length} 个正面、${x.negatives.length} 个负面 Verdict 上。`)
-  if (x.positives.length) {
-    parts.push(`往这边走：${x.positives.slice(-8).map(p => p.name).join('、')}。`)
-  }
-  if (x.negatives.length) {
-    parts.push(`离这边远一点：${x.negatives.slice(-8).map(p => p.name).join('、')}。`)
-  }
-  const strong = x.strategyScores.filter(s => s.score > 0.5).slice(0, 3)
-  if (strong.length) parts.push(`起作用的策略是${strong.map(s => s.label).join('、')}。`)
-  for (const t of x.traits) parts.push(t.statement)
-  if (x.notes.length) parts.push(`你自己写下的备注：${x.notes.slice(-4).join('；')}。`)
-  parts.push('这份推断只属于这次会话，来自你的点击而不是任何表单。它随时会被下一个 Verdict 推翻。')
-  // Every part already ends in a full-width 。 — joining with a space would
-  // leave a visible gap after each sentence.
-  return parts.join('')
+  return `建立在 ${x.positives.length} 个正面、${x.negatives.length} 个负面 Verdict 上。来自你的点击，随时会被下一个推翻。`
 }
 
 /**

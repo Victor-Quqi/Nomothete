@@ -18,16 +18,35 @@ interface DrawerState {
 }
 
 const KEYS: [string, string][] = [
-  ['J / K　↑ / ↓', '在候选之间移动'],
+  ['j / k　↑ / ↓', '在候选之间移动'],
   ['1 2 3 4 5', '打档：▼▼ ▼ · ▲ ▲▲，打完自动跳下一个'],
+  ['u', '撤回上一次打的档'],
+  ['⇧J', '跳到下一个还没打档的'],
   ['↵', '打开详情'],
-  ['N', '写备注'],
-  ['G', '再来一批'],
+  ['n', '写备注'],
+  ['s', '念一遍这个名字'],
+  ['c', '复制名字'],
+  ['g', '再来一批'],
+  ['e', '导出 Markdown'],
   ['/', '筛选'],
-  ['T', '品味档案'],
-  ['P', '内置倾向'],
+  ['t', '品味档案'],
+  ['p', '内置倾向'],
   ['⌘K / Ctrl+K', '命令面板'],
   ['Esc', '取消焦点 / 关掉面板'],
+]
+
+/**
+ * The four words the interface uses without explaining them.
+ *
+ * They used to be explained inline, on every plate, forever. Once is enough —
+ * and once is here, behind `?`, where someone who wants the definition will
+ * look and everyone else never has to read it again.
+ */
+const GLOSSARY: [string, string][] = [
+  ['自报概率', '模型自估：换个助手拿到同一份简介，多大可能也想出同一个名字。是自评，不是测量。'],
+  ['查无记录', '接口这一刻没返回冲突。它比「可用」弱得多 —— 没查到不等于没有。'],
+  ['归一化撞名', 'npm 去掉所有非字母数字、PyPI 还会把 o l i 折成 0 1 1 再比。看着不一样的两个名字会撞在一起。'],
+  ['路数', '一批只用一条构词思路，作为正向约束写进 prompt。约束越窄，出来的东西越不像大路货。'],
 ]
 
 export function App() {
@@ -220,15 +239,11 @@ export function App() {
 
         {drawer?.kind === 'priors' && a.boot && a.session && (
           <>
-            <p className="drawer__lead">
-              这些是从命名语料里推出来的软性倾向，不是规则。每一条都带着证据强度，随时可以关掉；
-              被你的 Verdict 推翻的那一刻，它就不算数了。
-            </p>
+            <p className="drawer__lead">软性倾向，不是规则。你的 Verdict 一推翻，它就不算数。</p>
             <PriorDossier priors={a.boot.priors} enabled={a.session.priors} onChange={a.setPriors} />
             <div className="section-h">阈值</div>
             <p className="check__detail" style={{ marginBottom: 10 }}>
-              自报概率高于 {(a.session.threshold * 100).toFixed(0)}% 的名字在到达那一刻就丢掉。
-              调低会更奇，也更容易一整批全被丢光。
+              自报概率高于 {(a.session.threshold * 100).toFixed(0)}% 的到达即丢。调低会更奇，也更容易一整批丢光。
             </p>
             <input
               type="range"
@@ -284,11 +299,18 @@ export function App() {
 
         {drawer?.kind === 'keys' && (
           <>
-            <p className="drawer__lead">整个界面都可以只用键盘走完。打档之后焦点会自己往下走，一路按下去就行。</p>
+            <p className="drawer__lead">打完档焦点自己往下走，一路按下去就行。</p>
             {KEYS.map(([k, v]) => (
               <div className="detail__form" key={k} style={{ background: 'transparent', padding: '9px 0' }}>
                 <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 12 }}>{k}</b>
                 <span style={{ fontSize: 13, color: 'var(--vellum-2)' }}>{v}</span>
+              </div>
+            ))}
+            <div className="section-h">这些词是什么意思</div>
+            {GLOSSARY.map(([term, meaning]) => (
+              <div className="gloss" key={term}>
+                <b>{term}</b>
+                <span>{meaning}</span>
               </div>
             ))}
           </>

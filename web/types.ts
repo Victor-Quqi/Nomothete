@@ -112,6 +112,8 @@ export interface TasteProfile {
   loved: { name: string; strategy: string; note?: string }[]
   rejected: { name: string; strategy: string; note?: string }[]
   statement: string
+  /** The literal paragraph this profile becomes in the next prompt. */
+  injected: string
 }
 
 export interface Bootstrap {

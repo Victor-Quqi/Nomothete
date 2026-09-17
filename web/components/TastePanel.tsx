@@ -39,7 +39,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
         <p className="drawer__lead">{profile.statement}</p>
         <div className="empty">
           <div className="empty__g">·</div>
-          <p>打几个档，这里就会长出东西来。它只属于这次会话，不会跟着你去下一个项目。</p>
+          <p>打几个档，这里就会长出东西来。只属于这次会话。</p>
         </div>
       </>
     )
@@ -99,10 +99,13 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
               <Bar key={s.id} label={s.label} score={s.score} n={s.n} hue={familyById.get(s.family)?.hue ?? 38} />
             ))}
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--vellum-4)', lineHeight: 1.75, marginTop: 12 }}>
-            权重会往正的那边倾斜，但没有任何一条会被封死 ——
-            语料里说得很清楚，第一眼的反应是好名字的劣质预测器。每一批还会留一个名额给你完全没碰过的语义场。
-          </p>
+        </>
+      )}
+
+      {profile.injected && (
+        <>
+          <div className="section-h">下一批会收到这段</div>
+          <pre className="injected">{profile.injected}</pre>
         </>
       )}
     </>

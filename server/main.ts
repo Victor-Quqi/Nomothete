@@ -18,7 +18,7 @@ import { providerStatus } from './llm.ts'
 import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
-import { buildProfile } from './naming/taste.ts'
+import { buildProfile, profileForPrompt } from './naming/taste.ts'
 import {
   createSession,
   deleteSession,
@@ -31,6 +31,8 @@ import {
   setNote,
   setVerdict,
   updateSession,
+  type Candidate,
+  type Session,
   type Verdict,
 } from './store.ts'
 
@@ -80,6 +82,19 @@ api.post('/sessions', (req, res) => {
   res.status(201).json({ session, started })
 })
 
+/**
+ * The profile as the browser sees it, plus `injected` — the literal paragraph
+ * that goes into the next prompt.
+ *
+ * A model that claims to have learned your taste should be willing to show the
+ * sentence it learned, word for word. Without it the drawer is an assertion;
+ * with it, it is checkable.
+ */
+function profilePayload(candidates: Candidate[], seeds: Session['seeds']) {
+  const profile = buildProfile(candidates, seeds)
+  return { ...profile, injected: profileForPrompt(profile) }
+}
+
 function sessionPayload(id: string) {
   const session = getSession(id)
   if (!session) return null
@@ -89,7 +104,7 @@ function sessionPayload(id: string) {
     candidates,
     batches: listBatches(id),
     running: isRunning(id),
-    profile: buildProfile(candidates, session.seeds),
+    profile: profilePayload(candidates, session.seeds),
   }
 }
 
@@ -139,7 +154,7 @@ api.get('/sessions/:id/taste', (req, res) => {
     res.status(404).json({ error: '会话不存在' })
     return
   }
-  res.json({ profile: buildProfile(listCandidates(session.id), session.seeds) })
+  res.json({ profile: profilePayload(listCandidates(session.id), session.seeds) })
 })
 
 api.get('/sessions/:id/stream', (req, res) => {
@@ -222,7 +237,7 @@ api.get('/sessions/:id/export', (req, res) => {
     return
   }
   const candidates = listCandidates(session.id)
-  const profile = buildProfile(candidates, session.seeds)
+  const profile = profilePayload(candidates, session.seeds)
   if (req.query.format === 'json') {
     res.setHeader('content-disposition', `attachment; filename="${session.id}.json"`)
     res.json({ session, candidates, profile })
@@ -249,7 +264,14 @@ api.get('/sessions/:id/export', (req, res) => {
       if (c.note) lines.push(`> ${c.note}`, '')
     }
   }
+  // The drawer can afford to leave the traits as rows and the names as bars; a
+  // file that leaves the session behind cannot, so spell them out here.
   lines.push('## Taste Profile', '', profile.statement, '')
+  if (profile.loved.length) lines.push(`- 往这边走：${profile.loved.map(l => l.name).join('、')}`)
+  if (profile.rejected.length) lines.push(`- 离这边远一点：${profile.rejected.map(l => l.name).join('、')}`)
+  for (const t of profile.traits) lines.push(`- ${t.statement}`)
+  if (profile.loved.length || profile.rejected.length || profile.traits.length) lines.push('')
+  if (profile.injected) lines.push('下一批会收到这段：', '', '```', profile.injected, '```', '')
   res.setHeader('content-type', 'text/markdown; charset=utf-8')
   res.setHeader('content-disposition', `attachment; filename="${session.id}.md"`)
   res.send(lines.join('\n'))

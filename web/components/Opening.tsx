@@ -7,6 +7,32 @@ import type { Bootstrap, Verdict } from '../types.ts'
 const PLACEHOLDER =
   '比如：一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。'
 
+/**
+ * Three briefs, one click away.
+ *
+ * The blank page is the real failure mode of this screen: the quality of every
+ * name downstream is set by how concrete this paragraph is, and nobody writes a
+ * concrete paragraph into an empty box on the first try. They disappear the
+ * moment you type — this is a way in, not a menu.
+ */
+const EXAMPLES: { label: string; brief: string }[] = [
+  {
+    label: '命令行工具',
+    brief:
+      '一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。',
+  },
+  {
+    label: '库',
+    brief:
+      '一个 TypeScript 库，把任意异步函数变成可重放的状态机：每一步的输入输出都落盘，进程崩了之后从最后一个成功的步骤继续，而不是从头再来。',
+  },
+  {
+    label: '编辑器插件',
+    brief:
+      '一个编辑器插件，在你改动某个函数时，把仓库里所有依赖它的调用点安静地列在侧边，按「改了会炸」的可能性排序，不做任何自动修改。',
+  },
+]
+
 interface SeedRow {
   key: number
   text: string
@@ -108,6 +134,31 @@ export function Opening({
               }}
             />
           </div>
+          <AnimatePresence initial={false}>
+            {brief.trim() === '' && (
+              <motion.div
+                className="examples"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <span>没想好怎么写？</span>
+                {EXAMPLES.map(e => (
+                  <button
+                    key={e.label}
+                    className="chip"
+                    onClick={() => {
+                      setBrief(e.brief)
+                      area.current?.focus()
+                    }}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <button className="btn btn--ghost btn--sm" onClick={() => setMore(m => !m)} style={{ marginBottom: 10 }}>
@@ -202,7 +253,7 @@ export function Opening({
             <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>⌘↵</kbd>
           </button>
           <span style={{ fontSize: 12.5, color: 'var(--vellum-4)', lineHeight: 1.7 }}>
-            第一批会同时跑六条互不相干的路数。名字到一个显示一个，注册表检查随后自己跟上。
+            六条路数同时跑，名字到一个显示一个。
           </span>
         </div>
 
@@ -218,7 +269,8 @@ export function Opening({
               lineHeight: 1.7,
             }}
           >
-            模型还没配好：{boot.provider.problem} 在项目根目录放一个 .env，写 BASE_URL、API_KEY、MODEL 三行就行。
+            模型还没配好：{boot.provider.problem} 在工作目录放一个 .env，写{' '}
+            <code>NOMOTHETE_BASE_URL</code>、<code>NOMOTHETE_API_KEY</code>、<code>NOMOTHETE_MODEL</code> 三行就行。
           </div>
         )}
       </motion.div>
