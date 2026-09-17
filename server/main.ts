@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import express from 'express'
 import { CHECK_MANIFEST, TIER_LABEL } from './checks/index.ts'
 import { DB_PATH, getDb } from './db.ts'
+import { env } from './env.ts'
 import { channel } from './events.ts'
 import { providerStatus } from './llm.ts'
 import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
@@ -279,7 +280,7 @@ process.on('unhandledRejection', reason => {
   console.error('[nomothete] 未处理的异步错误：', reason instanceof Error ? reason.message : reason)
 })
 
-const PORT = Number(process.env.PORT ?? 5179)
+const PORT = Number(env('PORT') ?? 5179)
 
 getDb()
 reconcileBatches()

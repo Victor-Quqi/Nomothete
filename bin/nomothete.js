@@ -12,6 +12,9 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+// Loaded here as well as in the server, so that a port set in `.env` is the port
+// `--open` opens. Nothing else in this file reads the file's contents.
+import 'dotenv/config'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const argv = process.argv.slice(2)
@@ -34,19 +37,22 @@ if (argv.includes('-h') || argv.includes('--help')) {
     nomothete [选项]
 
   选项
-    -p, --port <n>   监听端口（默认 5179，或环境变量 PORT）
+    -p, --port <n>   监听端口（默认 5179，或环境变量 NOMOTHETE_PORT）
         --open       启动后用默认浏览器打开
         --verbose    打印请求方法与路径（永远不含请求体和鉴权头）
     -h, --help       显示这段
 
   配置
-    在工作目录放一个 .env：BASE_URL / API_KEY / MODEL。
+    在工作目录放一个 .env：
+      NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
+    不带前缀的同名变量也认，但只在没有带前缀的那个时才用。
     钥匙只在这个进程里用，不会进日志、不会发给浏览器。
 `)
   process.exit(0)
 }
 
-const port = flagValue('-p', '--port') ?? process.env.PORT ?? '5179'
+// Same precedence as server/env.ts: prefixed first, bare name only as a fallback.
+const port = flagValue('-p', '--port') ?? process.env.NOMOTHETE_PORT ?? process.env.PORT ?? '5179'
 
 // The server serves dist/ when it is there and falls back to an API-only mode
 // when it is not. An API-only mode is not what anyone typing `nomothete` wants,
@@ -60,7 +66,7 @@ if (!existsSync(path.join(root, 'dist', 'index.html'))) {
   }
 }
 
-const env = { ...process.env, PORT: String(port) }
+const env = { ...process.env, NOMOTHETE_PORT: String(port) }
 if (argv.includes('--verbose')) env.NOMOTHETE_VERBOSE = '1'
 
 // Node 24 strips types from .ts on its own; tsx is only a fallback for older

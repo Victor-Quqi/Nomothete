@@ -7,7 +7,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: `http://localhost:${process.env.PORT ?? 5179}`,
+        // Same precedence as server/env.ts, inlined: this file runs before the
+        // server's module graph exists.
+        target: `http://localhost:${process.env.NOMOTHETE_PORT ?? process.env.PORT ?? 5179}`,
         changeOrigin: true,
         // Server-sent events must not be buffered on the way through.
         configure: proxy => {

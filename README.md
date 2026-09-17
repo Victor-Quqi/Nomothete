@@ -19,7 +19,7 @@
 
 ```bash
 npm install
-cp .env.example .env     # 填上 BASE_URL / API_KEY / MODEL
+cp .env.example .env     # 填上 NOMOTHETE_BASE_URL / _API_KEY / _MODEL
 npm run build            # 构建前端到 dist/
 npm start                # → http://localhost:5179
 ```
@@ -43,27 +43,34 @@ npm run typecheck        # 两个 tsconfig 都过一遍
 ### `.env`
 
 ```
-BASE_URL=https://api.openai.com/v1     # 任何 OpenAI 兼容端点
-API_KEY=sk-...
-MODEL=gpt-5
-REASONING_EFFORT=none                  # 可选，见下
+NOMOTHETE_BASE_URL=https://api.openai.com/v1   # 任何 OpenAI 兼容端点
+NOMOTHETE_API_KEY=sk-...
+NOMOTHETE_MODEL=gpt-5
+NOMOTHETE_REASONING_EFFORT=none                # 可选，见下
 ```
 
+- **所有变量都带 `NOMOTHETE_` 前缀**，因为 `API_KEY`、`MODEL`、`BASE_URL`、`PORT`
+  是机器上另外三个工具也会用的名字，shell 里恰好导出过一个，就会把这个工坊
+  悄悄指到别的端点、或者指到对的端点配错的钥匙上。不带前缀的同名变量仍然认
+  （`server/env.ts` 里一个函数管这件事），但只在没有带前缀的那个时才用 ——
+  带前缀的永远优先。
 - 钥匙**只在服务端进程里存在**。它不进日志（中间件只打 method 与 path，
   且要 `NOMOTHETE_VERBOSE=1` 才打）、不进 `/api/bootstrap` 的返回
   （`providerStatus()` 只序列化 host / model / kind）、不会以任何形式到达浏览器。
-- 三种线格式都支持：`BASE_URL` 指向 Anthropic 或 Google 的地址时自动识别，
-  也可以用 `PROVIDER_KIND=openai-chat|openai-responses|anthropic|google` 明写。
+- 三种线格式都支持：`NOMOTHETE_BASE_URL` 指向 Anthropic 或 Google 的地址时自动
+  识别，也可以用 `NOMOTHETE_PROVIDER_KIND=openai-chat|openai-responses|anthropic|google`
+  明写。
 - 要同时配多个 provider，在工作目录放 `nomothete.config.json`：
 
   ```json
   { "providers": [
-    { "id": "main", "kind": "openai-chat", "baseURL": "...", "apiKeyEnv": "API_KEY",
+    { "id": "main", "kind": "openai-chat", "baseURL": "...", "apiKeyEnv": "NOMOTHETE_API_KEY",
       "model": "gpt-5", "structuredOutput": "json_schema" }
   ] }
   ```
 
-- 可选：`GITHUB_TOKEN` 把 GitHub 搜索限速从 10 次/分提到 30 次/分。
+- 可选：`NOMOTHETE_GITHUB_TOKEN` 把 GitHub 搜索限速从 10 次/分提到 30 次/分。
+- 可选：`NOMOTHETE_PORT` 换监听端口（默认 5179），`--port` 优先。
 
 #### 关于 `REASONING_EFFORT`
 
@@ -76,7 +83,7 @@ REASONING_EFFORT=none                  # 可选，见下
 这个参数在 `llm.ts` 的 fetch 层注入，不走 `providerOptions`，因为重试要紧挨着它：
 端点如果没听说过这个参数，整个进程只浪费一次请求就不再发送，而不是让你先去发现
 有这么个设置。Anthropic 与 Google 线路有各自的 thinking 开关，不会被注入。
-想要慢而深，写 `REASONING_EFFORT=default`（或留空）即可完全不发。
+想要慢而深，写 `NOMOTHETE_REASONING_EFFORT=default`（或留空）即可完全不发。
 
 ---
 

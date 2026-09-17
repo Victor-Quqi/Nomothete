@@ -15,6 +15,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { LanguageModel } from 'ai'
+import { env } from './env.ts'
 
 export type ProviderKind = 'openai-chat' | 'openai-responses' | 'anthropic' | 'google'
 
@@ -80,30 +81,27 @@ export function loadProfiles(): ProviderProfile[] {
       console.error(`[nomothete] nomothete.config.json 解析失败，回落到环境变量：${(err as Error).message}`)
     }
   }
-  const baseURL = process.env.BASE_URL
-  const model = process.env.MODEL
+  const baseURL = env('BASE_URL')
+  const model = env('MODEL')
   if (!model) return []
+  const effort = env('REASONING_EFFORT')
   return [
     {
       id: 'default',
-      kind: (process.env.PROVIDER_KIND as ProviderKind) || inferKind(baseURL),
+      kind: (env('PROVIDER_KIND') as ProviderKind) || inferKind(baseURL),
       baseURL,
-      apiKeyEnv: 'API_KEY',
+      apiKeyEnv: 'NOMOTHETE_API_KEY',
       model,
       structuredOutput: 'auto',
-      // `REASONING_EFFORT=default` (or anything empty) leaves the parameter off.
+      // `…REASONING_EFFORT=default` (or anything empty) leaves the parameter off.
       reasoningEffort:
-        process.env.REASONING_EFFORT === undefined
-          ? DEFAULT_REASONING_EFFORT
-          : /^(default|off|)$/i.test(process.env.REASONING_EFFORT)
-            ? null
-            : process.env.REASONING_EFFORT,
+        effort === undefined ? DEFAULT_REASONING_EFFORT : /^(default|off|)$/i.test(effort) ? null : effort,
     },
   ]
 }
 
 function keyFor(p: ProviderProfile): string | undefined {
-  return p.apiKey ?? (p.apiKeyEnv ? process.env[p.apiKeyEnv] : undefined) ?? process.env.API_KEY
+  return p.apiKey ?? (p.apiKeyEnv ? process.env[p.apiKeyEnv] : undefined) ?? env('API_KEY')
 }
 
 /** Set once, when an endpoint turns out not to know the parameter. */
@@ -220,7 +218,8 @@ export function providerStatus(): ProviderStatus {
     return {
       configured: false,
       hasKey: false,
-      problem: '没有配置模型。在工作目录放一个 .env，写上 BASE_URL、API_KEY、MODEL 三行即可。',
+      problem:
+        '没有配置模型。在工作目录放一个 .env，写上 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL 三行即可。',
     }
   }
   const p = profiles[0]
@@ -240,14 +239,15 @@ export function providerStatus(): ProviderStatus {
     host,
     structuredOutput: mode,
     hasKey: Boolean(key),
-    problem: key ? undefined : `找不到 API key。设置环境变量 ${p.apiKeyEnv ?? 'API_KEY'}。`,
+    problem: key ? undefined : `找不到 API key。设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`,
   }
 }
 
 export function activeProfile(): ProviderProfile {
   const profiles = loadProfiles()
-  if (profiles.length === 0) throw new Error('没有配置模型：请在工作目录的 .env 里设置 BASE_URL、API_KEY、MODEL。')
+  if (profiles.length === 0)
+    throw new Error('没有配置模型：请在工作目录的 .env 里设置 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。')
   const p = profiles[0]
-  if (!keyFor(p)) throw new Error(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'API_KEY'}。`)
+  if (!keyFor(p)) throw new Error(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`)
   return p
 }

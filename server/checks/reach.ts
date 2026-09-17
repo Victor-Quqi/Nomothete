@@ -7,6 +7,7 @@
  * hard to google / ungoogleable / impossible to google, against 924 for
  * "terrible name". So it gets its own checks rather than a footnote.
  */
+import { env } from '../env.ts'
 import { probe } from './http.ts'
 import { npmNormalize } from './normalize.ts'
 import type { Check, CheckContext, CheckResult } from './types.ts'
@@ -78,7 +79,7 @@ export const githubCheck: Check = {
   tier: 'ratelimited',
   when: 'after-upvote',
   async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
-    const token = process.env.GITHUB_TOKEN
+    const token = env('GITHUB_TOKEN')
     try {
       const r = await probe(
         `https://api.github.com/search/repositories?q=${encodeURIComponent(`${name} in:name`)}&per_page=5&sort=stars`,
