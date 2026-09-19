@@ -594,6 +594,15 @@ kbd {
   overflow: hidden;
   transition: border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), background 0.3s var(--ease-out);
   cursor: default;
+  /* A plate is about fifty nodes, and the canvas holds every candidate the
+     session ever made. At two hundred plates one reflow costs a tenth of a
+     second and a resize costs ten, which is long enough for the browser to
+     call the page unresponsive. Skipping style, layout and paint for the
+     plates nobody is looking at takes that back to a second. `auto` on the
+     intrinsic size makes the scrollbar remember the real height of every
+     plate that has been on screen once, so it stops jumping. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
 }
 .plate::before {
   /* the engraved top rule */
