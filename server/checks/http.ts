@@ -10,6 +10,24 @@ const MAX_INFLIGHT = 10
 let inflight = 0
 const queue: (() => void)[] = []
 
+// Thirty names checked at once is thirty requests in twelve seconds, and npm
+// answered half of them with a Cloudflare 429. Space them out per host.
+const MIN_GAP_MS = 350
+const nextSlot = new Map<string, number>()
+
+async function pace(url: string) {
+  let host: string
+  try {
+    host = new URL(url).host
+  } catch {
+    return
+  }
+  const now = Date.now()
+  const at = Math.max(now, nextSlot.get(host) ?? 0)
+  nextSlot.set(host, at + MIN_GAP_MS)
+  if (at > now) await new Promise(r => setTimeout(r, at - now))
+}
+
 function acquire(): Promise<void> {
   if (inflight < MAX_INFLIGHT) {
     inflight++
@@ -47,6 +65,7 @@ export async function probe(
 
   await acquire()
   try {
+    await pace(url)
     const res = await fetch(url, {
       method: opts.method ?? 'GET',
       signal: opts.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(12_000)]) : AbortSignal.timeout(12_000),
@@ -55,10 +74,15 @@ export async function probe(
     })
     // Only bodies we might parse are worth storing.
     const body = opts.method === 'HEAD' ? '' : (await res.text()).slice(0, 200_000)
-    db.prepare(
-      'INSERT INTO http_cache (url, status, body, fetchedAt) VALUES (?, ?, ?, ?) ' +
-        'ON CONFLICT(url) DO UPDATE SET status = excluded.status, body = excluded.body, fetchedAt = excluded.fetchedAt',
-    ).run(key, res.status, body, Date.now())
+    // A 404 is an answer: nothing is registered under that name. A 429 or a 502
+    // is the absence of one, and storing it for a day means the question goes
+    // unasked for a day while the card shows nothing and nobody is told why.
+    if ((res.status >= 200 && res.status < 400) || res.status === 404) {
+      db.prepare(
+        'INSERT INTO http_cache (url, status, body, fetchedAt) VALUES (?, ?, ?, ?) ' +
+          'ON CONFLICT(url) DO UPDATE SET status = excluded.status, body = excluded.body, fetchedAt = excluded.fetchedAt',
+      ).run(key, res.status, body, Date.now())
+    }
     return { status: res.status, body, cached: false }
   } finally {
     release()

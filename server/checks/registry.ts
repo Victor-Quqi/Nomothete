@@ -11,7 +11,7 @@
  *                    requests, so it waits for a positive Verdict.
  */
 import { probe, probeAll } from './http.ts'
-import { collisionCandidates, validateForRegistry, type RegistryId } from './normalize.ts'
+import { collisionCandidates, registryForm, validateForRegistry, type RegistryId } from './normalize.ts'
 import { rememberName } from './local.ts'
 import type { Check, CheckContext, CheckResult } from './types.ts'
 
@@ -65,16 +65,20 @@ export const availabilityCheck: Check = {
   tier: 'free',
   when: 'always',
   async run({ name, signal }: CheckContext): Promise<CheckResult> {
+    // Each registry is asked about the string it would be given, which on npm is
+    // the lowercase one. Asking about `Agemux` there answers nothing: npm has no
+    // such package and never will, because npm has no uppercase packages.
     const results = await Promise.all(
       SPECS.map(async spec => {
-        if (!validateForRegistry(spec.id, name).ok) return { spec, state: 'invalid' as const }
-        const e = await exists(spec, name, signal)
-        if (e === null) return { spec, state: 'error' as const }
+        const form = registryForm(spec.id, name)
+        if (!validateForRegistry(spec.id, form).ok) return { spec, form, state: 'invalid' as const }
+        const e = await exists(spec, form, signal)
+        if (e === null) return { spec, form, state: 'error' as const }
         if (e) {
-          rememberName(spec.id, name.toLowerCase())
-          return { spec, state: 'taken' as const }
+          rememberName(spec.id, form.toLowerCase())
+          return { spec, form, state: 'taken' as const }
         }
-        return { spec, state: 'clear' as const }
+        return { spec, form, state: 'clear' as const }
       }),
     )
 
@@ -99,9 +103,11 @@ export const availabilityCheck: Check = {
       detail:
         results
           .map(r => {
+            // Say which string was asked about when it is not the one on the card.
+            const as = r.form === name ? '' : `（作 ${r.form}）`
             switch (r.state) {
-              case 'taken': return `${r.spec.label}：已有同名`
-              case 'clear': return `${r.spec.label}：查无记录`
+              case 'taken': return `${r.spec.label}${as}：已有同名`
+              case 'clear': return `${r.spec.label}${as}：查无记录`
               case 'invalid': return `${r.spec.label}：名字不合法`
               default: return `${r.spec.label}：查询失败`
             }
@@ -112,8 +118,9 @@ export const availabilityCheck: Check = {
         registries: results.map(r => ({
           id: r.spec.id,
           label: r.spec.label,
+          form: r.form,
           state: r.state,
-          url: r.state === 'taken' ? r.spec.page(name) : null,
+          url: r.state === 'taken' ? r.spec.page(r.form) : null,
         })),
       },
     }

@@ -99,6 +99,22 @@ UPDATE sessions SET title = ''
  WHERE title <> ''
    AND (title = brief OR (title LIKE '%…' AND instr(brief, rtrim(title, '…')) = 1));
 
+-- Every name here has a capital and npm has no uppercase packages, so the old
+-- checks judged Agemux by npm's rules, marked it illegal, and skipped the one
+-- request that would have said whether agemux is free. Drop both answers.
+-- Opening the session asks again, about the string npm would actually be given.
+DELETE FROM checks
+ WHERE checkId = 'validity'
+   AND data LIKE '%npm 不接受大写%'
+   AND data NOT LIKE '%},{%';
+DELETE FROM checks
+ WHERE checkId = 'availability'
+   AND data LIKE '%"id":"npm","label":"npm","state":"invalid"%';
+
+-- Rate-limit and server-error responses were cached for a day alongside real
+-- answers, so half the npm searches stayed unasked until tomorrow. They are not
+-- stored any more; drop the ones already in here.
+DELETE FROM http_cache WHERE status >= 400 AND status <> 404;
 `
 
 export function getDb(): DatabaseSync {

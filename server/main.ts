@@ -10,11 +10,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
-import { CHECK_MANIFEST, TIER_LABEL } from './checks/index.ts'
+import { CHECK_MANIFEST, TIER_LABEL, fillMissingChecks } from './checks/index.ts'
 import { DB_PATH, getDb } from './db.ts'
 import { env } from './env.ts'
 import { applyEnv, writeEnv } from './envfile.ts'
-import { channel } from './events.ts'
+import { channel, publish } from './events.ts'
 import {
   configSource,
   forgetEffortRefusal,
@@ -153,8 +153,25 @@ api.get('/sessions/:id', (req, res) => {
   // Sessions made before there was a label, and sessions whose label was asked
   // for while the model was unreachable. Once per process, then it stops.
   if (!payload.session.title) void nameSession(payload.session.id)
+  void backfillChecks(payload.session.id, payload.candidates)
   res.json(payload)
 })
+
+/**
+ * Ask the checks that never got an answer for these names, one candidate at a
+ * time so that opening a session with thirty names is not thirty simultaneous
+ * requests to npm. Answers arrive on the event stream, like any other check.
+ */
+async function backfillChecks(sessionId: string, candidates: Candidate[]) {
+  const signal = AbortSignal.timeout(120_000)
+  for (const c of candidates) {
+    if (signal.aborted) return
+    await fillMissingChecks(c.id, c.name, {
+      signal,
+      onResult: result => publish(sessionId, { type: 'check', candidateId: c.id, result }),
+    }).catch(() => {})
+  }
+}
 
 api.patch('/sessions/:id', (req, res) => {
   const { title, priors, threshold, brief } = req.body ?? {}

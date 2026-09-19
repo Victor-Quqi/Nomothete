@@ -78,15 +78,46 @@ export async function runChecks(
   opts: { deep: boolean; signal: AbortSignal; onResult?: (r: CheckResult) => void },
 ): Promise<CheckResult[]> {
   const wanted = CHECKS.filter(c => (opts.deep ? c.when === 'after-upvote' : c.when === 'always'))
+  return run(candidateId, name, wanted, opts.signal, opts.onResult)
+}
+
+/**
+ * Run the always-checks this candidate has no stored answer for.
+ *
+ * A check writes its row once, when the name is generated. Add a check later,
+ * or delete an answer that a newer build knows was wrong, and the card keeps
+ * showing the old set until something asks again. This is that something.
+ */
+export async function fillMissingChecks(
+  candidateId: string,
+  name: string,
+  opts: { signal: AbortSignal; onResult?: (r: CheckResult) => void },
+): Promise<CheckResult[]> {
+  const rows = getDb()
+    .prepare('SELECT checkId FROM checks WHERE candidateId = ?')
+    .all(candidateId) as { checkId: string }[]
+  const have = new Set(rows.map(r => r.checkId))
+  const missing = CHECKS.filter(c => c.when === 'always' && !have.has(c.id))
+  if (missing.length === 0) return []
+  return run(candidateId, name, missing, opts.signal, opts.onResult)
+}
+
+async function run(
+  candidateId: string,
+  name: string,
+  wanted: Check[],
+  signal: AbortSignal,
+  onResult?: (r: CheckResult) => void,
+): Promise<CheckResult[]> {
   const out: CheckResult[] = []
   await Promise.all(
     wanted.map(async check => {
       try {
-        const r = await check.run({ name, deep: opts.deep, signal: opts.signal })
+        const r = await check.run({ name, deep: check.when === 'after-upvote', signal })
         if (!r) return
         persistCheck(candidateId, r)
         out.push(r)
-        opts.onResult?.(r)
+        onResult?.(r)
       } catch (err) {
         const r: CheckResult = {
           checkId: check.id,
@@ -98,7 +129,7 @@ export async function runChecks(
         }
         persistCheck(candidateId, r)
         out.push(r)
-        opts.onResult?.(r)
+        onResult?.(r)
       }
     }),
   )

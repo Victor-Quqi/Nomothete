@@ -55,6 +55,17 @@ export const NORMALIZERS: Record<RegistryId, (n: string) => string> = {
   crates: cratesNormalize,
 }
 
+/**
+ * The string that would be typed into package.json or Cargo.toml.
+ *
+ * A candidate is a project name, written the way it is said: Agemux. The package
+ * id is derived from it, and on npm that id is lowercase. PyPI and crates.io
+ * keep the capital (Flask, Inflector), so npm is the only one that differs.
+ */
+export function registryForm(registry: RegistryId, name: string): string {
+  return registry === 'npm' ? name.toLowerCase() : name
+}
+
 /** Whether a string is even a legal name on a given registry. */
 export function validateForRegistry(
   registry: RegistryId,

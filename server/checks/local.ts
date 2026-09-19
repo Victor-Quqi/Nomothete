@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getDb } from '../db.ts'
-import { NORMALIZERS, REGISTRIES, syllables, validateForRegistry } from './normalize.ts'
+import { NORMALIZERS, REGISTRIES, registryForm, syllables, validateForRegistry } from './normalize.ts'
 import type { Check, CheckResult } from './types.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -119,21 +119,30 @@ export function rememberName(registry: string, actual: string) {
     .run(registry, norm, actual)
 }
 
-/** Legality on each registry, before any network call is worth making. */
+/**
+ * Legality on each registry, before any network call is worth making.
+ *
+ * Judged on the form each registry would receive, not on the name as displayed:
+ * every name here has a capital, and npm's id for it is simply the lowercase
+ * one. A capital is a fact about how the name is written, not a defect.
+ */
 export const validityCheck: Check = {
   id: 'validity',
   label: '名字合法性',
   tier: 'local',
   when: 'always',
   async run({ name }): Promise<CheckResult | null> {
-    const bad = REGISTRIES.map(r => ({ r, v: validateForRegistry(r.id, name) })).filter(x => !x.v.ok)
+    const bad = REGISTRIES.map(r => {
+      const form = registryForm(r.id, name)
+      return { r, form, v: validateForRegistry(r.id, form) }
+    }).filter(x => !x.v.ok)
     if (bad.length === 0) return null
     return {
       checkId: 'validity', label: '名字合法性', tier: 'local', status: 'invalid',
       headline: `${bad.map(b => b.r.label).join('、')} 不接受`,
       detail: bad.map(b => `${b.r.label}：${(b.v as { reason: string }).reason}`).join('；') +
-        '。改为小写或去掉标点后通常即合法。',
-      data: { failures: bad.map(b => ({ registry: b.r.id, reason: (b.v as { reason: string }).reason })) },
+        '。这要改名字本身，不是改写法。',
+      data: { failures: bad.map(b => ({ registry: b.r.id, form: b.form, reason: (b.v as { reason: string }).reason })) },
     }
   },
 }
