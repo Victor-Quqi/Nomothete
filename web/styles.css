@@ -519,90 +519,6 @@ kbd {
 .topbar__brief:hover { color: var(--vellum-3); }
 .topbar__acts { display: flex; align-items: center; gap: 6px; }
 
-/* ── the loom ────────────────────────────────────────────────────────────── */
-.loom {
-  padding: 0 28px;
-  border-bottom: 1px solid var(--hair);
-  background: rgba(10, 11, 16, 0.5);
-  overflow: hidden;
-}
-.loom__inner { display: flex; align-items: center; gap: 10px; padding: 11px 0; flex-wrap: wrap; }
-.loom__label {
-  font-size: 12.5px;
-  color: var(--vellum-4);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.loom__pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 99px;
-  background: var(--brass);
-  box-shadow: 0 0 0 0 var(--brass-glow);
-  animation: pulse 1.9s var(--ease-out) infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(217, 164, 65, 0.5); }
-  70% { box-shadow: 0 0 0 9px rgba(217, 164, 65, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(217, 164, 65, 0); }
-}
-
-.thread {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px 5px 10px;
-  border-radius: 99px;
-  border: 1px solid var(--hair);
-  font-size: 12px;
-  color: var(--vellum-3);
-  position: relative;
-  overflow: hidden;
-  background: rgba(24, 27, 37, 0.55);
-}
-.thread--live { border-color: rgba(217, 164, 65, 0.3); color: var(--vellum-2); }
-.thread--live::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 20%, rgba(217, 164, 65, 0.16) 50%, transparent 80%);
-  transform: translateX(-100%);
-  animation: sheen 1.8s var(--ease-in-out) infinite;
-}
-@keyframes sheen { to { transform: translateX(100%); } }
-.thread--done { opacity: 0.55; }
-.thread--failed { border-color: rgba(196, 87, 62, 0.4); color: #d08672; }
-.thread__dot { width: 6px; height: 6px; border-radius: 99px; background: currentColor; opacity: 0.8; flex: none; }
-.thread__n { font-family: var(--font-mono); font-size: 12px; color: var(--brass-soft); }
-/* A batch still thinking: the count is muted, because it is not a result yet. */
-.thread__n--wait { color: var(--vellum-4); display: inline-flex; align-items: baseline; }
-.thread__ellipsis { width: 11px; display: inline-block; }
-.thread__ellipsis::after {
-  content: '·';
-  animation: ellipsis 1.4s steps(1, end) infinite;
-}
-@keyframes ellipsis {
-  0%   { content: '·'; }
-  33%  { content: '··'; }
-  66%  { content: '···'; }
-}
-
-.discards {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  color: var(--vellum-4);
-  padding: 5px 11px;
-  border-radius: 99px;
-  border: 1px dashed var(--hair-2);
-  cursor: default;
-  position: relative;
-}
-.discards:hover { color: var(--vellum-3); border-color: var(--hair-2); }
-.discards s { text-decoration-color: var(--vellum-4); font-family: var(--font-mono); }
-
 /* ── filter bar ──────────────────────────────────────────────────────────── */
 .filters {
   display: flex;
@@ -1301,6 +1217,15 @@ kbd {
 }
 .dock__hint { font-size: 12.5px; color: var(--vellum-3); white-space: nowrap; }
 .dock__hint b { color: var(--brass); font-weight: 500; }
+.dock__discards {
+  font-size: 12.5px;
+  color: var(--vellum-4);
+  white-space: nowrap;
+  cursor: default;
+  margin-left: -4px;
+}
+.dock__discards:hover { color: var(--vellum-3); }
+.dock__discards s { text-decoration-color: var(--vellum-4); font-family: var(--font-mono); }
 
 /* ── empty ───────────────────────────────────────────────────────────────── */
 .empty {
@@ -1339,15 +1264,38 @@ kbd {
   transform: translateX(-100%);
   animation: sheen 2.2s var(--ease-in-out) infinite;
 }
+@keyframes sheen { to { transform: translateX(100%); } }
 .ghost__line { height: 9px; border-radius: 99px; background: rgba(239, 231, 216, 0.05); }
 .ghost__line--title { height: 24px; width: 58%; }
 .ghost__strategy {
   font-size: 12.5px;
   color: var(--vellum-4);
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 7px;
   margin-top: auto;
+  position: relative;
+}
+.ghost__dot { width: 5px; height: 5px; border-radius: 99px; flex: none; align-self: center; }
+.ghost__phase { color: var(--vellum-3); }
+/* The seconds sit at the far end, where a plate that has arrived carries its
+   verdict dial — a number going up in the place the answer will be. */
+.ghost__elapsed {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--brass-soft);
+}
+.ghost__ellipsis { width: 11px; display: inline-block; }
+.ghost__ellipsis::after {
+  content: '·';
+  animation: ellipsis 1.4s steps(1, end) infinite;
+}
+@keyframes ellipsis {
+  0%   { content: '·'; }
+  33%  { content: '··'; }
+  66%  { content: '···'; }
 }
 
 /* ── tooltips ────────────────────────────────────────────────────────────── */
@@ -1488,7 +1436,7 @@ input[type='range']:focus-visible::-moz-range-thumb {
   :root { --rail-w: 0px; }
   .rail { display: none; }
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .topbar, .filters, .canvas, .loom { padding-left: 16px; padding-right: 16px; }
+  .topbar, .filters, .canvas { padding-left: 16px; padding-right: 16px; }
   .plates { grid-template-columns: 1fr; }
 }
 

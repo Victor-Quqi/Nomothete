@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence } from 'motion/react'
 import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
-import { Loom } from './Loom.tsx'
+import { Ghost } from './Ghost.tsx'
+import { Tip } from './Tip.tsx'
 import type { Atelier } from '../store.ts'
 import type { Candidate, Verdict } from '../types.ts'
 
@@ -254,18 +255,6 @@ export function Workspace({
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {(liveBatches.length > 0 || a.discards.length > 0) && (
-          <Loom
-            key="loom"
-            batches={liveBatches}
-            strategyById={a.strategyById}
-            familyById={a.familyById}
-            discards={a.discards}
-          />
-        )}
-      </AnimatePresence>
-
       <div className="filters">
         {LANES.map(l => (
           <button
@@ -326,32 +315,13 @@ export function Workspace({
           <AnimatePresence initial={false}>
             {ghosts.map(b => {
               const s = a.strategyById.get(b.strategyId)
-              const fam = s ? a.familyById.get(s.family) : undefined
               return (
-                <motion.div
+                <Ghost
                   key={`ghost-${b.id}`}
-                  layout
-                  className="ghost"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.2 } }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-                >
-                  <div className="ghost__line ghost__line--title" />
-                  <div className="ghost__line" style={{ width: '92%' }} />
-                  <div className="ghost__line" style={{ width: '78%' }} />
-                  <div className="ghost__strategy">
-                    <i
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: 99,
-                        background: `hsl(${fam?.hue ?? 38} 55% 55%)`,
-                      }}
-                    />
-                    {s?.label ?? b.strategyId} {b.phase === 'writing' ? '正在写…' : '正在推理…'}
-                  </div>
-                </motion.div>
+                  batch={b}
+                  strategy={s}
+                  family={s ? a.familyById.get(s.family) : undefined}
+                />
               )
             })}
 
@@ -390,6 +360,22 @@ export function Workspace({
         <span className="dock__hint">
           {candidates.length} 个候选 · <b>{candidates.filter(c => c.verdict > 0).length}</b> 个心动
         </span>
+        {/* What the threshold ate is a footnote to the count, not a filter, so
+            it sits with the count rather than in a row of its own. */}
+        {a.discards.length > 0 && (
+          <Tip
+            className="dock__discards"
+            content={
+              <>
+                <b>丢掉的 {a.discards.length} 个</b>
+                <p>{a.discards.slice(-14).map(d => d.name).join('　')}</p>
+                <em>自报罕见度低于阈值。</em>
+              </>
+            }
+          >
+            · 丢掉 <s>{a.discards.length}</s> 个
+          </Tip>
+        )}
         {running ? (
           <button className="btn btn--sm" onClick={() => a.cancel()}>
             停止
