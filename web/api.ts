@@ -1,4 +1,13 @@
-import type { Bootstrap, Candidate, Session, SessionPayload, SessionSummary, Verdict } from './types.ts'
+import type {
+  Bootstrap,
+  Candidate,
+  ProbeResult,
+  ProviderConfig,
+  Session,
+  SessionPayload,
+  SessionSummary,
+  Verdict,
+} from './types.ts'
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -65,4 +74,16 @@ export const api = {
     call<{ ok: true }>(`/candidates/${candidateId}/recheck`, { method: 'POST', body: '{}' }),
 
   exportUrl: (id: string, format: 'json' | 'md') => `/api/sessions/${id}/export?format=${format}`,
+
+  config: () => call<ProviderConfig>('/config'),
+
+  /**
+   * One-directional. An omitted or empty `apiKey` leaves the stored one alone,
+   * which is what lets the model be changed by a page that was never given the
+   * key to begin with.
+   */
+  saveConfig: (body: { baseURL?: string; model?: string; apiKey?: string; reasoningEffort?: string }) =>
+    call<ProviderConfig>('/config', { method: 'PUT', body: JSON.stringify(body) }),
+
+  testConfig: () => call<ProbeResult>('/config/test', { method: 'POST', body: '{}' }),
 }

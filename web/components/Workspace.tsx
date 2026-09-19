@@ -5,7 +5,7 @@ import { Loom } from './Loom.tsx'
 import type { Atelier } from '../store.ts'
 import type { Candidate, Verdict } from '../types.ts'
 
-export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys'
+export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys' | 'settings'
 
 type Lane = 'all' | 'open' | 'up' | 'down'
 type Sort = 'arrival' | 'rare' | 'clean'

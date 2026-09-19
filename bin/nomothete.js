@@ -39,20 +39,48 @@ if (argv.includes('-h') || argv.includes('--help')) {
   选项
     -p, --port <n>   监听端口（默认 5179，或环境变量 NOMOTHETE_PORT）
         --open       启动后用默认浏览器打开
+        --setup      重新问一遍端点、模型与钥匙，改写 .env 里的那三行
         --verbose    打印请求方法与路径（永远不含请求体和鉴权头）
     -h, --help       显示这段
 
   配置
-    在工作目录放一个 .env：
+    三个入口，写的是同一个文件：首次启动会问；启动后界面左下角「模型」可以改；
+    也可以自己在工作目录的 .env 里写：
       NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
     不带前缀的同名变量也认，但只在没有带前缀的那个时才用。
-    钥匙只在这个进程里用，不会进日志、不会发给浏览器。
+    钥匙只在这个进程里用，不会进日志。界面能写它，读回来只有末四位。
+    服务默认只绑 127.0.0.1（NOMOTHETE_HOST 可改）。
 `)
   process.exit(0)
 }
 
 // Same precedence as server/env.ts: prefixed first, bare name only as a fallback.
 const port = flagValue('-p', '--port') ?? process.env.NOMOTHETE_PORT ?? process.env.PORT ?? '5179'
+
+// Node 24 strips types from .ts on its own; tsx is only a fallback for older
+// runtimes that still choke on the annotations.
+const major = Number(process.versions.node.split('.')[0])
+
+/** Arguments for running one of the server's .ts files as a script. */
+function tsCommand(file, args) {
+  return major >= 23
+    ? [process.execPath, ['--experimental-strip-types', '--no-warnings', file, ...args]]
+    : ['npx', ['tsx', file, ...args]]
+}
+
+// Ask before building rather than after: someone who has just cloned this should
+// not sit through a Vite build to find out the next thing wanted was a key.
+// server/setup.ts returns 0 when it is satisfied, which includes the ordinary
+// case of there being nothing to ask.
+{
+  const [cmd, args] = tsCommand(path.join(root, 'server', 'setup.ts'), argv.includes('--setup') ? ['--force'] : [])
+  const setup = spawnSync(cmd, args, {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    shell: cmd === 'npx' && process.platform === 'win32',
+  })
+  if (setup.status !== 0) process.exit(setup.status ?? 1)
+}
 
 // The server serves dist/ when it is there and falls back to an API-only mode
 // when it is not. An API-only mode is not what anyone typing `nomothete` wants,
@@ -69,23 +97,13 @@ if (!existsSync(path.join(root, 'dist', 'index.html'))) {
 const env = { ...process.env, NOMOTHETE_PORT: String(port) }
 if (argv.includes('--verbose')) env.NOMOTHETE_VERBOSE = '1'
 
-// Node 24 strips types from .ts on its own; tsx is only a fallback for older
-// runtimes that still choke on the annotations.
-const major = Number(process.versions.node.split('.')[0])
-const entry = path.join(root, 'server', 'main.ts')
-const child =
-  major >= 23
-    ? spawn(process.execPath, ['--experimental-strip-types', '--no-warnings', entry], {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        env,
-      })
-    : spawn('npx', ['tsx', entry], {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        env,
-        shell: process.platform === 'win32',
-      })
+const [cmd, args] = tsCommand(path.join(root, 'server', 'main.ts'), [])
+const child = spawn(cmd, args, {
+  cwd: process.cwd(),
+  stdio: 'inherit',
+  env,
+  shell: cmd === 'npx' && process.platform === 'win32',
+})
 
 if (argv.includes('--open')) {
   const url = `http://localhost:${port}`

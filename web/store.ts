@@ -15,6 +15,7 @@ import type {
   Candidate,
   CheckResult,
   Family,
+  ProviderStatus,
   ServerEvent,
   Session,
   SessionSummary,
@@ -422,6 +423,11 @@ export function useAtelier() {
     )
   }, [session, candidates])
 
+  /** Keeps the rail honest after the settings drawer changes the endpoint. */
+  const setProvider = useCallback((provider: ProviderStatus) => {
+    setBoot(b => (b ? { ...b, provider } : b))
+  }, [])
+
   const lookups = useMemo(() => {
     const strategyById = new Map<string, StrategyInfo>((boot?.strategies ?? []).map(s => [s.id, s]))
     const familyById = new Map<string, Family>((boot?.families ?? []).map(f => [f.id, f]))
@@ -456,6 +462,7 @@ export function useAtelier() {
     setThreshold,
     rename,
     removeSession,
+    setProvider,
     toast,
   }
 }

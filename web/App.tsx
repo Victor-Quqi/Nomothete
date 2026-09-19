@@ -7,6 +7,7 @@ import { Drawer } from './components/Drawer.tsx'
 import { Opening } from './components/Opening.tsx'
 import { PriorDossier } from './components/PriorDossier.tsx'
 import { SessionRail } from './components/SessionRail.tsx'
+import { Settings } from './components/Settings.tsx'
 import { TastePanel } from './components/TastePanel.tsx'
 import { Toasts } from './components/Toasts.tsx'
 import { Workspace, type DrawerKind } from './components/Workspace.tsx'
@@ -16,6 +17,15 @@ import { useAtelier } from './store.ts'
 interface DrawerState {
   kind: DrawerKind
   id?: string
+}
+
+const DRAWER_TITLE: Record<DrawerKind, string> = {
+  detail: '候选',
+  taste: '你的口味',
+  priors: '取名规则',
+  brief: '项目简介',
+  keys: '快捷键',
+  settings: '模型',
 }
 
 const KEYS: [string, string][] = [
@@ -73,6 +83,9 @@ export function App() {
   const commands = useMemo<Command[]>(() => {
     const list: Command[] = [
       { id: 'new', group: '会话', label: '新建命名会话', hint: 'N', run: () => a.open(null) },
+      // Outside the session guard on purpose: the endpoint matters most before
+      // there is anything to name.
+      { id: 'settings', group: '设置', label: '换模型 / 换端点', run: () => openDrawer('settings') },
     ]
     if (a.sessionId) {
       list.push(
@@ -165,6 +178,7 @@ export function App() {
           connected={a.connected}
           onOpen={id => a.open(id)}
           onNew={() => a.open(null)}
+          onConfigure={() => openDrawer('settings')}
         />
 
         <AnimatePresence mode="wait">
@@ -188,27 +202,18 @@ export function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Opening boot={a.boot} busy={starting || a.loadingSession} onStart={start} />
+              <Opening
+                boot={a.boot}
+                busy={starting || a.loadingSession}
+                onStart={start}
+                onConfigure={() => openDrawer('settings')}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <Drawer
-        open={!!drawer}
-        onClose={closeDrawer}
-        title={
-          drawer?.kind === 'detail'
-            ? '候选'
-            : drawer?.kind === 'taste'
-              ? '你的口味'
-              : drawer?.kind === 'priors'
-                ? '取名规则'
-                : drawer?.kind === 'brief'
-                  ? '项目简介'
-                  : '快捷键'
-        }
-      >
+      <Drawer open={!!drawer} onClose={closeDrawer} title={drawer ? DRAWER_TITLE[drawer.kind] : ''}>
         {drawer?.kind === 'detail' && detail && a.session && (
           <DetailPanel
             candidate={detail}
@@ -219,6 +224,8 @@ export function App() {
             onRecheck={() => a.recheck(detail.id)}
           />
         )}
+
+        {drawer?.kind === 'settings' && <Settings onSaved={a.setProvider} />}
 
         {drawer?.kind === 'taste' && a.profile && (
           <TastePanel profile={a.profile} familyById={a.familyById} />

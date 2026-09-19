@@ -116,12 +116,53 @@ export interface TasteProfile {
   injected: string
 }
 
+export type ProviderKind = 'openai-chat' | 'openai-responses' | 'anthropic' | 'google'
+
+export interface ProviderStatus {
+  configured: boolean
+  kind?: string
+  model?: string
+  /** Host only. The key is never serialised, anywhere. */
+  host?: string
+  structuredOutput?: string
+  hasKey?: boolean
+  problem?: string
+}
+
+/**
+ * What the settings drawer is allowed to know.
+ *
+ * Note what is absent: the key. It goes in through PUT and never comes back —
+ * `keyHint` is the last four characters, enough to tell two keys apart and
+ * useless to anything that scrapes this page.
+ */
+export interface ProviderConfig {
+  provider: ProviderStatus
+  source: 'config-file' | 'env' | 'none'
+  path: string
+  shadowsEnv: boolean
+  writable: boolean
+  baseURL: string
+  model: string
+  kind: ProviderKind | null
+  reasoningEffort: string
+  keyHint: string | null
+}
+
+export interface ProbeResult {
+  ok: boolean
+  modelListed?: boolean
+  count?: number
+  sample?: string[]
+  message: string
+}
+
 export interface Bootstrap {
   strategies: StrategyInfo[]
   families: Family[]
   priors: Prior[]
   checks: { id: string; label: string; tier: CheckTier; when: string; tierLabel: string }[]
-  provider: { configured: boolean; kind?: string; model?: string; host?: string; problem?: string }
+  provider: ProviderStatus
   sessions: SessionSummary[]
   dbPath: string
 }

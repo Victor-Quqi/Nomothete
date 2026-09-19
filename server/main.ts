@@ -13,8 +13,17 @@ import express from 'express'
 import { CHECK_MANIFEST, TIER_LABEL } from './checks/index.ts'
 import { DB_PATH, getDb } from './db.ts'
 import { env } from './env.ts'
+import { applyEnv, writeEnv } from './envfile.ts'
 import { channel } from './events.ts'
-import { providerStatus } from './llm.ts'
+import {
+  configSource,
+  forgetEffortRefusal,
+  keyHint,
+  loadProfiles,
+  probeEndpoint,
+  providerStatus,
+  type ProviderKind,
+} from './llm.ts'
 import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
@@ -39,6 +48,12 @@ import {
 const app = express()
 app.use(express.json({ limit: '256kb' }))
 
+// This process holds an API key and answers without authentication, so it binds
+// to loopback. `NOMOTHETE_HOST=0.0.0.0` exists for the container case and is
+// deliberately something you have to type on purpose.
+const HOST = env('HOST') ?? '127.0.0.1'
+const LOOPBACK_BIND = /^(127\.|::1$|localhost$)/i.test(HOST)
+
 // Never log request bodies or Authorization headers (provider-adapters.md §4).
 app.use((req, _res, next) => {
   if (process.env.NOMOTHETE_VERBOSE) console.log(`${req.method} ${req.path}`)
@@ -46,6 +61,23 @@ app.use((req, _res, next) => {
 })
 
 const api = express.Router()
+
+// Binding to loopback keeps the LAN out. It cannot keep out the one thing that
+// reaches loopback anyway: a public hostname that resolves to 127.0.0.1, which
+// lets a page the user merely visited drive this API from their own browser.
+// Checking the Host header closes that, and only matters while we are in fact
+// loopback-only.
+const LOOPBACK_HOST = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/i
+if (LOOPBACK_BIND) {
+  api.use((req, res, next) => {
+    const host = (req.headers.host ?? '').replace(/:\d+$/, '')
+    if (host && !LOOPBACK_HOST.test(host)) {
+      res.status(403).json({ error: '只接受来自本机的请求。' })
+      return
+    }
+    next()
+  })
+}
 
 api.get('/bootstrap', (_req, res) => {
   res.json({
@@ -278,6 +310,115 @@ api.get('/sessions/:id/export', (req, res) => {
   res.send(lines.join('\n'))
 })
 
+// ── configuration ─────────────────────────────────────────────────────────
+//
+// The key goes in and never comes back out. This endpoint answers with the host,
+// the model and the last four characters — enough to see what is loaded and to
+// tell two keys apart, and nothing a hostile script in the page could spend
+// elsewhere. The field in the drawer is write-only for the same reason: changing
+// the model must not require handing the browser the key to redisplay it.
+
+function configPayload() {
+  const source = configSource()
+  const profile = loadProfiles()[0]
+  return {
+    provider: providerStatus(),
+    source: source.source,
+    path: source.path,
+    shadowsEnv: source.shadowsEnv,
+    // A config file wins outright, so writing `.env` would succeed and change
+    // nothing. Refusing is kinder than that.
+    writable: source.source !== 'config-file',
+    baseURL: profile?.baseURL ?? '',
+    model: profile?.model ?? '',
+    kind: profile?.kind ?? null,
+    reasoningEffort: env('REASONING_EFFORT') ?? '',
+    keyHint: keyHint(),
+  }
+}
+
+api.get('/config', (_req, res) => {
+  res.json(configPayload())
+})
+
+const KINDS: ProviderKind[] = ['openai-chat', 'openai-responses', 'anthropic', 'google']
+
+api.put('/config', (req, res) => {
+  if (configSource().source === 'config-file') {
+    res.status(409).json({
+      error: '当前配置来自 nomothete.config.json，它优先于 .env。改那个文件，或者把它移开。',
+    })
+    return
+  }
+
+  const { baseURL, model, apiKey, reasoningEffort, providerKind } = req.body ?? {}
+  const patch: Record<string, string | null | undefined> = {}
+
+  if (model !== undefined) {
+    if (typeof model !== 'string' || !model.trim()) {
+      res.status(400).json({ error: '模型 id 不能为空。' })
+      return
+    }
+    patch.NOMOTHETE_MODEL = model.trim()
+  }
+
+  if (baseURL !== undefined) {
+    const value = typeof baseURL === 'string' ? baseURL.trim() : ''
+    if (value) {
+      try {
+        new URL(value)
+      } catch {
+        res.status(400).json({ error: `不是一个合法地址：${value}` })
+        return
+      }
+    }
+    // Cleared on purpose means "use the line format's own endpoint".
+    patch.NOMOTHETE_BASE_URL = value || null
+  }
+
+  // Asymmetric with the field above, deliberately. An empty base URL is a real
+  // value because you can see the one you are replacing; an empty key can only
+  // mean "leave it alone", because the drawer was never given one to show.
+  if (apiKey === null) patch.NOMOTHETE_API_KEY = null
+  else if (typeof apiKey === 'string' && apiKey.trim()) patch.NOMOTHETE_API_KEY = apiKey.trim()
+
+  if (reasoningEffort !== undefined) {
+    const value = typeof reasoningEffort === 'string' ? reasoningEffort.trim() : ''
+    patch.NOMOTHETE_REASONING_EFFORT = value || null
+  }
+
+  if (providerKind !== undefined) {
+    const value = typeof providerKind === 'string' ? providerKind.trim() : ''
+    if (value && !KINDS.includes(value as ProviderKind)) {
+      res.status(400).json({ error: `未知的 provider kind：${value}` })
+      return
+    }
+    patch.NOMOTHETE_PROVIDER_KIND = value || null
+  }
+
+  try {
+    writeEnv(patch)
+  } catch (err) {
+    res.status(500).json({ error: `写不了 .env：${(err as Error).message}` })
+    return
+  }
+  // `loadProfiles` reads the environment on every call, so the next generation
+  // uses the new endpoint without a restart.
+  applyEnv(patch)
+  forgetEffortRefusal()
+
+  res.json(configPayload())
+})
+
+api.post('/config/test', async (_req, res) => {
+  const profile = loadProfiles()[0]
+  if (!profile) {
+    res.status(400).json({ error: '还没有配置模型。' })
+    return
+  }
+  res.json(await probeEndpoint(profile))
+})
+
 app.use('/api', api)
 
 // Production: serve the built frontend from the same origin. The database
@@ -308,14 +449,17 @@ const PORT = Number(env('PORT') ?? 5179)
 getDb()
 reconcileBatches()
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   const status = providerStatus()
   console.log(`\n  nomothete  ·  http://localhost:${PORT}`)
   console.log(`  数据       ·  ${DB_PATH}`)
   console.log(
     status.configured
       ? `  模型       ·  ${status.model} @ ${status.host}（${status.kind}）`
-      : `  模型       ·  未配置 —— ${status.problem}`,
+      : `  模型       ·  未配置 —— 打开上面的地址，左下角「模型」那一行可以填`,
   )
+  if (!LOOPBACK_BIND) {
+    console.log(`  注意       ·  监听在 ${HOST}，同网段的人都能用这个端点花你的额度`)
+  }
   console.log('')
 })

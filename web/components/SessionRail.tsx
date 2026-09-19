@@ -16,6 +16,7 @@ export function SessionRail({
   connected,
   onOpen,
   onNew,
+  onConfigure,
 }: {
   boot: Bootstrap | null
   sessions: SessionSummary[]
@@ -23,6 +24,7 @@ export function SessionRail({
   connected: boolean
   onOpen: (id: string) => void
   onNew: () => void
+  onConfigure: () => void
 }) {
   return (
     <aside className="rail">
@@ -65,17 +67,15 @@ export function SessionRail({
       </div>
 
       <div className="rail__foot">
-        {boot?.provider.configured ? (
-          <div className="rail__stat" title={boot.provider.host}>
-            <span>模型</span>
-            <b>{boot.provider.model}</b>
-          </div>
-        ) : (
-          <div className="rail__stat rail__stat--warn">
-            <span>模型</span>
-            <b>{boot ? '未配置' : '…'}</b>
-          </div>
-        )}
+        {/* The row that names the endpoint is also the way to change it. */}
+        <button
+          className={`rail__stat rail__stat--act${boot && !boot.provider.configured ? ' rail__stat--warn' : ''}`}
+          onClick={onConfigure}
+          title={boot?.provider.configured ? `${boot.provider.host} · 点一下可以改` : '点一下配置模型'}
+        >
+          <span>模型</span>
+          <b>{boot ? (boot.provider.configured ? boot.provider.model : '未配置') : '…'}</b>
+        </button>
         {/* Silence means it is working. The row only appears when it is not. */}
         {activeId && !connected && (
           <div className="rail__stat rail__stat--warn">

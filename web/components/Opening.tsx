@@ -49,9 +49,11 @@ export function Opening({
   boot,
   busy,
   onStart,
+  onConfigure,
 }: {
   boot: Bootstrap | null
   busy: boolean
+  onConfigure: () => void
   onStart: (input: {
     brief: string
     seeds: { text: string; verdict: Verdict }[]
@@ -244,8 +246,12 @@ export function Opening({
 
         {boot && !boot.provider.configured && (
           <div className="warnbox">
-            还没配置模型：{boot.provider.problem} 在工作目录放一个 .env，写上{' '}
-            <code>NOMOTHETE_BASE_URL</code>、<code>NOMOTHETE_API_KEY</code>、<code>NOMOTHETE_MODEL</code>。
+            还没配置模型：{boot.provider.problem}
+            <div style={{ marginTop: 10 }}>
+              <button className="btn btn--sm" onClick={onConfigure}>
+                现在配置
+              </button>
+            </div>
           </div>
         )}
       </motion.div>

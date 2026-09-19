@@ -16,6 +16,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { LanguageModel } from 'ai'
 import { env } from './env.ts'
+import { ENV_PATH } from './envfile.ts'
 
 export type ProviderKind = 'openai-chat' | 'openai-responses' | 'anthropic' | 'google'
 
@@ -72,15 +73,18 @@ function inferKind(baseURL: string | undefined): ProviderKind {
   return 'openai-chat'
 }
 
-export function loadProfiles(): ProviderProfile[] {
-  if (fs.existsSync(CONFIG_PATH)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) as { providers?: ProviderProfile[] }
-      if (raw.providers?.length) return raw.providers
-    } catch (err) {
-      console.error(`[nomothete] nomothete.config.json 解析失败，回落到环境变量：${(err as Error).message}`)
-    }
+function profilesFromFile(): ProviderProfile[] {
+  if (!fs.existsSync(CONFIG_PATH)) return []
+  try {
+    const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) as { providers?: ProviderProfile[] }
+    return raw.providers?.length ? raw.providers : []
+  } catch (err) {
+    console.error(`[nomothete] nomothete.config.json 解析失败，回落到环境变量：${(err as Error).message}`)
+    return []
   }
+}
+
+function profilesFromEnv(): ProviderProfile[] {
   const baseURL = env('BASE_URL')
   const model = env('MODEL')
   if (!model) return []
@@ -100,12 +104,46 @@ export function loadProfiles(): ProviderProfile[] {
   ]
 }
 
+export function loadProfiles(): ProviderProfile[] {
+  const fromFile = profilesFromFile()
+  return fromFile.length ? fromFile : profilesFromEnv()
+}
+
+export interface ConfigSource {
+  source: 'config-file' | 'env' | 'none'
+  /** Where a write would go, or where the active config came from. */
+  path: string
+  /**
+   * `nomothete.config.json` wins outright — `loadProfiles` never reaches the
+   * environment when it has providers. Someone who edits `.env` and sees nothing
+   * change deserves to be told why, so the settings drawer needs this flag.
+   */
+  shadowsEnv: boolean
+}
+
+export function configSource(): ConfigSource {
+  if (profilesFromFile().length) {
+    return { source: 'config-file', path: CONFIG_PATH, shadowsEnv: profilesFromEnv().length > 0 }
+  }
+  return { source: profilesFromEnv().length ? 'env' : 'none', path: ENV_PATH, shadowsEnv: false }
+}
+
 function keyFor(p: ProviderProfile): string | undefined {
   return p.apiKey ?? (p.apiKeyEnv ? process.env[p.apiKeyEnv] : undefined) ?? env('API_KEY')
 }
 
 /** Set once, when an endpoint turns out not to know the parameter. */
 let effortRefused = false
+
+/**
+ * The latch above is about one endpoint, so changing endpoints has to clear it.
+ * Otherwise a proxy that refused `reasoning_effort` once silently costs every
+ * later provider the parameter as well — and the symptom (four-minute batches)
+ * looks nothing like its cause.
+ */
+export function forgetEffortRefusal(): void {
+  effortRefused = false
+}
 
 /**
  * The wire layer: liveness tap, plus the reasoning-effort request.
@@ -243,6 +281,20 @@ export function providerStatus(): ProviderStatus {
   }
 }
 
+/**
+ * The last four characters, and nothing else.
+ *
+ * Enough to tell two keys apart when you are wondering which one is loaded;
+ * useless to anyone who intercepts it. `keyFor` stays private so that this is
+ * the only shape a key can leave this module in.
+ */
+export function keyHint(): string | null {
+  const profiles = loadProfiles()
+  if (!profiles.length) return null
+  const key = keyFor(profiles[0])
+  return key ? key.slice(-4) : null
+}
+
 export function activeProfile(): ProviderProfile {
   const profiles = loadProfiles()
   if (profiles.length === 0)
@@ -250,4 +302,97 @@ export function activeProfile(): ProviderProfile {
   const p = profiles[0]
   if (!keyFor(p)) throw new Error(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`)
   return p
+}
+
+/** Where each line format answers when no `baseURL` was given. */
+const DEFAULT_BASE: Record<ProviderKind, string> = {
+  'openai-chat': 'https://api.openai.com/v1',
+  'openai-responses': 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+}
+
+export interface ProbeResult {
+  ok: boolean
+  /** Undefined when the listing could not be read — absent is not the same as no. */
+  modelListed?: boolean
+  count?: number
+  /** A few ids, so a typo can be fixed against the real list rather than guessed at. */
+  sample?: string[]
+  message: string
+}
+
+/**
+ * Ask the endpoint what it has, before anyone waits on a generation to find out.
+ *
+ * A wrong key, a wrong base URL and a mistyped model id all surface today as the
+ * same thing: a batch that fails a minute after you hit 开始取名. `/models` costs
+ * one cheap request and separates the three.
+ *
+ * It can only ever advise. Plenty of proxies route chat completions perfectly
+ * well and do not implement `/models` at all, so a failure here is reported and
+ * never blocks a save.
+ */
+export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promise<ProbeResult> {
+  const key = keyFor(p)
+  if (!key) return { ok: false, message: '没有 API key。' }
+
+  const base = (p.baseURL ?? DEFAULT_BASE[p.kind]).replace(/\/+$/, '')
+  let url: URL
+  try {
+    url = new URL(`${base}/models`)
+  } catch {
+    return { ok: false, message: `BASE_URL 不是一个合法地址：${base}` }
+  }
+
+  const headers: Record<string, string> = {}
+  if (p.kind === 'anthropic') {
+    headers['x-api-key'] = key
+    headers['anthropic-version'] = '2023-06-01'
+  } else if (p.kind === 'google') {
+    url.searchParams.set('key', key)
+  } else {
+    headers.authorization = `Bearer ${key}`
+  }
+
+  const timer = AbortSignal.timeout(timeoutMs)
+  let res: Response
+  try {
+    res = await fetch(url, { headers, signal: timer })
+  } catch (err) {
+    const reason = timer.aborted ? `${timeoutMs / 1000} 秒内没有响应` : (err as Error).message
+    return { ok: false, message: `连不上 ${url.host}：${reason}` }
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    return { ok: false, message: `${url.host} 拒绝了这把钥匙（${res.status}）。` }
+  }
+  if (!res.ok) {
+    // A 404 here usually means "this proxy only does chat completions", which is
+    // a perfectly good proxy. Say so rather than crying wolf.
+    const aside = res.status === 404 ? '——有些端点不提供这个列表，可以忽略' : ''
+    return { ok: false, message: `${url.host} 的 /models 返回 ${res.status}${aside}。` }
+  }
+
+  let ids: string[] = []
+  try {
+    const body = (await res.json()) as { data?: unknown[]; models?: unknown[] }
+    const rows = (body.data ?? body.models ?? []) as { id?: string; name?: string }[]
+    ids = rows.map(m => String(m.id ?? m.name ?? '').replace(/^models\//, '')).filter(Boolean)
+  } catch {
+    return { ok: false, message: `${url.host} 返回的不是模型列表。` }
+  }
+
+  if (!ids.length) return { ok: true, message: `${url.host} 通了，但没有列出任何模型。` }
+
+  const listed = ids.includes(p.model)
+  return {
+    ok: true,
+    modelListed: listed,
+    count: ids.length,
+    sample: ids.slice(0, 8),
+    message: listed
+      ? `${url.host} 通了，${ids.length} 个模型，${p.model} 在里面。`
+      : `${url.host} 通了，${ids.length} 个模型，但没有 ${p.model} —— 检查一下有没有拼错。`,
+  }
 }
