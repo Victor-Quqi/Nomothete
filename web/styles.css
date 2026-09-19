@@ -736,17 +736,38 @@ kbd {
 /* Clicking the name says it out loud — a name is heard before it is typed. */
 .plate__name { cursor: pointer; transition: color 0.2s var(--ease-out); }
 .plate__name:hover { color: #fff; }
-.plate__name--speaking { color: var(--brass); animation: saying 0.9s ease-in-out infinite; }
+.plate__name--speaking,
+.detail__name--speaking { color: var(--brass); animation: saying 0.9s ease-in-out infinite; }
 @keyframes saying { 50% { opacity: 0.62; } }
+
+/* The speaker beside a name: the offer and the answer in one place, since a
+   click that makes no sound looks like a click that did nothing. Mute stays
+   vellum — the slash carries it, and a second colour would cost the brass. */
+.say {
+  flex: none;
+  display: inline-flex;
+  color: var(--vellum-4);
+  padding: 5px;
+  border-radius: var(--r-sm);
+  transition: all 0.2s var(--ease-out);
+}
+.say:hover { color: var(--brass); background: rgba(217, 164, 65, 0.1); }
+.say--on { color: var(--brass); animation: saying 0.9s ease-in-out infinite; }
+
+/* The head's glyphs follow focus, not the pointer: hovering focuses a plate
+   anyway, and s and c fire from the keyboard, where there is no pointer. */
+.plate__say,
+.plate__copy { opacity: 0; }
+.plate--focus .plate__say,
+.plate--focus .plate__copy { opacity: 1; }
+
 .plate__copy {
   flex: none;
   color: var(--vellum-4);
   padding: 5px;
   border-radius: var(--r-sm);
-  opacity: 0;
   transition: all 0.2s var(--ease-out);
 }
-.plate:hover .plate__copy { opacity: 1; }
 .plate__copy:hover { color: var(--brass); background: rgba(217, 164, 65, 0.1); }
 
 .plate__meta {
@@ -1112,6 +1133,12 @@ kbd {
 .bar__n { width: 30px; text-align: right; font-family: var(--font-mono); font-size: 12px; color: var(--vellum-4); flex: none; }
 
 /* detail drawer */
+.detail__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
 .detail__name {
   font-family: var(--font-display);
   font-size: 44px;
@@ -1119,8 +1146,8 @@ kbd {
   font-weight: 450;
   font-variation-settings: 'SOFT' 24, 'WONK' 1, 'opsz' 120;
   letter-spacing: -0.02em;
-  margin-bottom: 10px;
   word-break: break-word;
+  min-width: 0;
   cursor: pointer;
   transition: color 0.2s var(--ease-out);
 }

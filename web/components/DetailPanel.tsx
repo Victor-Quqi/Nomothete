@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { REGISTRY_FORMS } from '../normalize.ts'
-import { speakName } from '../speak.ts'
+import { isMute, speakName } from '../speak.ts'
+import { SayButton } from './SayButton.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import type { Candidate, CheckResult, Family, StrategyInfo, Verdict } from '../types.ts'
 
@@ -53,7 +54,13 @@ export function DetailPanel({
   onRecheck: () => void
 }) {
   const [draft, setDraft] = useState(candidate.note ?? '')
+  const [saying, setSaying] = useState(false)
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.id, candidate.note])
+
+  const speak = () => {
+    setSaying(true)
+    speakName(candidate.name, () => setSaying(false))
+  }
 
   const checks = candidate.checks ?? []
   const deep = checks.filter(c => c.tier === 'ratelimited')
@@ -61,9 +68,12 @@ export function DetailPanel({
 
   return (
     <>
-      <h2 className="detail__name" onClick={() => speakName(candidate.name)} title="朗读">
-        {candidate.name}
-      </h2>
+      <div className="detail__head">
+        <h2 className={`detail__name${saying ? ' detail__name--speaking' : ''}`} onClick={speak}>
+          {candidate.name}
+        </h2>
+        <SayButton state={saying ? 'on' : isMute() ? 'mute' : 'idle'} onClick={speak} />
+      </div>
       <div className="plate__meta" style={{ marginBottom: 14 }}>
         {strategy && (
           <span className="plate__strategy" style={{ ['--fam-hue' as string]: family?.hue ?? 38 }}>

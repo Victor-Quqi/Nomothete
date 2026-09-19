@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
-import { speakName } from '../speak.ts'
+import { isMute, speakName } from '../speak.ts'
+import { SayButton } from './SayButton.tsx'
 import type { Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
@@ -54,7 +55,7 @@ function PlateInner({
   const [noteOpen, setNoteOpen] = useState(false)
   const [draft, setDraft] = useState(candidate.note ?? '')
   const [copied, setCopied] = useState(false)
-  const [speaking, setSpeaking] = useState(false)
+  const [saying, setSaying] = useState(false)
   const [sweep, setSweep] = useState(0)
   const [secondLook, setSecondLook] = useState(false)
   const lastVerdict = useRef(candidate.verdict)
@@ -125,7 +126,8 @@ function PlateInner({
   }
 
   const speak = () => {
-    if (speakName(candidate.name, () => setSpeaking(false))) setSpeaking(true)
+    setSaying(true)
+    speakName(candidate.name, () => setSaying(false))
   }
 
   // Keyboard verbs arrive as one event; only the focused plate answers.
@@ -175,13 +177,14 @@ function PlateInner({
       </AnimatePresence>
 
       <div className="plate__head">
-        <h3
-          className={`plate__name${speaking ? ' plate__name--speaking' : ''}`}
-          onClick={speak}
-          title="朗读"
-        >
+        <h3 className={`plate__name${saying ? ' plate__name--speaking' : ''}`} onClick={speak}>
           {candidate.name}
         </h3>
+        <SayButton
+          state={saying ? 'on' : isMute() ? 'mute' : 'idle'}
+          onClick={speak}
+          className="plate__say"
+        />
         <button className="plate__copy" onClick={copy} title="复制名字" aria-label="复制名字">
           {copied ? '✓' : '⧉'}
         </button>
