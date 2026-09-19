@@ -21,6 +21,8 @@
 
   --hair: rgba(239, 231, 216, 0.09);
   --hair-2: rgba(239, 231, 216, 0.16);
+  --ring: rgba(239, 231, 216, 0.5);
+  --ring-glow: rgba(239, 231, 216, 0.12);
 
   --brass: #d9a441;
   --brass-soft: #a97f36;
@@ -80,14 +82,26 @@ button, input, textarea, select {
 button { cursor: pointer; }
 code { font-family: var(--font-mono); font-size: 0.92em; }
 
-/* The keyboard ring for everything that does not draw its own. An outline takes
-   the shape of the element's corners, so the radius here is a floor for elements
-   that have none — every component that sets its own does so later in this file
-   and wins, which is why a .toggle still rings as a pill. */
+/* Focus lands on the element's own edge: a hairline traces the shape it already
+   has, with a soft halo just outside it — the note .plate--focus already strikes
+   for the plate that holds focus. A shadow rather than an outline, because an
+   outline floats at a distance, and a ring hanging outside a control that has a
+   border of its own reads as a sticker stuck on top rather than a state.
+   Vellum, not brass. Brass is the verdict colour; a brass edge on a brass
+   toggle says nothing, and on everything else it says the wrong thing. Leaving
+   each control's own border alone also leaves what that border means — a seal's
+   colour, a session's brass — legible while it holds focus.
+   The radius is a floor for elements with square corners; every component that
+   sets its own does so later in this file and wins, which is why a .toggle
+   still lights as a pill. */
 :focus-visible {
-  outline: 2px solid var(--brass);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 1px var(--ring), 0 0 0 4px var(--ring-glow);
   border-radius: 3px;
+}
+/* The box holds focus for the control inside it, so the control stays dark. */
+.field__box :focus-visible {
+  box-shadow: none;
 }
 
 /* Scrollbars, quietly */
@@ -223,7 +237,8 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   border-radius: var(--r-md);
   border: 1px solid transparent;
   display: block;
-  transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+  transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out);
   position: relative;
 }
 .rail__item:hover { background: rgba(239, 231, 216, 0.035); }
@@ -320,14 +335,12 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   background: linear-gradient(180deg, rgba(24, 27, 37, 0.8), rgba(16, 18, 25, 0.8));
   transition: border-color 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
 }
-/* The box draws focus for the control inside it, so the ring is concentric with
-   the box's own corners by construction. The global :focus-visible outline is
-   suppressed below rather than stacked on top of this. */
+/* The box is not focusable itself, so it draws the edge its control would have
+   drawn, composed with the lift it already carries. */
 .field__box:focus-within {
-  border-color: rgba(217, 164, 65, 0.7);
-  box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.12), 0 18px 40px -22px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 0 1px var(--ring), 0 0 0 4px var(--ring-glow),
+    0 18px 40px -22px rgba(0, 0, 0, 0.9);
 }
-.field__box :focus-visible { outline: none; }
 .field__box textarea,
 .field__box input {
   /* Block, not inline-level: on the baseline a textarea leaves a strip of dead
@@ -403,6 +416,12 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   box-shadow: 0 16px 38px -14px rgba(217, 164, 65, 0.95);
   transform: translateY(-1.5px);
 }
+/* Restated so focus composes with the lamp under the button rather than
+   replacing it. */
+.btn--primary:focus-visible {
+  box-shadow: 0 0 0 1px var(--ring), 0 0 0 4px var(--ring-glow),
+    0 10px 30px -14px rgba(217, 164, 65, 0.85);
+}
 .btn--ghost { border-color: transparent; color: var(--vellum-3); padding: 10px 14px; }
 .btn--ghost:hover { color: var(--vellum); background: rgba(239, 231, 216, 0.05); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
@@ -432,9 +451,8 @@ kbd {
   border-radius: var(--r-md);
   background: rgba(24, 27, 37, 0.6);
   font-size: 13.5px;
-  transition: border-color 0.2s var(--ease-out);
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
-.seedrow__input:focus { border-color: rgba(217, 164, 65, 0.4); }
 .seedrow__x {
   color: var(--vellum-4);
   padding: 6px 8px;
@@ -850,9 +868,8 @@ kbd {
   font-size: 12.5px;
   resize: vertical;
   min-height: 62px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.plate__note textarea:focus { border-color: rgba(217, 164, 65, 0.4); }
 .plate__note-saved { font-size: 12px; color: var(--vellum-4); margin-top: 6px; }
 
 /* The second-look offer. Deliberately the quietest thing on the plate: the
@@ -1339,10 +1356,11 @@ kbd {
   border: 1px solid var(--hair);
   font-size: 12.5px;
   color: var(--vellum);
-  transition: width 0.3s var(--ease-out), border-color 0.2s var(--ease-out);
+  transition: width 0.3s var(--ease-out), border-color 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out);
 }
 .filters__find::placeholder { color: var(--vellum-4); }
-.filters__find:focus { width: 230px; border-color: rgba(217, 164, 65, 0.45); }
+.filters__find:focus { width: 230px; }
 
 /* Range inputs, made to match the room. */
 input[type='range'] {
@@ -1351,7 +1369,6 @@ input[type='range'] {
   height: 4px;
   border-radius: 99px;
   background: rgba(239, 231, 216, 0.1);
-  outline: none;
 }
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -1373,6 +1390,15 @@ input[type='range']::-moz-range-thumb {
   background: var(--brass);
   border: 2px solid var(--ink);
   cursor: grab;
+}
+/* The track is 4px tall, so an edge drawn on it would read as a thicker track.
+   The thumb is the part that moves, so the thumb is what lights. */
+input[type='range']:focus-visible { box-shadow: none; }
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--ring), 0 2px 10px rgba(217, 164, 65, 0.45);
+}
+input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 /* ── settings ────────────────────────────────────────────────────────────── */
