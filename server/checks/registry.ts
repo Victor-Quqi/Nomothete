@@ -100,10 +100,10 @@ export const availabilityCheck: Check = {
         results
           .map(r => {
             switch (r.state) {
-              case 'taken': return `${r.spec.label}：已经有人用了`
-              case 'clear': return `${r.spec.label}：没查到`
-              case 'invalid': return `${r.spec.label}：这个名字不合法`
-              default: return `${r.spec.label}：没查成`
+              case 'taken': return `${r.spec.label}：已有同名`
+              case 'clear': return `${r.spec.label}：查无记录`
+              case 'invalid': return `${r.spec.label}：名字不合法`
+              default: return `${r.spec.label}：查询失败`
             }
           })
           .join('　') +
@@ -132,7 +132,7 @@ export const availabilityCheck: Check = {
  */
 export const publishabilityCheck: Check = {
   id: 'publishability',
-  label: '能不能注册上',
+  label: '可注册性',
   tier: 'ratelimited',
   when: 'after-upvote',
   async run({ name, signal }: CheckContext): Promise<CheckResult> {
@@ -159,20 +159,20 @@ export const publishabilityCheck: Check = {
 
     if (blocked.length === 0) {
       return {
-        checkId: 'publishability', label: '能不能注册上', tier: 'ratelimited', status: 'clear',
-        headline: '三个注册表都没查到',
+        checkId: 'publishability', label: '可注册性', tier: 'ratelimited', status: 'clear',
+        headline: '三个注册表均查无记录',
         detail:
-          `把「${name}」的 ${probedTotal} 种近似写法都问了一遍，没有一个被占。` +
-          `没查到不等于一定能注册上，但到这一步已经很少出意外。`,
+          `「${name}」的 ${probedTotal} 种归一化等价写法逐个查询，均无记录。` +
+          `这是最强的一项检查；查无记录仍不等于可注册。`,
         data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
       }
     }
 
     return {
-      checkId: 'publishability', label: '能不能注册上', tier: 'ratelimited', status: 'blocked',
-      headline: `${blocked[0].spec.label} 上注册不了`,
+      checkId: 'publishability', label: '可注册性', tier: 'ratelimited', status: 'blocked',
+      headline: `${blocked[0].spec.label} 上无法注册`,
       detail: blocked
-        .map(b => `${b.spec.label}：已经有 ${b.collisions.slice(0, 4).join('、')}，会被当成同一个名字。`)
+        .map(b => `${b.spec.label}：已存在 ${b.collisions.slice(0, 4).join('、')}，归一化后视作同一名字。`)
         .join(''),
       data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
     }

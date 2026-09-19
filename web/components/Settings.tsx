@@ -5,7 +5,7 @@ import type { ProbeResult, ProviderConfig, ProviderStatus } from '../types.ts'
 const SOURCE_LABEL: Record<ProviderConfig['source'], string> = {
   'config-file': 'nomothete.config.json',
   env: '.env',
-  none: '还没有',
+  none: '未设置',
 }
 
 /**
@@ -73,7 +73,7 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
   }
 
   if (!cfg) {
-    return <p className="drawer__lead">{error ?? '正在读配置…'}</p>
+    return <p className="drawer__lead">{error ?? '正在读取配置…'}</p>
   }
 
   const locked = !cfg.writable
@@ -81,10 +81,6 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
 
   return (
     <div className="cfg">
-      <p className="drawer__lead">
-        钥匙只存在服务端，填进去之后这个页面再也读不回来 —— 它只会告诉你末四位。
-      </p>
-
       <div className="section-h">
         当前来自
         <span>{SOURCE_LABEL[cfg.source]}</span>
@@ -93,12 +89,12 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
 
       {cfg.shadowsEnv && (
         <div className="warnbox">
-          <code>nomothete.config.json</code> 优先于 <code>.env</code>，你在 <code>.env</code> 里写的那三行现在不生效。
+          <code>nomothete.config.json</code> 优先于 <code>.env</code>，<code>.env</code> 中的同名设置不生效。
         </div>
       )}
       {locked && (
         <div className="warnbox">
-          配置由 <code>nomothete.config.json</code> 接管，这里改不了。要用这个面板的话，把那个文件移开。
+          配置来自 <code>nomothete.config.json</code>，此处不可修改。移走该文件后此处生效。
         </div>
       )}
 
@@ -143,7 +139,7 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
         <div className="field__label">
           API key
           <span className="field__value">
-            {cfg.keyHint ? `已存 ····${cfg.keyHint}` : '还没有'}
+            {cfg.keyHint ? `已存 ····${cfg.keyHint}` : '未设置'}
           </span>
         </div>
         <div className="field__box">
@@ -151,7 +147,7 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
             type="password"
             value={apiKey}
             disabled={locked}
-            placeholder={cfg.keyHint ? '留空就是不动它' : '必填'}
+            placeholder={cfg.keyHint ? '留空则不变' : '必填'}
             onChange={e => setApiKey(e.target.value)}
             autoComplete="off"
             spellCheck={false}
@@ -162,7 +158,7 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
       <div className="field">
         <div className="field__label">
           reasoning_effort
-          <span className="field__value">留空 = 用端点默认值</span>
+          <span className="field__value">留空则用端点默认值</span>
         </div>
         <div className="field__box">
           <input
@@ -180,7 +176,7 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
           {busy ? '…' : '保存'}
         </button>
         <button className="btn btn--ghost btn--sm" disabled={busy || !cfg.provider.configured} onClick={test}>
-          只测一下
+          测试连接
         </button>
       </div>
 

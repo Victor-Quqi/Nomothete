@@ -171,14 +171,14 @@ export function Opening({
               style={{ overflow: 'hidden' }}
             >
               <div className="field">
-                <div className="field__label">你已经想过的名字</div>
+                <div className="field__label">已想到的名字</div>
                 {seeds.map((s, i) => (
                   <div className="seedrow" key={s.key}>
                     <input
                       className="seedrow__input"
                       value={s.text}
                       autoFocus={i === seeds.length - 1}
-                      placeholder="一个名字"
+                      placeholder="名字"
                       onChange={e =>
                         setSeeds(list => list.map(x => (x.key === s.key ? { ...x, text: e.target.value } : x)))
                       }
@@ -195,7 +195,7 @@ export function Opening({
                     <button
                       className="seedrow__x"
                       onClick={() => setSeeds(list => list.filter(x => x.key !== s.key))}
-                      aria-label="删掉这一行"
+                      aria-label="删除这一行"
                     >
                       ✕
                     </button>
@@ -205,13 +205,13 @@ export function Opening({
                   className="btn btn--ghost btn--sm"
                   onClick={() => setSeeds(list => [...list, { key: ++seedSeq.current, text: '', verdict: 0 }])}
                 >
-                  ＋ 加一个
+                  ＋ 添加
                 </button>
               </div>
 
               <div className="field">
                 <div className="field__label">
-                  名字的罕见程度
+                  罕见度下限
                   <span className="field__value">
                     {rarityWord(rarityPercent(threshold))} · {rarityPercent(threshold)}%
                   </span>
@@ -229,7 +229,7 @@ export function Opening({
 
               {boot && (
                 <div className="field">
-                  <div className="field__label">取名时遵守的规则</div>
+                  <div className="field__label">取名规则</div>
                   <PriorDossier priors={boot.priors} enabled={priors} onChange={setPriors} />
                 </div>
               )}
@@ -239,17 +239,17 @@ export function Opening({
 
         <div className="opening__go">
           <button className="btn btn--primary" disabled={!ready} onClick={submit}>
-            {busy ? '正在开工…' : '开始取名'}
+            {busy ? '正在开始…' : '开始取名'}
             <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>⌘↵</kbd>
           </button>
         </div>
 
         {boot && !boot.provider.configured && (
           <div className="warnbox">
-            还没配置模型：{boot.provider.problem}
+            尚未配置模型：{boot.provider.problem}
             <div style={{ marginTop: 10 }}>
               <button className="btn btn--sm" onClick={onConfigure}>
-                现在配置
+                前往配置
               </button>
             </div>
           </div>

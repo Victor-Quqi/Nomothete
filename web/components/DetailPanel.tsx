@@ -61,7 +61,7 @@ export function DetailPanel({
 
   return (
     <>
-      <h2 className="detail__name" onClick={() => speakName(candidate.name)} title="念一遍">
+      <h2 className="detail__name" onClick={() => speakName(candidate.name)} title="朗读">
         {candidate.name}
       </h2>
       <div className="plate__meta" style={{ marginBottom: 14 }}>
@@ -80,7 +80,7 @@ export function DetailPanel({
         {candidate.rationale}
       </p>
 
-      <div className="section-h">各处该写成什么</div>
+      <div className="section-h">各注册表写法</div>
       <div className="detail__forms">
         {REGISTRY_FORMS.map(f => (
           <button
@@ -105,23 +105,23 @@ export function DetailPanel({
         deep.map(c => <CheckCard key={c.checkId} check={c} />)
       ) : (
         <p className="check__detail">
-          给它一个 ▲ 就会自动开始。
+          打出 ▲ 后自动开始。
           <br />
           <button className="btn btn--ghost btn--sm" style={{ marginTop: 8, paddingLeft: 0 }} onClick={onRecheck}>
-            也可以现在就跑 →
+            现在执行 →
           </button>
         </p>
       )}
       {deep.length > 0 && (
         <button className="btn btn--ghost btn--sm" style={{ paddingLeft: 0 }} onClick={onRecheck}>
-          重新查一遍 ↻
+          重新检查 ↻
         </button>
       )}
 
       <div className="section-h">备注</div>
       <textarea
         value={draft}
-        placeholder="为什么喜欢 / 不喜欢它。下一批会参考这句话。"
+        placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
         onChange={e => setDraft(e.target.value)}
         onBlur={() => draft !== (candidate.note ?? '') && onNote(draft)}
         style={{

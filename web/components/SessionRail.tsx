@@ -71,7 +71,7 @@ export function SessionRail({
         <button
           className={`rail__stat rail__stat--act${boot && !boot.provider.configured ? ' rail__stat--warn' : ''}`}
           onClick={onConfigure}
-          title={boot?.provider.configured ? `${boot.provider.host} · 点一下可以改` : '点一下配置模型'}
+          title={boot?.provider.configured ? `${boot.provider.host} · 点击修改` : '点击配置模型'}
         >
           <span>模型</span>
           <b>{boot ? (boot.provider.configured ? boot.provider.model : '未配置') : '…'}</b>

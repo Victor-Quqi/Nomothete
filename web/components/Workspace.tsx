@@ -343,7 +343,7 @@ export function Workspace({
                         background: `hsl(${fam?.hue ?? 38} 55% 55%)`,
                       }}
                     />
-                    {s?.label ?? b.strategyId} {b.phase === 'writing' ? '正在写…' : '正在想…'}
+                    {s?.label ?? b.strategyId} {b.phase === 'writing' ? '正在写…' : '正在推理…'}
                   </div>
                 </motion.div>
               )
@@ -375,7 +375,7 @@ export function Workspace({
         {visible.length === 0 && ghosts.length === 0 && (
           <div className="empty">
             <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
-            <p>{candidates.length === 0 ? '第一批还在路上。' : '没有符合的名字。'}</p>
+            <p>{candidates.length === 0 ? '第一批正在生成。' : '没有符合的名字。'}</p>
           </div>
         )}
       </div>
@@ -386,7 +386,7 @@ export function Workspace({
         </span>
         {running ? (
           <button className="btn btn--sm" onClick={() => a.cancel()}>
-            停下
+            停止
           </button>
         ) : (
           <button className="btn btn--primary btn--sm" onClick={() => a.generate()}>

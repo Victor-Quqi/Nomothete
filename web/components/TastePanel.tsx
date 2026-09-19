@@ -37,7 +37,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
     return (
       <div className="empty">
         <div className="empty__g">·</div>
-        <p>评价几个名字，这里就会有内容。</p>
+        <p>评价几个名字后，这里会列出推断。</p>
       </div>
     )
   }
@@ -57,14 +57,14 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
 
       {profile.traits.length > 0 && (
         <>
-          <div className="section-h">看出来的</div>
+          <div className="section-h">推断</div>
           {profile.traits.map(t => (
             <div className="trait" key={t.id}>
               <span className="trait__arrow" data-dir={t.direction}>
                 {t.direction === 'toward' ? '→' : '←'}
               </span>
               <span>
-                {t.statement} <span className="trait__n">（看了 {t.n} 次评价）</span>
+                {t.statement} <span className="trait__n">（依据 {t.n} 次评价）</span>
               </span>
             </div>
           ))}
@@ -73,7 +73,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
 
       {profile.familyScores.length > 0 && (
         <>
-          <div className="section-h">取词的方向</div>
+          <div className="section-h">词族倾向</div>
           <div className="bars">
             {profile.familyScores.map(f => (
               <Bar key={f.id} label={f.label} score={f.score} n={f.n} hue={familyById.get(f.id)?.hue ?? 38} />
@@ -84,7 +84,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
 
       {profile.strategyScores.length > 0 && (
         <>
-          <div className="section-h">具体思路</div>
+          <div className="section-h">思路倾向</div>
           <div className="bars">
             {profile.strategyScores.map(s => (
               <Bar key={s.id} label={s.label} score={s.score} n={s.n} hue={familyById.get(s.family)?.hue ?? 38} />

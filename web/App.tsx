@@ -35,7 +35,7 @@ const KEYS: [string, string][] = [
   ['⇧J', '跳到下一个还没评价的'],
   ['↵', '打开详情'],
   ['n', '写备注'],
-  ['s', '读出这个名字'],
+  ['s', '朗读名字'],
   ['c', '复制名字'],
   ['g', '再来一批'],
   ['e', '导出 Markdown'],
@@ -90,8 +90,8 @@ export function App() {
     if (a.sessionId) {
       list.push(
         { id: 'gen', group: '生成', label: '再来一批', hint: 'G', run: () => a.generate() },
-        { id: 'gen8', group: '生成', label: '来一大批', run: () => a.generate({ width: 8 }) },
-        { id: 'stop', group: '生成', label: '停下', run: () => a.cancel() },
+        { id: 'gen8', group: '生成', label: '生成一大批', run: () => a.generate({ width: 8 }) },
+        { id: 'stop', group: '生成', label: '停止', run: () => a.cancel() },
         { id: 'taste', group: '查看', label: '你的口味', hint: 'T', run: () => openDrawer('taste') },
         { id: 'priors', group: '查看', label: '取名规则', hint: 'P', run: () => openDrawer('priors') },
         { id: 'brief', group: '查看', label: '项目简介', run: () => openDrawer('brief') },
@@ -111,9 +111,9 @@ export function App() {
         {
           id: 'del',
           group: '会话',
-          label: '删掉这个会话',
+          label: '删除这个会话',
           run: () => {
-            if (a.sessionId && confirm('删掉这个会话和它所有的候选名？')) a.removeSession(a.sessionId)
+            if (a.sessionId && confirm('删除这个会话及其全部候选名？')) a.removeSession(a.sessionId)
           },
         },
       )
@@ -121,7 +121,7 @@ export function App() {
         list.push({
           id: `s-${s.id}`,
           group: '换个思路',
-          label: `只用「${s.label}」跑一批`,
+          label: `只用「${s.label}」生成一批`,
           hint: s.brief,
           run: () => a.generate({ strategyIds: [s.id] }),
         })
@@ -159,7 +159,7 @@ export function App() {
           <div className="warnbox">
             {a.bootError}
             <br />
-            确认 <code>npm run dev</code> 或 <code>npm start</code> 还在跑，默认端口 5179。
+            确认 <code>npm run dev</code> 或 <code>npm start</code> 仍在运行，默认端口 5179。
           </div>
         </div>
       </div>

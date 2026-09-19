@@ -342,7 +342,7 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
   try {
     url = new URL(`${base}/models`)
   } catch {
-    return { ok: false, message: `BASE_URL 不是一个合法地址：${base}` }
+    return { ok: false, message: `端点地址不合法：${base}` }
   }
 
   const headers: Record<string, string> = {}
@@ -365,12 +365,12 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
   }
 
   if (res.status === 401 || res.status === 403) {
-    return { ok: false, message: `${url.host} 拒绝了这把钥匙（${res.status}）。` }
+    return { ok: false, message: `${url.host} 拒绝了这个 API key（${res.status}）。` }
   }
   if (!res.ok) {
     // A 404 here usually means "this proxy only does chat completions", which is
     // a perfectly good proxy. Say so rather than crying wolf.
-    const aside = res.status === 404 ? '——有些端点不提供这个列表，可以忽略' : ''
+    const aside = res.status === 404 ? '，部分端点不提供该列表' : ''
     return { ok: false, message: `${url.host} 的 /models 返回 ${res.status}${aside}。` }
   }
 
@@ -383,7 +383,7 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
     return { ok: false, message: `${url.host} 返回的不是模型列表。` }
   }
 
-  if (!ids.length) return { ok: true, message: `${url.host} 通了，但没有列出任何模型。` }
+  if (!ids.length) return { ok: true, message: `${url.host} 连接成功，未列出任何模型。` }
 
   const listed = ids.includes(p.model)
   return {
@@ -392,7 +392,7 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
     count: ids.length,
     sample: ids.slice(0, 8),
     message: listed
-      ? `${url.host} 通了，${ids.length} 个模型，${p.model} 在里面。`
-      : `${url.host} 通了，${ids.length} 个模型，但没有 ${p.model} —— 检查一下有没有拼错。`,
+      ? `${url.host} 连接成功，列出 ${ids.length} 个模型，含 ${p.model}。`
+      : `${url.host} 连接成功，列出 ${ids.length} 个模型，其中没有 ${p.model}。`,
   }
 }

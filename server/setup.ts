@@ -83,28 +83,27 @@ export async function runSetup(force = false): Promise<void> {
     // Nobody to ask — and, since the settings drawer exists, no reason to refuse
     // over it. Say where the three names go and let the browser finish the job.
     console.warn(
-      '\n[nomothete] 还没有配置模型，而这里没有可以问的人。\n' +
-        '            启动后在界面左下角「模型」那里填，或者\n' +
-        `            在 ${ENV_PATH} 写上 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。\n`,
+      '\n[nomothete] 尚未配置模型，当前环境无法交互询问。\n' +
+        '            启动后在界面左下角「模型」中填写，或\n' +
+        `            在 ${ENV_PATH} 写入 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。\n`,
     )
     return
   }
 
-  console.log('\n  先把模型配好，三个问题。答案写进工作目录的 .env，下次不再问。')
-  console.log('  钥匙只在服务端进程里用，不会进日志、不会发给浏览器。\n')
+  console.log('\n  配置模型，三个问题。答案写入工作目录的 .env，下次不再询问。\n')
 
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   let baseURL: string
   let model: string
   try {
     const currentBase = env('BASE_URL') ?? DEFAULT_BASE_URL
-    baseURL = (await rl.question(`  端点（OpenAI 兼容即可）[${currentBase}]：`)).trim() || currentBase
+    baseURL = (await rl.question(`  端点（OpenAI 兼容）[${currentBase}]：`)).trim() || currentBase
 
     const currentModel = env('MODEL') ?? ''
     do {
       const suffix = currentModel ? ` [${currentModel}]` : ''
       model = ((await rl.question(`  模型 id${suffix}：`)).trim() || currentModel).trim()
-      if (!model) console.log('  —— 模型 id 不能空着。')
+      if (!model) console.log('  —— 模型 id 不能为空。')
     } while (!model)
   } finally {
     rl.close()
@@ -113,7 +112,7 @@ export async function runSetup(force = false): Promise<void> {
   let apiKey = ''
   while (!apiKey) {
     apiKey = (await askSecret('  API key（不回显）：')).trim()
-    if (!apiKey) console.log('  —— 钥匙不能空着。')
+    if (!apiKey) console.log('  —— API key 不能为空。')
   }
 
   const patch = {
@@ -123,17 +122,17 @@ export async function runSetup(force = false): Promise<void> {
   }
   writeEnv(patch)
   applyEnv(patch)
-  console.log(`\n  写好了 · ${ENV_PATH}`)
+  console.log(`\n  已写入 · ${ENV_PATH}`)
 
   // Advisory only. A wrong key, a wrong base URL and a mistyped model id all
   // look identical an hour later; one cheap request tells them apart now.
-  process.stdout.write('  正在探测端点…')
+  process.stdout.write('  正在测试连接…')
   const probe = await probeEndpoint(loadProfiles()[0])
   console.log(`\r  ${probe.ok ? '✓' : '!'} ${probe.message}${' '.repeat(10)}`)
   if (probe.modelListed === false && probe.sample?.length) {
     const more = (probe.count ?? 0) > probe.sample.length ? ' …' : ''
-    console.log(`    它有：${probe.sample.join('、')}${more}`)
-    console.log('    改的话：重跑 nomothete --setup，或者启动后在界面左下角「模型」那里改。')
+    console.log(`    端点列出：${probe.sample.join('、')}${more}`)
+    console.log('    如需更改：重跑 nomothete --setup，或启动后在界面左下角「模型」中修改。')
   }
   console.log('')
 }

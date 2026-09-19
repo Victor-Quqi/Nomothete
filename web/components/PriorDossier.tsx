@@ -59,7 +59,7 @@ export function PriorDossier({
                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   >
                     {p.evidence}
-                    <h5>什么时候不用管它</h5>
+                    <h5>何时不适用</h5>
                     {p.overturnedBy}
                   </motion.div>
                 )}

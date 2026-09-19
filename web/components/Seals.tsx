@@ -86,7 +86,7 @@ export function Seals({
                       {c.headline}
                     </p>
                   ))}
-                  <em>没查到，不等于一定能用。</em>
+                  <em>查无记录，不等于可用。</em>
                 </>
               }
             >

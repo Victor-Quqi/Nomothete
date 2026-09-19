@@ -59,7 +59,7 @@ export const dictionaryCheck: Check = {
       return {
         checkId: 'dictionary', label: '常用词', tier: 'local', status: 'clear',
         headline: '不是常用英语词',
-        detail: '搜这个名字的时候，不会被这个词本身的日常用法淹没。',
+        detail: '检索时不会与该词的日常用法混杂。',
         data: { rank: null, length: name.length, syllables: syl },
       }
     }
@@ -67,10 +67,10 @@ export const dictionaryCheck: Check = {
     return {
       checkId: 'dictionary', label: '常用词', tier: 'local',
       status: 'caution',
-      headline: severe ? '是个很常用的英语词' : '是个普通英语词',
+      headline: severe ? '高频英语词' : '常见英语词',
       detail: severe
-        ? '用它当名字，搜索结果会一直和这个词的日常用法混在一起，很难被找到。'
-        : '不算高频，但搜起来仍然会混进一些无关结果。',
+        ? '检索结果将长期与该词的日常用法混杂，难以被找到。'
+        : '频次不高，但检索结果仍会混入无关条目。',
       data: { rank, severe, length: name.length, syllables: syl },
     }
   },
@@ -101,10 +101,10 @@ export const localIndexCheck: Check = {
     if (hits.length === 0) return null // nothing to say; stay out of the UI
     return {
       checkId: 'local-index', label: '重名', tier: 'local', status: 'blocked',
-      headline: `会被当成 ${hits[0].actual}`,
+      headline: `归一化后与 ${hits[0].actual} 同名`,
       detail:
-        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已经存在。` +
-        `注册表不区分中间的连字符、下划线和大小写，所以会认为这就是同一个名字，注册不上。`,
+        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已存在。` +
+        `注册表不区分连字符、下划线与大小写，视作同一名字，无法注册。`,
       data: { hits },
     }
   },
@@ -132,7 +132,7 @@ export const validityCheck: Check = {
       checkId: 'validity', label: '名字合法性', tier: 'local', status: 'invalid',
       headline: `${bad.map(b => b.r.label).join('、')} 不接受`,
       detail: bad.map(b => `${b.r.label}：${(b.v as { reason: string }).reason}`).join('；') +
-        '。小写化或去掉标点后通常就合法了。',
+        '。改为小写或去掉标点后通常即合法。',
       data: { failures: bad.map(b => ({ registry: b.r.id, reason: (b.v as { reason: string }).reason })) },
     }
   },

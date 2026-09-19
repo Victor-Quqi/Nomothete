@@ -178,7 +178,7 @@ function PlateInner({
         <h3
           className={`plate__name${speaking ? ' plate__name--speaking' : ''}`}
           onClick={speak}
-          title="念一遍"
+          title="朗读"
         >
           {candidate.name}
         </h3>
@@ -196,7 +196,7 @@ function PlateInner({
               <>
                 <b>{strategy.label}</b>
                 <p>{strategy.brief}</p>
-                <em>点一下，按这个思路再来一批</em>
+                <em>按这个思路再来一批</em>
               </>
             }
           >
@@ -210,7 +210,7 @@ function PlateInner({
           content={
             <>
               <b>罕见度</b>
-              <p>模型估计这个名字有多不容易被想到。越满越罕见。</p>
+              <p>另一个助手拿到同一份简介，想出同一个名字的可能性越低，这里越满。</p>
             </>
           }
         >
@@ -249,7 +249,7 @@ function PlateInner({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span>留着再看看？</span>
+            <span>刚看到就否掉了。</span>
             <button
               className="btn btn--ghost btn--sm"
               onClick={() => {
@@ -260,7 +260,7 @@ function PlateInner({
               改成未定
             </button>
             <button className="plate__second-no" onClick={() => setSecondLook(false)}>
-              不用
+              保持
             </button>
           </motion.div>
         )}
@@ -276,7 +276,7 @@ function PlateInner({
             <textarea
               autoFocus
               value={draft}
-              placeholder="为什么喜欢 / 不喜欢它。下一批会参考这句话。"
+              placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
               onChange={e => setDraft(e.target.value)}
               onBlur={() => {
                 if (draft !== (candidate.note ?? '')) onNote(draft)

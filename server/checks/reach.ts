@@ -15,7 +15,7 @@ import type { Check, CheckContext, CheckResult } from './types.ts'
 /** How crowded the npm namespace already is around this word. Free, one call. */
 export const npmNeighbourhoodCheck: Check = {
   id: 'neighbourhood',
-  label: '有多挤',
+  label: '同名邻域',
   tier: 'free',
   when: 'always',
   async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
@@ -44,16 +44,16 @@ export const npmNeighbourhoodCheck: Check = {
     const total = payload.total ?? objects.length
     if (exactNorm.length === 0 && nearMisses.length === 0 && total < 30) {
       return {
-        checkId: 'neighbourhood', label: '有多挤', tier: 'free', status: 'clear',
+        checkId: 'neighbourhood', label: '同名邻域', tier: 'free', status: 'clear',
         headline: `npm 上 ${total} 个相关结果`,
-        detail: `在 npm 上搜「${name}」只有 ${total} 个结果，没有一个和它重名或长得像。这一片基本是空的。`,
+        detail: `在 npm 上搜「${name}」有 ${total} 个结果，其中没有重名或形近的。`,
         data: { total, nearMisses, exactNorm },
       }
     }
 
     const crowded = total >= 200 || nearMisses.length >= 6
     return {
-      checkId: 'neighbourhood', label: '有多挤', tier: 'free',
+      checkId: 'neighbourhood', label: '同名邻域', tier: 'free',
       status: crowded || exactNorm.length > 0 ? 'caution' : 'clear',
       // Always phrase this one as crowding. The exact collision is the
       // availability check's sentence to say; repeating it here would put two
@@ -62,9 +62,9 @@ export const npmNeighbourhoodCheck: Check = {
       detail:
         (exactNorm.length > 0 ? `npm 上已经有 ${exactNorm.join('、')}。` : '') +
         (nearMisses.length > 0
-          ? `还有长得很像的 ${nearMisses.slice(0, 6).join('、')}${nearMisses.length > 6 ? ' 等' : ''}。`
+          ? `形近的有 ${nearMisses.slice(0, 6).join('、')}${nearMisses.length > 6 ? ' 等' : ''}。`
           : '') +
-        `这不拦着你用 —— 只是以后别人搜的时候，你要和这 ${total} 个结果挤在一起。`,
+        `这不影响能否使用，只影响检索时与这 ${total} 个结果的区分度。`,
       data: { total, nearMisses, exactNorm },
     }
   },
@@ -93,8 +93,8 @@ export const githubCheck: Check = {
       if (r.status === 403 || r.status === 429) {
         return {
           checkId: 'github', label: 'GitHub', tier: 'ratelimited', status: 'error',
-          headline: '被 GitHub 限流了',
-          detail: '过一会儿再试。配一个 NOMOTHETE_GITHUB_TOKEN 可以查得更频繁。',
+          headline: 'GitHub 限流',
+          detail: '稍后重试。设置 NOMOTHETE_GITHUB_TOKEN 可提高查询频率上限。',
         }
       }
       if (r.status < 200 || r.status >= 300) return null
@@ -110,7 +110,7 @@ export const githubCheck: Check = {
         return {
           checkId: 'github', label: 'GitHub', tier: 'ratelimited', status: 'clear',
           headline: '没有同名仓库',
-          detail: `GitHub 上没有仓库名里含有「${name}」。`,
+          detail: `GitHub 上没有仓库名包含「${name}」。`,
           data: { total: 0, top: [] },
         }
       }
@@ -120,13 +120,13 @@ export const githubCheck: Check = {
       return {
         checkId: 'github', label: 'GitHub', tier: 'ratelimited',
         status: notable.length > 0 || exact.length > 0 || crowded ? 'caution' : 'clear',
-        headline: `${payload.total_count} 个仓库带这个词`,
+        headline: `${payload.total_count} 个仓库名包含这个词`,
         detail:
           (exact.length > 0 ? `其中 ${exact.map(e => e.full_name).join('、')} 与它完全同名。` : '') +
           (notable.length > 0
             ? `最显眼的是 ${notable.map(i => `${i.full_name}（★${i.stargazers_count.toLocaleString()}）`).join('、')}。`
-            : '命中的仓库都很小' + (crowded ? '，但数量摆在这里。' : '。')) +
-          '星数高的同名项目会长期占住搜索结果。',
+            : '命中的仓库都很小' + (crowded ? '，但数量可观。' : '。')) +
+          '星数高的同名项目会长期占据搜索结果。',
         data: {
           total: payload.total_count,
           top: top.map(i => ({ name: i.full_name, stars: i.stargazers_count, url: i.html_url, description: i.description })),
@@ -166,11 +166,11 @@ export const domainCheck: Check = {
     return {
       checkId: 'domain', label: '域名', tier: 'ratelimited',
       status: free.length > 0 ? 'clear' : 'caution',
-      headline: free.length > 0 ? `${free.map(f => `.${f.tld}`).join(' ')} 还没被注册` : '.com .dev .io 都被注册了',
+      headline: free.length > 0 ? `${free.map(f => `.${f.tld}`).join(' ')} 查无注册记录` : '.com .dev .io 均已注册',
       detail:
         results
-          .map(r => `${label}.${r.tld}：${r.state === 'free' ? '没查到' : r.state === 'registered' ? '已注册' : '没查成'}`)
-          .join('　') + '。只查了域名有没有被注册，没查商标。',
+          .map(r => `${label}.${r.tld}：${r.state === 'free' ? '查无记录' : r.state === 'registered' ? '已注册' : '查询失败'}`)
+          .join('　') + '。仅查询域名注册记录，未查商标。',
       data: { label, results },
     }
   },

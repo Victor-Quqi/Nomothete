@@ -21,8 +21,8 @@ function useElapsed(since: number, live: boolean): number {
 }
 
 const PHASE_NOTE: Record<string, string> = {
-  waiting: '已经发出去了。',
-  thinking: '模型在想，想完才会开始写名字。',
+  waiting: '请求已发出。',
+  thinking: '模型在推理，尚未开始写名字。',
   writing: '名字正在到达。',
 }
 
@@ -40,7 +40,7 @@ function Thread({ batch, label, brief, hue }: { batch: Batch; label: string; bri
           <p>{batch.error ? batch.error : brief}</p>
           {batch.state === 'done' && (
             <em>
-              留下 {batch.kept} 个，丢掉 {batch.discarded} 个太常见的。
+              留下 {batch.kept} 个，丢掉 {batch.discarded} 个罕见度不足的。
             </em>
           )}
           {running && <em>{PHASE_NOTE[phase]}</em>}
@@ -93,7 +93,7 @@ export function Loom({
       <div className="loom__inner">
         <span className="loom__label">
           {live && <i className="loom__pulse" />}
-          {live ? '正在跑' : '这一批'}
+          {live ? '正在生成' : '这一批'}
         </span>
 
         <AnimatePresence initial={false}>
@@ -136,11 +136,11 @@ export function Loom({
                   <>
                     <b>丢掉的 {discards.length} 个</b>
                     <p>{discards.slice(-14).map(d => d.name).join('　')}</p>
-                    <em>模型觉得它们太容易被想到。</em>
+                    <em>自报罕见度低于阈值。</em>
                   </>
                 }
               >
-                已丢掉 <s>{discards.length}</s> 个太常见的
+                已丢掉 <s>{discards.length}</s> 个罕见度不足的
               </Tip>
             </motion.span>
           )}

@@ -39,17 +39,16 @@ if (argv.includes('-h') || argv.includes('--help')) {
   选项
     -p, --port <n>   监听端口（默认 5179，或环境变量 NOMOTHETE_PORT）
         --open       启动后用默认浏览器打开
-        --setup      重新问一遍端点、模型与钥匙，改写 .env 里的那三行
-        --verbose    打印请求方法与路径（永远不含请求体和鉴权头）
-    -h, --help       显示这段
+        --setup      重新询问端点、模型与 API key，改写 .env 中对应的三行
+        --verbose    打印请求方法与路径（不含请求体与鉴权头）
+    -h, --help       显示本帮助
 
   配置
-    三个入口，写的是同一个文件：首次启动会问；启动后界面左下角「模型」可以改；
-    也可以自己在工作目录的 .env 里写：
+    三个入口，写入同一个文件：首次启动时询问；启动后在界面左下角「模型」中修改；
+    或直接编辑工作目录的 .env：
       NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
-    不带前缀的同名变量也认，但只在没有带前缀的那个时才用。
-    钥匙只在这个进程里用，不会进日志。界面能写它，读回来只有末四位。
-    服务默认只绑 127.0.0.1（NOMOTHETE_HOST 可改）。
+    未加前缀的同名变量同样生效，仅在不存在带前缀变量时采用。
+    服务默认绑定 127.0.0.1，可用 NOMOTHETE_HOST 更改。
 `)
   process.exit(0)
 }
@@ -86,10 +85,10 @@ function tsCommand(file, args) {
 // when it is not. An API-only mode is not what anyone typing `nomothete` wants,
 // so build it once instead of letting them find a blank page.
 if (!existsSync(path.join(root, 'dist', 'index.html'))) {
-  console.log('[nomothete] 没有找到 dist/，先构建一次前端…')
+  console.log('[nomothete] 未找到 dist/，正在构建前端…')
   const build = spawnSync('npm', ['run', 'build'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' })
   if (build.status !== 0) {
-    console.error('[nomothete] 构建失败。先跑 npm install，再跑 npm run build。')
+    console.error('[nomothete] 构建失败。请先执行 npm install，再执行 npm run build。')
     process.exit(build.status ?? 1)
   }
 }
