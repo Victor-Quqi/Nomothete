@@ -21,9 +21,9 @@ function useElapsed(since: number, live: boolean): number {
 }
 
 const PHASE_NOTE: Record<string, string> = {
-  waiting: '已经发出去了，还没有第一个字。',
-  thinking: '模型在推敲这一批。它要先想完，才会开始写名字。',
-  writing: '名字正在到达，到一个贴一个。',
+  waiting: '已经发出去了。',
+  thinking: '模型在想，想完才会开始写名字。',
+  writing: '名字正在到达。',
 }
 
 function Thread({ batch, label, brief, hue }: { batch: Batch; label: string; brief: string; hue: number }) {
@@ -40,7 +40,7 @@ function Thread({ batch, label, brief, hue }: { batch: Batch; label: string; bri
           <p>{batch.error ? batch.error : brief}</p>
           {batch.state === 'done' && (
             <em>
-              留下 {batch.kept} 个，阈值当场丢掉 {batch.discarded} 个。
+              留下 {batch.kept} 个，丢掉 {batch.discarded} 个太常见的。
             </em>
           )}
           {running && <em>{PHASE_NOTE[phase]}</em>}
@@ -51,7 +51,7 @@ function Thread({ batch, label, brief, hue }: { batch: Batch; label: string; bri
       {label}
       {running && phase !== 'writing' && (
         <b className="thread__n thread__n--wait">
-          推敲 {elapsed}s<i className="thread__ellipsis" />
+          {elapsed}s<i className="thread__ellipsis" />
         </b>
       )}
       {batch.state === 'done' && <b className="thread__n">+{batch.kept}</b>}
@@ -73,13 +73,11 @@ export function Loom({
   strategyById,
   familyById,
   discards,
-  threshold,
 }: {
   batches: Batch[]
   strategyById: Map<string, StrategyInfo>
   familyById: Map<string, Family>
   discards: Discard[]
-  threshold: number
 }) {
   if (batches.length === 0 && discards.length === 0) return null
   const live = batches.some(b => b.state === 'running')
@@ -95,7 +93,7 @@ export function Loom({
       <div className="loom__inner">
         <span className="loom__label">
           {live && <i className="loom__pulse" />}
-          {live ? '织机上' : '这一代'}
+          {live ? '正在跑' : '这一批'}
         </span>
 
         <AnimatePresence initial={false}>
@@ -136,18 +134,13 @@ export function Loom({
                 className="discards"
                 content={
                   <>
-                    <b>被阈值当场丢掉的 {discards.length} 个</b>
-                    <p>
-                      {discards
-                        .slice(-14)
-                        .map(d => `${d.name} ${(d.probability * 100).toFixed(0)}%`)
-                        .join('　')}
-                    </p>
-                    <em>高于 {(threshold * 100).toFixed(0)}% 的到达即丢，不排序、不回收。</em>
+                    <b>丢掉的 {discards.length} 个</b>
+                    <p>{discards.slice(-14).map(d => d.name).join('　')}</p>
+                    <em>模型觉得它们太容易被想到。</em>
                   </>
                 }
               >
-                <s>{discards.length}</s> 个太典型，已丢
+                已丢掉 <s>{discards.length}</s> 个太常见的
               </Tip>
             </motion.span>
           )}

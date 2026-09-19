@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Loom } from './Loom.tsx'
-import { Tip } from './Tip.tsx'
 import type { Atelier } from '../store.ts'
 import type { Candidate, Verdict } from '../types.ts'
 
@@ -234,10 +233,10 @@ export function Workspace({
         </div>
         <div className="topbar__acts">
           <button className="btn btn--ghost btn--sm" onClick={() => openDrawer('taste')}>
-            品味 <kbd>T</kbd>
+            口味 <kbd>T</kbd>
           </button>
           <button className="btn btn--ghost btn--sm" onClick={() => openDrawer('priors')}>
-            倾向 <kbd>P</kbd>
+            规则 <kbd>P</kbd>
           </button>
           <a
             className="btn btn--ghost btn--sm"
@@ -257,7 +256,6 @@ export function Workspace({
             strategyById={a.strategyById}
             familyById={a.familyById}
             discards={a.discards}
-            threshold={session.threshold}
           />
         )}
       </AnimatePresence>
@@ -304,7 +302,7 @@ export function Workspace({
           ref={findRef}
           className="filters__find"
           value={find}
-          placeholder="筛选 /"
+          placeholder="搜索 /"
           onChange={e => setFind(e.target.value)}
         />
 
@@ -345,7 +343,7 @@ export function Workspace({
                         background: `hsl(${fam?.hue ?? 38} 55% 55%)`,
                       }}
                     />
-                    {s?.label ?? b.strategyId} {b.phase === 'writing' ? '正在写…' : '正在推敲…'}
+                    {s?.label ?? b.strategyId} {b.phase === 'writing' ? '正在写…' : '正在想…'}
                   </div>
                 </motion.div>
               )
@@ -357,7 +355,6 @@ export function Workspace({
                 candidate={c}
                 strategy={a.strategyById.get(c.strategyId)}
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
-                threshold={session.threshold}
                 focused={focusId === c.id}
                 autoScroll={kbd}
                 onFocus={() => {
@@ -378,24 +375,15 @@ export function Workspace({
         {visible.length === 0 && ghosts.length === 0 && (
           <div className="empty">
             <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
-            <p>{candidates.length === 0 ? '第一批还在路上，名字到一个显示一个。' : '这个筛选下什么都没有。'}</p>
+            <p>{candidates.length === 0 ? '第一批还在路上。' : '没有符合的名字。'}</p>
           </div>
         )}
       </div>
 
       <div className="dock">
-        <Tip
-          className="dock__hint"
-          content={
-            <>
-              <b>下一批怎么选路数</b>
-              <p>按你打过的档加权，但一条都不封死，并且总留一个名额给你没碰过的语义场。</p>
-              <em>j/k 移动 · 1–5 打档 · ? 全部快捷键</em>
-            </>
-          }
-        >
+        <span className="dock__hint">
           {candidates.length} 个候选 · <b>{candidates.filter(c => c.verdict > 0).length}</b> 个心动
-        </Tip>
+        </span>
         {running ? (
           <button className="btn btn--sm" onClick={() => a.cancel()}>
             停下

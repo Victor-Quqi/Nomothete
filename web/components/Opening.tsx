@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { PriorDossier } from './PriorDossier.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
+import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from '../rarity.ts'
 import type { Bootstrap, Verdict } from '../types.ts'
 
 const PLACEHOLDER =
@@ -105,22 +106,15 @@ export function Opening({
         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="opening__eyebrow">Nomothete · νομοθέτης</div>
         <h1 className="opening__title">
           给这个东西
           <br />
           起一个<em>名字</em>。
         </h1>
-        <blockquote className="opening__epigraph">
-          名字是一种工具，用来教人，也用来把事物彼此分开。制作名字的那位匠人，就是立法者 ——
-          在所有匠人当中，他是最少见的一个。
-          <cite>柏拉图《克拉底鲁篇》388b–389a</cite>
-        </blockquote>
 
         <div className="field">
           <label className="field__label" htmlFor="brief">
-            这个项目是什么
-            <span className="field__hint">写得越具体，取义越有地方可抓。中文英文都行。</span>
+            这个项目是做什么的？写得越具体越好
           </label>
           <div className="field__box">
             <textarea
@@ -143,7 +137,7 @@ export function Opening({
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               >
-                <span>没想好怎么写？</span>
+                <span>示例</span>
                 {EXAMPLES.map(e => (
                   <button
                     key={e.label}
@@ -162,7 +156,7 @@ export function Opening({
         </div>
 
         <button className="btn btn--ghost btn--sm" onClick={() => setMore(m => !m)} style={{ marginBottom: 10 }}>
-          {more ? '收起' : '我已经有一些想法'} {more ? '▴' : '▾'}
+          {more ? '收起' : '更多设置'} {more ? '▴' : '▾'}
         </button>
 
         <AnimatePresence initial={false}>
@@ -175,10 +169,7 @@ export function Opening({
               style={{ overflow: 'hidden' }}
             >
               <div className="field">
-                <div className="field__label">
-                  已经想过的名字
-                  <span className="field__hint">喜欢的和讨厌的都填进来，它们直接算作 Verdict。</span>
-                </div>
+                <div className="field__label">你已经想过的名字</div>
                 {seeds.map((s, i) => (
                   <div className="seedrow" key={s.key}>
                     <input
@@ -218,28 +209,25 @@ export function Opening({
 
               <div className="field">
                 <div className="field__label">
-                  留下的名字要多罕见
-                  <span className="field__hint">
-                    自报概率高于 {(threshold * 100).toFixed(0)}% 的当场丢掉。调低 = 更奇，也更容易全军覆没。
+                  名字的罕见程度
+                  <span className="field__value">
+                    {rarityWord(rarityPercent(threshold))} · {rarityPercent(threshold)}%
                   </span>
                 </div>
                 <input
                   type="range"
-                  min={0.15}
-                  max={0.9}
-                  step={0.05}
-                  value={threshold}
-                  onChange={e => setThreshold(Number(e.target.value))}
+                  min={RARITY_MIN}
+                  max={RARITY_MAX}
+                  step={5}
+                  value={rarityPercent(threshold)}
+                  onChange={e => setThreshold(thresholdForRarity(Number(e.target.value)))}
                   style={{ width: '100%', accentColor: 'var(--brass)' }}
                 />
               </div>
 
               {boot && (
                 <div className="field">
-                  <div className="field__label">
-                    内置的倾向
-                    <span className="field__hint">每一条都带着它的证据强度，随时可以关掉。</span>
-                  </div>
+                  <div className="field__label">取名时遵守的规则</div>
                   <PriorDossier priors={boot.priors} enabled={priors} onChange={setPriors} />
                 </div>
               )}
@@ -252,25 +240,12 @@ export function Opening({
             {busy ? '正在开工…' : '开始取名'}
             <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>⌘↵</kbd>
           </button>
-          <span style={{ fontSize: 12.5, color: 'var(--vellum-4)', lineHeight: 1.7 }}>
-            六条路数同时跑，名字到一个显示一个。
-          </span>
         </div>
 
         {boot && !boot.provider.configured && (
-          <div
-            style={{
-              marginTop: 22,
-              padding: '12px 15px',
-              border: '1px solid rgba(196,87,62,0.4)',
-              borderRadius: 10,
-              color: '#e09680',
-              fontSize: 12.5,
-              lineHeight: 1.7,
-            }}
-          >
-            模型还没配好：{boot.provider.problem} 在工作目录放一个 .env，写{' '}
-            <code>NOMOTHETE_BASE_URL</code>、<code>NOMOTHETE_API_KEY</code>、<code>NOMOTHETE_MODEL</code> 三行就行。
+          <div className="warnbox">
+            还没配置模型：{boot.provider.problem} 在工作目录放一个 .env，写上{' '}
+            <code>NOMOTHETE_BASE_URL</code>、<code>NOMOTHETE_API_KEY</code>、<code>NOMOTHETE_MODEL</code>。
           </div>
         )}
       </motion.div>

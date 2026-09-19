@@ -86,9 +86,9 @@ api.post('/sessions', (req, res) => {
  * The profile as the browser sees it, plus `injected` — the literal paragraph
  * that goes into the next prompt.
  *
- * A model that claims to have learned your taste should be willing to show the
- * sentence it learned, word for word. Without it the drawer is an assertion;
- * with it, it is checkable.
+ * The UI does not render `injected`: a prompt fragment is not something a user
+ * came here to read. It stays in the payload for the JSON export, where someone
+ * debugging their own session can check what the model was actually told.
  */
 function profilePayload(candidates: Candidate[], seeds: Session['seeds']) {
   const profile = buildProfile(candidates, seeds)
@@ -249,7 +249,7 @@ api.get('/sessions/:id/export', (req, res) => {
     '',
     session.brief,
     '',
-    `共 ${candidates.length} 个候选，${candidates.filter(c => c.verdict > 0).length} 个正面 Verdict。`,
+    `共 ${candidates.length} 个候选，${candidates.filter(c => c.verdict > 0).length} 个心动。`,
     '',
   ]
   for (const group of [2, 1, 0, -1, -2]) {
@@ -266,12 +266,13 @@ api.get('/sessions/:id/export', (req, res) => {
   }
   // The drawer can afford to leave the traits as rows and the names as bars; a
   // file that leaves the session behind cannot, so spell them out here.
-  lines.push('## Taste Profile', '', profile.statement, '')
-  if (profile.loved.length) lines.push(`- 往这边走：${profile.loved.map(l => l.name).join('、')}`)
-  if (profile.rejected.length) lines.push(`- 离这边远一点：${profile.rejected.map(l => l.name).join('、')}`)
-  for (const t of profile.traits) lines.push(`- ${t.statement}`)
-  if (profile.loved.length || profile.rejected.length || profile.traits.length) lines.push('')
-  if (profile.injected) lines.push('下一批会收到这段：', '', '```', profile.injected, '```', '')
+  if (profile.observations > 0) {
+    lines.push('## 你的口味', '', profile.statement, '')
+    if (profile.loved.length) lines.push(`- 喜欢：${profile.loved.map(l => l.name).join('、')}`)
+    if (profile.rejected.length) lines.push(`- 不喜欢：${profile.rejected.map(l => l.name).join('、')}`)
+    for (const t of profile.traits) lines.push(`- ${t.statement}`)
+    lines.push('')
+  }
   res.setHeader('content-type', 'text/markdown; charset=utf-8')
   res.setHeader('content-disposition', `attachment; filename="${session.id}.md"`)
   res.send(lines.join('\n'))

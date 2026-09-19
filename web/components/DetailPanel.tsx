@@ -1,15 +1,8 @@
 import { useEffect, useState } from 'react'
-import { REGISTRY_FORMS, syllables } from '../normalize.ts'
+import { REGISTRY_FORMS } from '../normalize.ts'
 import { speakName } from '../speak.ts'
 import { VerdictDial } from './VerdictDial.tsx'
 import type { Candidate, CheckResult, Family, StrategyInfo, Verdict } from '../types.ts'
-
-const TIER_LABEL: Record<string, string> = {
-  local: '本地 · 0 请求',
-  free: '免费接口',
-  ratelimited: '限流接口',
-  paid: '付费接口',
-}
 
 function CheckCard({ check }: { check: CheckResult }) {
   const links: { href: string; text: string }[] = []
@@ -27,7 +20,6 @@ function CheckCard({ check }: { check: CheckResult }) {
           <i />
         </span>
         <span className="check__label">{check.label}</span>
-        <span className="check__tier">{TIER_LABEL[check.tier] ?? check.tier}</span>
       </div>
       <div className="check__detail">
         <b style={{ color: 'var(--vellum)', fontWeight: 500 }}>{check.headline}。</b> {check.detail}
@@ -49,7 +41,6 @@ export function DetailPanel({
   candidate,
   strategy,
   family,
-  threshold,
   onVerdict,
   onNote,
   onRecheck,
@@ -57,7 +48,6 @@ export function DetailPanel({
   candidate: Candidate
   strategy?: StrategyInfo
   family?: Family
-  threshold: number
   onVerdict: (v: Verdict) => void
   onNote: (note: string) => void
   onRecheck: () => void
@@ -82,9 +72,6 @@ export function DetailPanel({
             {family ? ` · ${family.label}` : ''}
           </span>
         )}
-        <span className="plate__shape">
-          {candidate.name.length} 字符 · {syllables(candidate.name)} 音节 · 第 {candidate.generation} 代
-        </span>
       </div>
 
       <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
@@ -93,13 +80,7 @@ export function DetailPanel({
         {candidate.rationale}
       </p>
 
-      <div className="section-h">自报概率</div>
-      <p className="check__detail">
-        <b style={{ color: 'var(--violet)' }}>{(candidate.probability * 100).toFixed(0)}%</b> —— 模型自估。
-        本次留下的是低于 {(threshold * 100).toFixed(0)}% 的。只当过滤闸，不参与排序。
-      </p>
-
-      <div className="section-h">注册表眼里的这个名字</div>
+      <div className="section-h">各处该写成什么</div>
       <div className="detail__forms">
         {REGISTRY_FORMS.map(f => (
           <button
@@ -110,26 +91,21 @@ export function DetailPanel({
           >
             <b>{f.label}</b>
             <code>{f.fn(candidate.name)}</code>
-            <em>{f.note}</em>
           </button>
         ))}
       </div>
-      <p className="check__detail">
-        注册表比对归一化之后的形式，不是你输入的这一串 —— 所以「精确查询查无记录」只回答 Availability，比
-        Publishability 弱。
-      </p>
 
       <div className="section-h">检查</div>
       {shallow.map(c => (
         <CheckCard key={c.checkId} check={c} />
       ))}
 
-      <div className="section-h">正面 Verdict 才跑的那一层</div>
+      <div className="section-h">更慢的检查</div>
       {deep.length > 0 ? (
         deep.map(c => <CheckCard key={c.checkId} check={c} />)
       ) : (
         <p className="check__detail">
-          还没跑。归一化撞名要对每个注册表发几十个请求，所以它们等你先表态：给一个 ▲ 或 ▲▲ 就会自动开始。
+          给它一个 ▲ 就会自动开始。
           <br />
           <button className="btn btn--ghost btn--sm" style={{ marginTop: 8, paddingLeft: 0 }} onClick={onRecheck}>
             也可以现在就跑 →
@@ -145,7 +121,7 @@ export function DetailPanel({
       <div className="section-h">备注</div>
       <textarea
         value={draft}
-        placeholder="写下你对它的判断。这句话会原样进下一批的 prompt。"
+        placeholder="为什么喜欢 / 不喜欢它。下一批会参考这句话。"
         onChange={e => setDraft(e.target.value)}
         onBlur={() => draft !== (candidate.note ?? '') && onNote(draft)}
         style={{

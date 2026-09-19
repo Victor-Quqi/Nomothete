@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
-import { oneToken, syllables } from '../normalize.ts'
 import { speakName } from '../speak.ts'
 import type { Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
@@ -29,7 +28,6 @@ interface Props {
   candidate: Candidate
   strategy?: StrategyInfo
   family?: Family
-  threshold: number
   focused: boolean
   /** Only keyboard navigation drags the viewport around; hover never does. */
   autoScroll: boolean
@@ -45,7 +43,6 @@ function PlateInner({
   candidate,
   strategy,
   family,
-  threshold,
   focused,
   autoScroll,
   onFocus,
@@ -112,11 +109,10 @@ function PlateInner({
 
   const checks = candidate.checks ?? []
   const deepPending = candidate.verdict > 0 && !checks.some(c => c.tier === 'ratelimited')
-  const pending = checks.length === 0 ? '检查进行中' : deepPending ? '正在跑归一化撞名与 GitHub' : null
+  const pending = checks.length === 0 ? '正在检查…' : deepPending ? '正在查注册表和 GitHub…' : null
 
   const rarity = 1 - candidate.probability
   const bars = Math.max(1, Math.min(5, Math.ceil(rarity * 5)))
-  const token = oneToken(candidate.name)
 
   const copy = () => {
     navigator.clipboard?.writeText(candidate.name).then(
@@ -198,12 +194,9 @@ function PlateInner({
             onClick={onMore}
             content={
               <>
-                <b>
-                  {strategy.label}
-                  {family ? ` · ${family.label}` : ''}
-                </b>
+                <b>{strategy.label}</b>
                 <p>{strategy.brief}</p>
-                <em>点一下，按这条路数再来一批。</em>
+                <em>点一下，按这个思路再来一批</em>
               </>
             }
           >
@@ -216,9 +209,8 @@ function PlateInner({
           className="rarity"
           content={
             <>
-              <b>自报概率 {(candidate.probability * 100).toFixed(0)}%</b>
-              <p>模型自估：换个助手拿到同一份简介，多大可能也想出这个名字。</p>
-              <em>高于 {(threshold * 100).toFixed(0)}% 的到达即丢，不排序、不回收。</em>
+              <b>罕见度</b>
+              <p>模型估计这个名字有多不容易被想到。越满越罕见。</p>
             </>
           }
         >
@@ -227,36 +219,7 @@ function PlateInner({
               <i key={i} data-on={i < bars} style={{ height: 3 + i * 1.6 }} />
             ))}
           </span>
-          {(candidate.probability * 100).toFixed(0)}%
         </Tip>
-        <span className="plate__shape">
-          {candidate.name.length}c · {syllables(candidate.name)}syl
-        </span>
-        {token && (
-          <Tip
-            className="plate__token"
-            content={
-              <>
-                <b>三处同形</b>
-                <p className="tip__row">
-                  <span>项目名</span>
-                  {candidate.name}
-                </p>
-                <p className="tip__row">
-                  <span>仓库名</span>
-                  {candidate.name.toLowerCase()}
-                </p>
-                <p className="tip__row">
-                  <span>包名</span>
-                  {candidate.name.toLowerCase()}
-                </p>
-                <em>单个词，不用在三个地方各记一个变体。</em>
-              </>
-            }
-          >
-            三处同形
-          </Tip>
-        )}
       </div>
 
       <p className="plate__rationale">{candidate.rationale}</p>
@@ -286,7 +249,7 @@ function PlateInner({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span>好名字第一眼常常并不好看。</span>
+            <span>留着再看看？</span>
             <button
               className="btn btn--ghost btn--sm"
               onClick={() => {
@@ -313,7 +276,7 @@ function PlateInner({
             <textarea
               autoFocus
               value={draft}
-              placeholder="为什么喜欢它、为什么不喜欢 —— 这句话会进下一批的 prompt。"
+              placeholder="为什么喜欢 / 不喜欢它。下一批会参考这句话。"
               onChange={e => setDraft(e.target.value)}
               onBlur={() => {
                 if (draft !== (candidate.note ?? '')) onNote(draft)
@@ -329,7 +292,7 @@ function PlateInner({
                 }
               }}
             />
-            <div className="plate__note-saved">失焦即存，⌘/Ctrl + Enter 收起。</div>
+            <div className="plate__note-saved">自动保存</div>
           </motion.div>
         )}
       </AnimatePresence>

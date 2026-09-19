@@ -11,7 +11,7 @@
  *                    requests, so it waits for a positive Verdict.
  */
 import { probe, probeAll } from './http.ts'
-import { collisionCandidates, NORMALIZERS, validateForRegistry, type RegistryId } from './normalize.ts'
+import { collisionCandidates, validateForRegistry, type RegistryId } from './normalize.ts'
 import { rememberName } from './local.ts'
 import type { Check, CheckContext, CheckResult } from './types.ts'
 
@@ -100,15 +100,14 @@ export const availabilityCheck: Check = {
         results
           .map(r => {
             switch (r.state) {
-              case 'taken': return `${r.spec.label}：已有同名记录`
-              case 'clear': return `${r.spec.label}：查无记录`
-              case 'invalid': return `${r.spec.label}：名字形式不合法`
-              default: return `${r.spec.label}：查询失败`
+              case 'taken': return `${r.spec.label}：已经有人用了`
+              case 'clear': return `${r.spec.label}：没查到`
+              case 'invalid': return `${r.spec.label}：这个名字不合法`
+              default: return `${r.spec.label}：没查成`
             }
           })
           .join('　') +
-        '。「查无记录」是一个弱结论 —— 它只说明精确查询没有命中。注册表会把两边各自归一化后再比对，' +
-        '真正的注册能力由「归一化撞名」那一项回答，它会在你给出正面 Verdict 后跑。',
+        '。这只是按原样搜了一下。给它一个 ▲，会去查得更细。',
       data: {
         registries: results.map(r => ({
           id: r.spec.id,
@@ -133,7 +132,7 @@ export const availabilityCheck: Check = {
  */
 export const publishabilityCheck: Check = {
   id: 'publishability',
-  label: '归一化撞名',
+  label: '能不能注册上',
   tier: 'ratelimited',
   when: 'after-upvote',
   async run({ name, signal }: CheckContext): Promise<CheckResult> {
@@ -160,26 +159,21 @@ export const publishabilityCheck: Check = {
 
     if (blocked.length === 0) {
       return {
-        checkId: 'publishability', label: '归一化撞名', tier: 'ratelimited', status: 'clear',
-        headline: `${probedTotal} 个变体查无记录`,
+        checkId: 'publishability', label: '能不能注册上', tier: 'ratelimited', status: 'clear',
+        headline: '三个注册表都没查到',
         detail:
-          `枚举了归一化后与「${name}」相同的 ${probedTotal} 个字符串（插入分隔符，以及 PyPI 的 o↔0、l↔1↔i 字形折叠），` +
-          `逐个问过三个注册表，都没有命中。这比精确查询强得多，但仍然只是「查无记录」。`,
+          `把「${name}」的 ${probedTotal} 种近似写法都问了一遍，没有一个被占。` +
+          `没查到不等于一定能注册上，但到这一步已经很少出意外。`,
         data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
       }
     }
 
     return {
-      checkId: 'publishability', label: '归一化撞名', tier: 'ratelimited', status: 'blocked',
-      headline: `${blocked[0].spec.label} 会拒绝：${blocked[0].collisions[0]} 已存在`,
-      detail:
-        blocked
-          .map(b => {
-            const norm = NORMALIZERS[b.spec.id](name)
-            return `${b.spec.label}：已有 ${b.collisions.slice(0, 4).join('、')}，与「${name}」同归一化为 ${norm}，注册会被拒。`
-          })
-          .join('') +
-        `共探测 ${probedTotal} 个变体。`,
+      checkId: 'publishability', label: '能不能注册上', tier: 'ratelimited', status: 'blocked',
+      headline: `${blocked[0].spec.label} 上注册不了`,
+      detail: blocked
+        .map(b => `${b.spec.label}：已经有 ${b.collisions.slice(0, 4).join('、')}，会被当成同一个名字。`)
+        .join(''),
       data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
     }
   },

@@ -15,7 +15,7 @@ import type { Check, CheckContext, CheckResult } from './types.ts'
 /** How crowded the npm namespace already is around this word. Free, one call. */
 export const npmNeighbourhoodCheck: Check = {
   id: 'neighbourhood',
-  label: '同名邻域',
+  label: '有多挤',
   tier: 'free',
   when: 'always',
   async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
@@ -44,29 +44,27 @@ export const npmNeighbourhoodCheck: Check = {
     const total = payload.total ?? objects.length
     if (exactNorm.length === 0 && nearMisses.length === 0 && total < 30) {
       return {
-        checkId: 'neighbourhood', label: '同名邻域', tier: 'free', status: 'clear',
+        checkId: 'neighbourhood', label: '有多挤', tier: 'free', status: 'clear',
         headline: `npm 上 ${total} 个相关结果`,
-        detail: `以「${name}」为关键词在 npm 上只有 ${total} 个结果，且没有一个与它同归一化或互为子串。这个词在包名空间里基本是空的。`,
+        detail: `在 npm 上搜「${name}」只有 ${total} 个结果，没有一个和它重名或长得像。这一片基本是空的。`,
         data: { total, nearMisses, exactNorm },
       }
     }
 
     const crowded = total >= 200 || nearMisses.length >= 6
     return {
-      checkId: 'neighbourhood', label: '同名邻域', tier: 'free',
+      checkId: 'neighbourhood', label: '有多挤', tier: 'free',
       status: crowded || exactNorm.length > 0 ? 'caution' : 'clear',
       // Always phrase this one as crowding. The exact collision is the
       // availability check's sentence to say; repeating it here would put two
       // seals with the same message side by side.
       headline: `npm 上 ${total} 个相关结果`,
       detail:
-        (exactNorm.length > 0
-          ? `npm 搜索直接返回了同归一化的 ${exactNorm.join('、')}。`
-          : '') +
+        (exactNorm.length > 0 ? `npm 上已经有 ${exactNorm.join('、')}。` : '') +
         (nearMisses.length > 0
-          ? `名字空间里已有 ${nearMisses.slice(0, 6).join('、')}${nearMisses.length > 6 ? ' 等' : ''}。`
+          ? `还有长得很像的 ${nearMisses.slice(0, 6).join('、')}${nearMisses.length > 6 ? ' 等' : ''}。`
           : '') +
-        `这条不是硬约束 —— 它回答的是 Searchability：投入使用后，你要和这 ${total} 个结果争夺同一批搜索词。`,
+        `这不拦着你用 —— 只是以后别人搜的时候，你要和这 ${total} 个结果挤在一起。`,
       data: { total, nearMisses, exactNorm },
     }
   },
@@ -95,8 +93,8 @@ export const githubCheck: Check = {
       if (r.status === 403 || r.status === 429) {
         return {
           checkId: 'github', label: 'GitHub', tier: 'ratelimited', status: 'error',
-          headline: '被限速',
-          detail: '未鉴权时 GitHub 搜索接口每分钟只给 10 次。设置 GITHUB_TOKEN 环境变量可以提到 30 次。',
+          headline: '被 GitHub 限流了',
+          detail: '过一会儿再试。配一个 NOMOTHETE_GITHUB_TOKEN 可以查得更频繁。',
         }
       }
       if (r.status < 200 || r.status >= 300) return null
@@ -128,7 +126,7 @@ export const githubCheck: Check = {
           (notable.length > 0
             ? `最显眼的是 ${notable.map(i => `${i.full_name}（★${i.stargazers_count.toLocaleString()}）`).join('、')}。`
             : '命中的仓库都很小' + (crowded ? '，但数量摆在这里。' : '。')) +
-          '这是 Searchability 信号：星数高的同名项目会长期占住搜索结果。',
+          '星数高的同名项目会长期占住搜索结果。',
         data: {
           total: payload.total_count,
           top: top.map(i => ({ name: i.full_name, stars: i.stargazers_count, url: i.html_url, description: i.description })),
@@ -168,11 +166,11 @@ export const domainCheck: Check = {
     return {
       checkId: 'domain', label: '域名', tier: 'ratelimited',
       status: free.length > 0 ? 'clear' : 'caution',
-      headline: free.length > 0 ? `${free.map(f => `.${f.tld}`).join(' ')} 未注册` : '常见 TLD 都已注册',
+      headline: free.length > 0 ? `${free.map(f => `.${f.tld}`).join(' ')} 还没被注册` : '.com .dev .io 都被注册了',
       detail:
         results
-          .map(r => `${label}.${r.tld}：${r.state === 'free' ? 'RDAP 查无记录' : r.state === 'registered' ? '已注册' : '未答复'}`)
-          .join('　') + '。RDAP 只说明注册局有没有这条记录，不涉及商标。',
+          .map(r => `${label}.${r.tld}：${r.state === 'free' ? '没查到' : r.state === 'registered' ? '已注册' : '没查成'}`)
+          .join('　') + '。只查了域名有没有被注册，没查商标。',
       data: { label, results },
     }
   },

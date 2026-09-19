@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Tip } from './Tip.tsx'
 import type { Bootstrap, SessionSummary } from '../types.ts'
 
 function when(ts: number): string {
@@ -32,7 +31,6 @@ export function SessionRail({
           <span className="rail__glyph">ν</span>
           <span className="rail__name">Nomothete</span>
         </div>
-        <div className="rail__tag">立名者 · 工坊</div>
       </div>
 
       <button className="rail__new" onClick={onNew}>
@@ -64,45 +62,27 @@ export function SessionRail({
             </motion.button>
           ))}
         </AnimatePresence>
-        {sessions.length === 0 && (
-          <div style={{ padding: '18px 10px', fontSize: 12.5, color: 'var(--vellum-4)', lineHeight: 1.8 }}>
-            还没有会话。写一句项目描述就能开始 —— 第一批名字会横跨六个互不相干的语义场。
-          </div>
-        )}
       </div>
 
       <div className="rail__foot">
         {boot?.provider.configured ? (
-          <Tip
-            className="rail__stat"
-            content={
-              <>
-                <b>
-                  {boot.provider.model} @ {boot.provider.host}
-                </b>
-                <p>
-                  由 .env 里的 BASE_URL / API_KEY / MODEL 配置。密钥只存在于这个进程里，浏览器从不接触它，
-                  日志也不记录请求体和 Authorization 头。
-                </p>
-                <em>适配方式：{boot.provider.kind}</em>
-              </>
-            }
-          >
+          <div className="rail__stat" title={boot.provider.host}>
             <span>模型</span>
             <b>{boot.provider.model}</b>
-          </Tip>
+          </div>
         ) : (
           <div className="rail__stat rail__stat--warn">
             <span>模型</span>
             <b>{boot ? '未配置' : '…'}</b>
           </div>
         )}
-        <div className="rail__stat">
-          <span>数据流</span>
-          <b style={{ color: connected ? 'var(--verdigris)' : 'var(--vellum-4)' }}>
-            {connected ? '已连接' : activeId ? '重连中' : '待机'}
-          </b>
-        </div>
+        {/* Silence means it is working. The row only appears when it is not. */}
+        {activeId && !connected && (
+          <div className="rail__stat rail__stat--warn">
+            <span>连接</span>
+            <b>正在重连</b>
+          </div>
+        )}
       </div>
     </aside>
   )

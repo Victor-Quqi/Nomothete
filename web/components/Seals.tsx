@@ -4,13 +4,6 @@ import type { CheckResult } from '../types.ts'
 
 const ORDER = ['validity', 'availability', 'publishability', 'neighbourhood', 'dictionary', 'local-index', 'github', 'domain']
 
-const TIER_NOTE: Record<string, string> = {
-  local: '本地，0 请求',
-  free: '免费接口',
-  ratelimited: '限流接口 · 正面 Verdict 后才跑',
-  paid: '付费接口',
-}
-
 function byOrder(a: CheckResult, b: CheckResult): number {
   return ORDER.indexOf(a.checkId) - ORDER.indexOf(b.checkId)
 }
@@ -62,7 +55,6 @@ export function Seals({
                     {c.label} · {c.headline}
                   </b>
                   {c.detail && <p>{c.detail}</p>}
-                  <em>{TIER_NOTE[c.tier] ?? c.tier}</em>
                 </>
               }
             >
@@ -87,19 +79,19 @@ export function Seals({
               onClick={onOpen}
               content={
                 <>
-                  <b>{clear.length} 项检索未发现冲突</b>
+                  <b>{clear.length} 项检查没发现冲突</b>
                   {clear.map(c => (
                     <p key={c.checkId} className="tip__row">
                       <span>{c.label}</span>
                       {c.headline}
                     </p>
                   ))}
-                  <em>查无记录，不等于可用。</em>
+                  <em>没查到，不等于一定能用。</em>
                 </>
               }
             >
               <i />
-              <span>{clear.length} 项检索未发现冲突</span>
+              <span>{clear.length} 项检查没发现冲突</span>
             </Tip>
           </motion.span>
         )}

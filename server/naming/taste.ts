@@ -113,8 +113,8 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
         direction: pSyl < nSyl ? 'toward' : 'away',
         statement:
           pSyl < nSyl
-            ? `你点赞的名字平均 ${pSyl.toFixed(1)} 音节，点踩的平均 ${nSyl.toFixed(1)} 音节 —— 你在往更短的方向走。`
-            : `你点赞的名字平均 ${pSyl.toFixed(1)} 音节，比点踩的 ${nSyl.toFixed(1)} 更长 —— 你不怕长词。`,
+            ? `你在往更短的名字走：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`
+            : `你不怕长词：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`,
       })
     }
 
@@ -127,8 +127,8 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
         direction: ratio >= 0.6 ? 'toward' : 'away',
         statement:
           ratio >= 0.6
-            ? `你点赞的 ${posNames.length} 个名字里有 ${pReal} 个是现成的英语词，你偏好真词而不是生造词。`
-            : `你点赞的 ${posNames.length} 个名字里只有 ${pReal} 个是现成英语词，你偏好生造或冷僻的形。`,
+            ? `你更喜欢现成的英语词：${posNames.length} 个里有 ${pReal} 个是。`
+            : `你更喜欢生造或冷僻的词：${posNames.length} 个里只有 ${pReal} 个是现成英语词。`,
       })
     }
 
@@ -139,7 +139,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
         id: 'plosive',
         n: posNames.length,
         direction: 'toward',
-        statement: `你点赞的 ${posNames.length} 个名字里有 ${pPlos} 个以爆破音开头。这是对你点击的观察，不是一条 Prior —— 语料里没有验证过爆破音偏好是否适用于软件名。`,
+        statement: `你喜欢的 ${posNames.length} 个名字里有 ${pPlos} 个以爆破音开头（p t k b d g）。`,
       })
     }
 
@@ -148,7 +148,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: 'length',
       n: posNames.length,
       direction: 'toward',
-      statement: `你点赞的名字平均 ${pLen.toFixed(1)} 字符。作为对照，被夸的、被骂的、高星仓库三组名字的字符数中位数同为 7（Fisher p=0.31）—— 长度不是区分信号，这里只作描述。`,
+      statement: `你喜欢的名字平均 ${pLen.toFixed(1)} 个字符。`,
     })
   }
 
@@ -159,7 +159,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: `family-${topFam.id}`,
       n: topFam.n,
       direction: 'toward',
-      statement: `「${topFam.label}」这一族的候选你打过 ${topFam.n} 次档，净值为正。后面的批次会往这边多分配。`,
+      statement: `「${topFam.label}」这个方向你偏正面，后面会多出一些。`,
     })
   }
   if (botFam && botFam.n >= 2 && botFam.score < -0.4 && botFam.id !== topFam?.id) {
@@ -167,7 +167,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: `family-neg-${botFam.id}`,
       n: botFam.n,
       direction: 'away',
-      statement: `「${botFam.label}」这一族你打过 ${botFam.n} 次档，净值为负。它不会被封掉，只是权重下调 —— 换个角度它可能就对了。`,
+      statement: `「${botFam.label}」这个方向你偏负面，后面会少出一些，但不会完全不出。`,
     })
   }
 
@@ -202,10 +202,8 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
  * of framing, and the structured parts speak for themselves.
  */
 function composeStatement(x: { positives: Rated[]; negatives: Rated[] }): string {
-  if (x.positives.length === 0 && x.negatives.length === 0) {
-    return '还没有任何 Verdict。打过档，这里才会有内容。'
-  }
-  return `建立在 ${x.positives.length} 个正面、${x.negatives.length} 个负面 Verdict 上。来自你的点击，随时会被下一个推翻。`
+  if (x.positives.length === 0 && x.negatives.length === 0) return ''
+  return `来自你的 ${x.positives.length} 个喜欢、${x.negatives.length} 个不喜欢。`
 }
 
 /**

@@ -54,13 +54,12 @@ export const dictionaryCheck: Check = {
     }
     const rank = lookupWordRank(name)
     const syl = syllables(name)
-    const shape = `${name.length} 字符 · ${syl} 音节`
 
     if (rank === null) {
       return {
         checkId: 'dictionary', label: '常用词', tier: 'local', status: 'clear',
         headline: '不是常用英语词',
-        detail: `在 8000 词的常用英语词频表里查无记录 —— 这正是 Prior P1 想要的形状。${shape}。`,
+        detail: '搜这个名字的时候，不会被这个词本身的日常用法淹没。',
         data: { rank: null, length: name.length, syllables: syl },
       }
     }
@@ -68,10 +67,10 @@ export const dictionaryCheck: Check = {
     return {
       checkId: 'dictionary', label: '常用词', tier: 'local',
       status: 'caution',
-      headline: severe ? `英语常用词 #${rank}` : `英语词 #${rank}`,
+      headline: severe ? '是个很常用的英语词' : '是个普通英语词',
       detail: severe
-        ? `这是英语里第 ${rank} 常用的词。Prior P1（strong）：可搜索性抱怨在 HN 上合计 1075 条，高于 "terrible name" 的 924 条；标注集里 generic 档在被骂的名字中占 9/37、被夸的中占 0/47。用它，你就要一直和这个词的日常用法抢搜索结果。${shape}。`
-        : `出现在常用词频表第 ${rank} 位，属于普通但不高频的词。撞搜索的代价比 #${rank <= 2000 ? rank : '2000'} 以内的词小得多。${shape}。`,
+        ? '用它当名字，搜索结果会一直和这个词的日常用法混在一起，很难被找到。'
+        : '不算高频，但搜起来仍然会混进一些无关结果。',
       data: { rank, severe, length: name.length, syllables: syl },
     }
   },
@@ -84,7 +83,7 @@ export const dictionaryCheck: Check = {
  */
 export const localIndexCheck: Check = {
   id: 'local-index',
-  label: '本地索引',
+  label: '重名',
   tier: 'local',
   when: 'always',
   async run({ name }): Promise<CheckResult | null> {
@@ -101,11 +100,11 @@ export const localIndexCheck: Check = {
     }
     if (hits.length === 0) return null // nothing to say; stay out of the UI
     return {
-      checkId: 'local-index', label: '本地索引', tier: 'local', status: 'blocked',
-      headline: `归一化撞上 ${hits[0].actual}`,
+      checkId: 'local-index', label: '重名', tier: 'local', status: 'blocked',
+      headline: `会被当成 ${hits[0].actual}`,
       detail:
-        `本地索引里已有 ${hits.map(h => `${h.actual}（${h.registry}）`).join('、')}，` +
-        `归一化之后与这个名字相同。注册表比对的是归一化形式，所以精确查询返回 404 也不代表能注册成功。`,
+        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已经存在。` +
+        `注册表不区分中间的连字符、下划线和大小写，所以会认为这就是同一个名字，注册不上。`,
       data: { hits },
     }
   },

@@ -10,6 +10,7 @@ import { SessionRail } from './components/SessionRail.tsx'
 import { TastePanel } from './components/TastePanel.tsx'
 import { Toasts } from './components/Toasts.tsx'
 import { Workspace, type DrawerKind } from './components/Workspace.tsx'
+import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from './rarity.ts'
 import { useAtelier } from './store.ts'
 
 interface DrawerState {
@@ -18,35 +19,21 @@ interface DrawerState {
 }
 
 const KEYS: [string, string][] = [
-  ['j / k　↑ / ↓', '在候选之间移动'],
-  ['1 2 3 4 5', '打档：▼▼ ▼ · ▲ ▲▲，打完自动跳下一个'],
-  ['u', '撤回上一次打的档'],
-  ['⇧J', '跳到下一个还没打档的'],
+  ['j / k　↑ / ↓', '上一个 / 下一个'],
+  ['1 2 3 4 5', '从 ▼▼ 到 ▲▲ 评价，评完自动到下一个'],
+  ['u', '撤销上一次评价'],
+  ['⇧J', '跳到下一个还没评价的'],
   ['↵', '打开详情'],
   ['n', '写备注'],
-  ['s', '念一遍这个名字'],
+  ['s', '读出这个名字'],
   ['c', '复制名字'],
   ['g', '再来一批'],
   ['e', '导出 Markdown'],
-  ['/', '筛选'],
-  ['t', '品味档案'],
-  ['p', '内置倾向'],
+  ['/', '搜索'],
+  ['t', '你的口味'],
+  ['p', '取名规则'],
   ['⌘K / Ctrl+K', '命令面板'],
-  ['Esc', '取消焦点 / 关掉面板'],
-]
-
-/**
- * The four words the interface uses without explaining them.
- *
- * They used to be explained inline, on every plate, forever. Once is enough —
- * and once is here, behind `?`, where someone who wants the definition will
- * look and everyone else never has to read it again.
- */
-const GLOSSARY: [string, string][] = [
-  ['自报概率', '模型自估：换个助手拿到同一份简介，多大可能也想出同一个名字。是自评，不是测量。'],
-  ['查无记录', '接口这一刻没返回冲突。它比「可用」弱得多 —— 没查到不等于没有。'],
-  ['归一化撞名', 'npm 去掉所有非字母数字、PyPI 还会把 o l i 折成 0 1 1 再比。看着不一样的两个名字会撞在一起。'],
-  ['路数', '一批只用一条构词思路，作为正向约束写进 prompt。约束越窄，出来的东西越不像大路货。'],
+  ['Esc', '取消选中 / 关掉面板'],
 ]
 
 export function App() {
@@ -90,10 +77,10 @@ export function App() {
     if (a.sessionId) {
       list.push(
         { id: 'gen', group: '生成', label: '再来一批', hint: 'G', run: () => a.generate() },
-        { id: 'gen8', group: '生成', label: '来一大批（8 条路数同时跑）', run: () => a.generate({ width: 8 }) },
-        { id: 'stop', group: '生成', label: '停下当前这一代', run: () => a.cancel() },
-        { id: 'taste', group: '查看', label: '品味档案', hint: 'T', run: () => openDrawer('taste') },
-        { id: 'priors', group: '查看', label: '内置倾向与证据', hint: 'P', run: () => openDrawer('priors') },
+        { id: 'gen8', group: '生成', label: '来一大批', run: () => a.generate({ width: 8 }) },
+        { id: 'stop', group: '生成', label: '停下', run: () => a.cancel() },
+        { id: 'taste', group: '查看', label: '你的口味', hint: 'T', run: () => openDrawer('taste') },
+        { id: 'priors', group: '查看', label: '取名规则', hint: 'P', run: () => openDrawer('priors') },
         { id: 'brief', group: '查看', label: '项目简介', run: () => openDrawer('brief') },
         { id: 'keys', group: '查看', label: '快捷键', hint: '?', run: () => openDrawer('keys') },
         {
@@ -120,7 +107,7 @@ export function App() {
       for (const s of a.boot?.strategies ?? []) {
         list.push({
           id: `s-${s.id}`,
-          group: '路数',
+          group: '换个思路',
           label: `只用「${s.label}」跑一批`,
           hint: s.brief,
           run: () => a.generate({ strategyIds: [s.id] }),
@@ -155,11 +142,12 @@ export function App() {
     return (
       <div className="opening">
         <div className="opening__inner">
-          <h1 className="opening__title">连不上工坊</h1>
-          <p className="opening__epigraph">
+          <h1 className="opening__title">连不上服务</h1>
+          <div className="warnbox">
             {a.bootError}
-            <cite>确认 `npm run dev` 或 `npm start` 在跑，默认端口 5179。</cite>
-          </p>
+            <br />
+            确认 <code>npm run dev</code> 或 <code>npm start</code> 还在跑，默认端口 5179。
+          </div>
         </div>
       </div>
     )
@@ -213,9 +201,9 @@ export function App() {
           drawer?.kind === 'detail'
             ? '候选'
             : drawer?.kind === 'taste'
-              ? 'Taste Profile'
+              ? '你的口味'
               : drawer?.kind === 'priors'
-                ? '内置倾向'
+                ? '取名规则'
                 : drawer?.kind === 'brief'
                   ? '项目简介'
                   : '快捷键'
@@ -226,7 +214,6 @@ export function App() {
             candidate={detail}
             strategy={a.strategyById.get(detail.strategyId)}
             family={a.familyById.get(a.strategyById.get(detail.strategyId)?.family ?? '')}
-            threshold={a.session.threshold}
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}
             onRecheck={() => a.recheck(detail.id)}
@@ -239,19 +226,21 @@ export function App() {
 
         {drawer?.kind === 'priors' && a.boot && a.session && (
           <>
-            <p className="drawer__lead">软性倾向，不是规则。你的 Verdict 一推翻，它就不算数。</p>
+            <p className="drawer__lead">关掉哪条，下一批就不再遵守它。</p>
             <PriorDossier priors={a.boot.priors} enabled={a.session.priors} onChange={a.setPriors} />
-            <div className="section-h">阈值</div>
-            <p className="check__detail" style={{ marginBottom: 10 }}>
-              自报概率高于 {(a.session.threshold * 100).toFixed(0)}% 的到达即丢。调低会更奇，也更容易一整批丢光。
-            </p>
+            <div className="section-h">
+              名字的罕见程度
+              <span>
+                {rarityWord(rarityPercent(a.session.threshold))} · {rarityPercent(a.session.threshold)}%
+              </span>
+            </div>
             <input
               type="range"
-              min={0.15}
-              max={0.9}
-              step={0.05}
-              value={a.session.threshold}
-              onChange={e => a.setThreshold(Number(e.target.value))}
+              min={RARITY_MIN}
+              max={RARITY_MAX}
+              step={5}
+              value={rarityPercent(a.session.threshold)}
+              onChange={e => a.setThreshold(thresholdForRarity(Number(e.target.value)))}
               style={{ width: '100%', accentColor: 'var(--brass)' }}
             />
           </>
@@ -264,7 +253,7 @@ export function App() {
             </p>
             {a.session.seeds.length > 0 && (
               <>
-                <div className="section-h">你自己给的种子</div>
+                <div className="section-h">你填的名字</div>
                 {a.session.seeds.map(s => (
                   <div className="trait" key={s.text}>
                     <span className="trait__arrow" data-dir={s.verdict > 0 ? 'toward' : 'away'}>
@@ -275,46 +264,16 @@ export function App() {
                 ))}
               </>
             )}
-            <div className="section-h">这个会话</div>
-            <div className="detail__forms">
-              <div className="detail__form">
-                <b>已跑代数</b>
-                <code>{a.session.generation}</code>
-              </div>
-              <div className="detail__form">
-                <b>候选</b>
-                <code>{a.candidates.length}</code>
-              </div>
-              <div className="detail__form">
-                <b>阈值</b>
-                <code>{(a.session.threshold * 100).toFixed(0)}%</code>
-              </div>
-              <div className="detail__form">
-                <b>数据库</b>
-                <code style={{ fontSize: 11 }}>{a.boot?.dbPath}</code>
-              </div>
-            </div>
           </>
         )}
 
-        {drawer?.kind === 'keys' && (
-          <>
-            <p className="drawer__lead">打完档焦点自己往下走，一路按下去就行。</p>
-            {KEYS.map(([k, v]) => (
-              <div className="detail__form" key={k} style={{ background: 'transparent', padding: '9px 0' }}>
-                <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 12 }}>{k}</b>
-                <span style={{ fontSize: 13, color: 'var(--vellum-2)' }}>{v}</span>
-              </div>
-            ))}
-            <div className="section-h">这些词是什么意思</div>
-            {GLOSSARY.map(([term, meaning]) => (
-              <div className="gloss" key={term}>
-                <b>{term}</b>
-                <span>{meaning}</span>
-              </div>
-            ))}
-          </>
-        )}
+        {drawer?.kind === 'keys' &&
+          KEYS.map(([k, v]) => (
+            <div className="detail__form" key={k} style={{ background: 'transparent', padding: '9px 0' }}>
+              <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 13 }}>{k}</b>
+              <span style={{ fontSize: 13, color: 'var(--vellum-2)' }}>{v}</span>
+            </div>
+          ))}
       </Drawer>
 
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
