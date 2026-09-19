@@ -27,6 +27,7 @@ import {
 import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
+import { nameSession } from './naming/title.ts'
 import { buildProfile, profileForPrompt } from './naming/taste.ts'
 import {
   createSession,
@@ -102,6 +103,9 @@ api.post('/sessions', (req, res) => {
     return
   }
   const session = createSession({ brief: brief.trim(), title, seeds, priors, threshold })
+  // Runs alongside the first batch and arrives over the event stream. Nobody
+  // waits on a label.
+  if (!session.title) void nameSession(session.id)
   let started: { generation: number; strategies: string[] } | null = null
   if (autostart) {
     try {
@@ -146,6 +150,9 @@ api.get('/sessions/:id', (req, res) => {
     res.status(404).json({ error: '会话不存在' })
     return
   }
+  // Sessions made before there was a label, and sessions whose label was asked
+  // for while the model was unreachable. Once per process, then it stops.
+  if (!payload.session.title) void nameSession(payload.session.id)
   res.json(payload)
 })
 
@@ -277,10 +284,10 @@ api.get('/sessions/:id/export', (req, res) => {
   }
   const tierName = (v: number) => ['▼▼', '▼', '·', '▲', '▲▲'][v + 2]
   const lines: string[] = [
-    `# ${session.title}`,
+    `# ${session.title || session.brief}`,
     '',
-    session.brief,
-    '',
+    // An unnamed session's heading is already the brief; do not print it twice.
+    ...(session.title ? [session.brief, ''] : []),
     `共 ${candidates.length} 个候选，${candidates.filter(c => c.verdict > 0).length} 个心动。`,
     '',
   ]

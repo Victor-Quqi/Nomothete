@@ -186,4 +186,5 @@ export type ServerEvent =
   | { type: 'check'; candidateId: string; result: CheckResult }
   | { type: 'verdict'; candidateId: string; verdict: number }
   | { type: 'generation:done'; generation: number }
+  | { type: 'session:title'; title: string }
   | { type: 'notice'; level: 'info' | 'error'; message: string }

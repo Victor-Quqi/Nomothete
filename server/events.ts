@@ -22,6 +22,8 @@ export type ServerEvent =
   | { type: 'check'; candidateId: string; result: CheckResult }
   | { type: 'verdict'; candidateId: string; verdict: number }
   | { type: 'generation:done'; generation: number }
+  /** The rail's label for this session, written after the session was. */
+  | { type: 'session:title'; title: string }
   | { type: 'notice'; level: 'info' | 'error'; message: string }
 
 export interface Envelope {

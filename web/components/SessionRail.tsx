@@ -55,7 +55,7 @@ export function SessionRail({
               className={`rail__item${s.id === activeId ? ' rail__item--on' : ''}`}
               onClick={() => onOpen(s.id)}
             >
-              <div className="rail__item-title">{s.title}</div>
+              <div className="rail__item-title">{s.title || s.brief}</div>
               <div className="rail__item-meta">
                 <span>{s.candidateCount} 个候选</span>
                 {s.lovedCount > 0 && <b>▲{s.lovedCount}</b>}

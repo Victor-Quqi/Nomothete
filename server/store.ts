@@ -83,7 +83,9 @@ export function createSession(input: {
     )
     .run(
       id,
-      input.title?.trim() || deriveTitle(input.brief),
+      // Empty unless someone named it. A title cut from the brief's own opening
+      // is not a title — it is the same sentence again, one line up.
+      input.title?.trim() ?? '',
       input.brief,
       JSON.stringify(input.seeds ?? []),
       JSON.stringify(input.priors ?? DEFAULT_PRIOR_IDS),
@@ -92,17 +94,6 @@ export function createSession(input: {
       t,
     )
   return getSession(id)!
-}
-
-function deriveTitle(brief: string): string {
-  // The title sits directly above the brief in the UI. If it is merely the
-  // brief's opening again the two lines read as a stutter, so cut at the first
-  // clause — usually the noun phrase that says what the thing is.
-  const flat = brief.trim().replace(/\s+/g, ' ')
-  const clause = flat.split(/[\n。.!?？！，,;；:：]/).find(s => s.trim().length > 0) ?? flat
-  const t = clause.trim()
-  if (!t) return '未命名会话'
-  return t.length > 20 ? t.slice(0, 20) + '…' : t
 }
 
 export function getSession(id: string): Session | null {
@@ -140,6 +131,15 @@ export function updateSession(id: string, patch: Partial<Pick<Session, 'title' |
       id,
     )
   return getSession(id)
+}
+
+/**
+ * The model's label for a session. Deliberately not `updateSession`: that
+ * stamps updatedAt, and a session being labelled is not the user touching it —
+ * the rail would reorder itself under the pointer for nothing.
+ */
+export function setSessionTitle(id: string, title: string) {
+  getDb().prepare('UPDATE sessions SET title = ? WHERE id = ?').run(title, id)
 }
 
 export function deleteSession(id: string) {

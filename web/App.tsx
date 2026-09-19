@@ -132,7 +132,7 @@ export function App() {
       list.push({
         id: `open-${s.id}`,
         group: '打开',
-        label: s.title,
+        label: s.title || s.brief,
         hint: `${s.candidateCount} 个候选`,
         run: () => a.open(s.id),
       })

@@ -91,6 +91,14 @@ CREATE TABLE IF NOT EXISTS http_cache (
   body      TEXT NOT NULL,
   fetchedAt INTEGER NOT NULL
 );
+
+-- Sessions used to be handed a title cut from the first 20 characters of their
+-- own brief, which is not a title but the same sentence again, one line up and
+-- often mid-word. Clear those: an unnamed session shows its brief, once.
+UPDATE sessions SET title = ''
+ WHERE title <> ''
+   AND (title = brief OR (title LIKE '%…' AND instr(brief, rtrim(title, '…')) = 1));
+
 `
 
 export function getDb(): DatabaseSync {

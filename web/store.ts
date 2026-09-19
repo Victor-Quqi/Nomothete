@@ -236,6 +236,14 @@ export function useAtelier() {
           scheduleProfile(sessionId)
           break
 
+        // Written after the session was created, so it arrives here rather
+        // than in the payload. Both the topbar and the rail are showing the
+        // brief until it does.
+        case 'session:title':
+          setSession(s => (s ? { ...s, title: event.title } : s))
+          setSessions(ss => ss.map(s => (s.id === sessionId ? { ...s, title: event.title } : s)))
+          break
+
         case 'notice':
           toast(event.message, event.level === 'error' ? 'error' : 'plain')
           break
