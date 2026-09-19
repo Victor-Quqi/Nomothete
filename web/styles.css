@@ -3,7 +3,10 @@
  *
  * The room this app is supposed to feel like: a dark workshop, a plate of type
  * under a lamp, brass instruments, a proof pulled and pinned to the wall. Ink
- * ground, vellum text, one brass accent that only ever means "you liked this".
+ * ground, vellum text, one brass accent and nothing else coloured: the lamp
+ * under the button you are meant to press, the bar beside the session you are
+ * in, the edge round the thing the Tab key is holding, the mark on a name you
+ * liked. Everything else is ink, vellum, and hairlines.
  */
 
 /* ── tokens ──────────────────────────────────────────────────────────────── */
@@ -21,8 +24,8 @@
 
   --hair: rgba(239, 231, 216, 0.09);
   --hair-2: rgba(239, 231, 216, 0.16);
-  --ring: rgba(239, 231, 216, 0.5);
-  --ring-glow: rgba(239, 231, 216, 0.12);
+  --ring: rgba(217, 164, 65, 0.6);
+  --ring-glow: rgba(217, 164, 65, 0.12);
 
   --brass: #d9a441;
   --brass-soft: #a97f36;
@@ -87,10 +90,13 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
    for the plate that holds focus. A shadow rather than an outline, because an
    outline floats at a distance, and a ring hanging outside a control that has a
    border of its own reads as a sticker stuck on top rather than a state.
-   Vellum, not brass. Brass is the verdict colour; a brass edge on a brass
-   toggle says nothing, and on everything else it says the wrong thing. Leaving
-   each control's own border alone also leaves what that border means — a seal's
-   colour, a session's brass — legible while it holds focus.
+   Brass, because this is a warm room and a vellum edge at the weight focus has
+   to carry goes cold and grey against the ink — the loudest thing on a screen,
+   saying nothing about it. The brass places already carry one shape each: the
+   lamp under the primary button, the left bar on the open session. A hairline
+   round the edge is a third, and it is the only one that moves with the Tab key.
+   Leaving each control's own border alone also leaves what that border means —
+   a seal's colour, a session's brass — legible while it holds focus.
    The radius is a floor for elements with square corners; every component that
    sets its own does so later in this file and wins, which is why a .toggle
    still lights as a pill. */
@@ -417,10 +423,13 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   transform: translateY(-1.5px);
 }
 /* Restated so focus composes with the lamp under the button rather than
-   replacing it. */
+   replacing it — and with a ring of ink between button and hairline, since the
+   button is itself brass and the two would otherwise merge into one wider
+   button. The slider thumb gets the same gap for the same reason, from the
+   2px ink border it already wears. */
 .btn--primary:focus-visible {
-  box-shadow: 0 0 0 1px var(--ring), 0 0 0 4px var(--ring-glow),
-    0 10px 30px -14px rgba(217, 164, 65, 0.85);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--ring),
+    0 0 0 6px var(--ring-glow), 0 10px 30px -14px rgba(217, 164, 65, 0.85);
 }
 .btn--ghost { border-color: transparent; color: var(--vellum-3); padding: 10px 14px; }
 .btn--ghost:hover { color: var(--vellum); background: rgba(239, 231, 216, 0.05); }
