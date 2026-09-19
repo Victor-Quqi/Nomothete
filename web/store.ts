@@ -168,6 +168,12 @@ export function useAtelier() {
         case 'generation:start':
           setRunning(true)
           setDiscards([])
+          // The batches about to arrive belong to a generation the session
+          // object loaded over REST has never heard of. Anything that shows
+          // work in progress filters batches down to the current generation,
+          // so without this the second batch onwards runs with nothing on
+          // screen to say so.
+          setSession(s => (s ? { ...s, generation: event.generation } : s))
           break
 
         case 'batch:start':
