@@ -49,18 +49,10 @@ SQLite 单文件，和配置、本地索引一样默认写在当前工作目录�
 
 ### 检查流程
 
-每个候选生成出来就过一遍检查。每个检查项实现同一个接口，自带成本等级和触发时机。
+每个候选生成出来就过一遍检查。每个检查项实现同一个接口，自带成本等级和触发时机：
+本地 0ms 与免费网络的对每个候选都跑，限速的等到点赞之后。商标检索是付费档，留到 v2。
 
-| 检查项 | 成本 | 何时跑 |
-|---|---|---|
-| 本地索引，npm / PyPI / crates 归一化撞名 | 本地，0ms | 每个候选 |
-| 本地词典，是否常见英语词，用于 Searchability | 本地，0ms | 每个候选 |
-| 注册表 API 精确确认 | 免费网络 | 每个候选 |
-| GitHub / crates.io | 限速 | 点赞后 |
-| RDAP 域名 | 限速 | 点赞后 |
-| 商标 | 付费 | v2 |
-
-加一个新检查项就是往数组里塞一个函数，主流程不动。
+加一个新检查项就是往数组里塞一个函数，主流程不动。已落地的清单见 README。
 
 本地全量索引是这个项目最难被别人复制的部分。注册表 404 不等于能注册；PyPI 的 `ultranormalize` 目前没有现成工具复现。同一份索引支撑 Publishability 和 Searchability。常见英语真词是搜索灾难，证据是 Go 搜不到，社区被迫发明了 golang 这个词。
 
@@ -84,7 +76,8 @@ SQLite 单文件，和配置、本地索引一样默认写在当前工作目录�
 
 候选用 `streamObject({output: 'array'})` 消费 `elementStream`，元素为上文的 `{name, probability, rationale}`。数量写在 prompt 里，流结束后校验条数。
 
-key 走环境变量。浏览器拿不到 key。日志不打请求体和 Authorization 头。
+key 走环境变量。日志不打请求体和 Authorization 头。浏览器可以写 key，永远读不回 key ——
+单向流是设置面板能存在的前提，细则见 [`configuration.md`](./configuration.md)。
 
 选型依据与源码出处见 [`docs/research/provider-adapters.md`](./research/provider-adapters.md)。
 

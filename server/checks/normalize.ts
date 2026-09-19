@@ -86,7 +86,7 @@ export function validateForRegistry(
  * inserted at morpheme boundaries, and — on PyPI — the confusable glyphs.
  *
  * This is what a full local index would answer in 0 ms. Probing the enumeration
- * over the network is the bounded stand-in; see docs in README.
+ * over the network is the bounded stand-in; see docs/architecture.md.
  */
 export function collisionCandidates(registry: RegistryId, name: string, limit = 64): string[] {
   const out = new Set<string>()
