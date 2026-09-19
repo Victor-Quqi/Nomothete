@@ -11,14 +11,12 @@ export default defineConfig({
         // server's module graph exists.
         target: `http://localhost:${process.env.NOMOTHETE_PORT ?? process.env.PORT ?? 5179}`,
         changeOrigin: true,
-        // Server-sent events must not be buffered on the way through.
-        configure: proxy => {
-          proxy.on('proxyRes', (proxyRes, _req, res) => {
-            if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
-              res.flushHeaders?.()
-            }
-          })
-        },
+        // No proxyRes hook here. http-proxy emits that event before it copies
+        // the upstream headers across, so touching the response there commits
+        // Vite's default text/plain and the copy is skipped — which the browser
+        // meets as "EventSource's response has a MIME type (text/plain) that is
+        // not text/event-stream", and nothing on the canvas ever moves. The
+        // stream is piped through unbuffered without any help.
       },
     },
   },
