@@ -39,7 +39,6 @@ export function Seals({
         {findings.map(c => (
           <motion.span
             key={c.checkId}
-            layout
             initial={{ opacity: 0, scale: 0.86, filter: 'blur(3px)' }}
             animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -67,7 +66,6 @@ export function Seals({
         {clear.length > 0 && (
           <motion.span
             key="clear"
-            layout
             initial={{ opacity: 0, scale: 0.86, filter: 'blur(3px)' }}
             animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -99,7 +97,6 @@ export function Seals({
         {pending && (
           <motion.span
             key="pending"
-            layout
             className="seal seal--pending"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

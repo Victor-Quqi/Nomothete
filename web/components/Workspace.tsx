@@ -51,7 +51,18 @@ export function Workspace({
   const plateAction = (action: PlateAction) =>
     window.dispatchEvent(new CustomEvent<PlateAction>('plate:action', { detail: action }))
 
-  const { candidates, session, batches, running } = a
+  const { candidates, session, batches, running, generate } = a
+
+  const focusPlate = useCallback((id: string) => {
+    setKbd(false)
+    setFocusId(id)
+  }, [setFocusId])
+
+  const openPlate = useCallback((id: string) => openDrawer('detail', id), [openDrawer])
+
+  const generateMore = useCallback((strategyId: string) => {
+    if (!running) generate({ strategyIds: [strategyId] })
+  }, [running, generate])
 
   const laneCounts = useMemo(() => {
     const m = new Map<Lane, number>()
@@ -332,17 +343,12 @@ export function Workspace({
                 strategy={a.strategyById.get(c.strategyId)}
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
                 focused={focusId === c.id}
-                autoScroll={kbd}
-                onFocus={() => {
-                  setKbd(false)
-                  setFocusId(c.id)
-                }}
-                onVerdict={v => a.setVerdict(c.id, v)}
-                onNote={note => a.setNote(c.id, note)}
-                onOpen={() => openDrawer('detail', c.id)}
-                onMore={() => {
-                  if (!running) a.generate({ strategyIds: [c.strategyId] })
-                }}
+                autoScroll={kbd && focusId === c.id}
+                onFocus={focusPlate}
+                onVerdict={a.setVerdict}
+                onNote={a.setNote}
+                onOpen={openPlate}
+                onMore={generateMore}
               />
             ))}
           </AnimatePresence>

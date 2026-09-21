@@ -32,12 +32,12 @@ interface Props {
   focused: boolean
   /** Only keyboard navigation drags the viewport around; hover never does. */
   autoScroll: boolean
-  onFocus: () => void
-  onVerdict: (v: Verdict) => void
-  onNote: (note: string) => void
-  onOpen: () => void
+  onFocus: (id: string) => void
+  onVerdict: (id: string, v: Verdict) => void
+  onNote: (id: string, note: string) => void
+  onOpen: (id: string) => void
   /** Run another batch down this same strategy. */
-  onMore: () => void
+  onMore: (strategyId: string) => void
 }
 
 function PlateInner({
@@ -62,6 +62,7 @@ function PlateInner({
   const seenAt = useRef(0)
   const offered = useRef(false)
   const el = useRef<HTMLDivElement>(null)
+  const open = () => onOpen(candidate.id)
 
   // A top Verdict is worth a small piece of theatre: the plate gets gilded.
   useEffect(() => {
@@ -153,15 +154,14 @@ function PlateInner({
   return (
     <motion.div
       ref={el}
-      layout="position"
       className={`plate${VERDICT_CLASS[candidate.verdict] ?? ''}${focused ? ' plate--focus' : ''}`}
       style={{ ['--fam-hue' as string]: family?.hue ?? 38 }}
       initial={{ opacity: 0, y: 18, filter: 'blur(6px)', scale: 0.985 }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }}
       exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.18 } }}
       transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.8 }}
-      onMouseEnter={onFocus}
-      onDoubleClick={onOpen}
+      onMouseEnter={() => onFocus(candidate.id)}
+      onDoubleClick={open}
     >
       <AnimatePresence>
         {sweep > 0 && (
@@ -194,7 +194,7 @@ function PlateInner({
         {strategy && (
           <Tip
             className="plate__strategy"
-            onClick={onMore}
+            onClick={() => onMore(candidate.strategyId)}
             content={
               <>
                 <b>{strategy.label}</b>
@@ -227,11 +227,11 @@ function PlateInner({
 
       <p className="plate__rationale">{candidate.rationale}</p>
 
-      <Seals checks={checks} pending={pending} onOpen={onOpen} />
+      <Seals checks={checks} pending={pending} onOpen={open} />
 
       <div className="plate__foot">
-        <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
-        <button className="btn btn--ghost btn--sm" onClick={onOpen}>
+        <VerdictDial verdict={candidate.verdict} onChange={v => onVerdict(candidate.id, v)} />
+        <button className="btn btn--ghost btn--sm" onClick={open}>
           详情
         </button>
         <button
@@ -256,7 +256,7 @@ function PlateInner({
             <button
               className="btn btn--ghost btn--sm"
               onClick={() => {
-                onVerdict(0)
+                onVerdict(candidate.id, 0)
                 setSecondLook(false)
               }}
             >
@@ -282,7 +282,7 @@ function PlateInner({
               placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
               onChange={e => setDraft(e.target.value)}
               onBlur={() => {
-                if (draft !== (candidate.note ?? '')) onNote(draft)
+                if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)
               }}
               onKeyDown={e => {
                 if (e.key === 'Escape') {
@@ -290,7 +290,7 @@ function PlateInner({
                   setNoteOpen(false)
                 }
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  onNote(draft)
+                  onNote(candidate.id, draft)
                   setNoteOpen(false)
                 }
               }}
