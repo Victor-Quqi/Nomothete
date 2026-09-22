@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { SessionIcon } from './SessionMenu.tsx'
 
 export interface SessionAction {
   kind: 'rename' | 'delete'
@@ -89,14 +88,13 @@ export function SessionDialog({ action, onClose, onSubmit }: {
     >
       <form onSubmit={e => { e.preventDefault(); void submit() }} aria-busy={busy}>
         <div className="session-dialog__head">
-          <span className={`session-dialog__icon${rename ? '' : ' session-dialog__icon--danger'}`}><SessionIcon kind={action.kind} /></span>
           <h2 id={labelId}>{rename ? '重命名会话' : '删除会话'}</h2>
           <button type="button" className="session-dialog__close" onClick={close} disabled={busy} aria-label="关闭">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
           </button>
         </div>
         {rename ? (
-          <div className="field__box session-dialog__field">
+          <div className="session-dialog__field">
             <input ref={input} autoFocus aria-label="会话名" value={title} disabled={busy} onChange={e => { setTitle(e.target.value); setError('') }} autoComplete="off" />
           </div>
         ) : (
@@ -107,8 +105,8 @@ export function SessionDialog({ action, onClose, onSubmit }: {
         )}
         {error && <p className="session-dialog__error" role="alert">{error}</p>}
         <div className="session-dialog__actions">
-          <button ref={cancel} type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={close}>取消</button>
-          <button type="submit" className={`btn btn--sm ${rename ? 'btn--primary' : 'session-dialog__delete'}`} disabled={busy || (rename && !title.trim())}>
+          <button ref={cancel} type="button" className="session-dialog__button" disabled={busy} onClick={close}>取消</button>
+          <button type="submit" className={`session-dialog__button ${rename ? 'session-dialog__save' : 'session-dialog__delete'}`} disabled={busy || (rename && !title.trim())}>
             {busy ? (rename ? '保存中…' : '删除中…') : (rename ? '保存' : '删除')}
           </button>
         </div>

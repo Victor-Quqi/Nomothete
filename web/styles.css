@@ -338,31 +338,50 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 .session-menu[data-input='pointer'] .session-menu__delete:hover,
 .session-menu[data-input='keyboard'] .session-menu__delete:focus { background: rgba(196, 87, 62, 0.12); color: var(--rust); }
 .session-dialog {
-  width: min(400px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
-  padding: 24px;
+  padding: 20px;
   margin: auto;
   border: 1px solid var(--hair-2);
-  border-radius: var(--r-lg);
-  background: linear-gradient(160deg, var(--surface-2), var(--ink-raise));
+  border-radius: var(--r-md);
+  background: var(--surface);
   color: var(--vellum);
-  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
-.session-dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); }
-.session-dialog__head { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-.session-dialog__head h2 { margin: 0; font-size: 16px; font-weight: 500; }
-.session-dialog__icon { display: flex; color: var(--brass); }
-.session-dialog__icon--danger { color: var(--rust); }
-.session-dialog__close { margin-left: auto; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); color: var(--vellum-3); }
+.session-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+.session-dialog__head { display: flex; align-items: center; margin-bottom: 16px; }
+.session-dialog__head h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.session-dialog__close { margin: -4px -4px -4px auto; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); color: var(--vellum-3); }
 .session-dialog__close:hover { background: var(--hair); color: var(--vellum); }
-.session-dialog__field { border-radius: var(--r-md); }
-.session-dialog__field input { padding: 12px 14px; font-size: 14px; }
+.session-dialog__field input {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-sm);
+  background: var(--ink-raise);
+  font-size: 13px;
+  line-height: 20px;
+}
+.session-dialog__field input:focus { border-color: var(--brass-soft); box-shadow: none; }
 .session-dialog__description { font-size: 13px; color: var(--vellum-3); }
 .session-dialog__description p { margin: 0 0 10px; }
 .session-dialog__name { color: var(--vellum-2); overflow-wrap: anywhere; }
-.session-dialog__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.session-dialog .session-dialog__delete { background: rgba(196, 87, 62, 0.14); border: 1px solid rgba(196, 87, 62, 0.4); color: var(--rust); }
-.session-dialog .session-dialog__delete:hover { background: rgba(196, 87, 62, 0.24); }
+.session-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.session-dialog__button {
+  min-width: 56px;
+  padding: 5px 12px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-sm);
+  color: var(--vellum-2);
+  font-size: 12px;
+  line-height: 20px;
+}
+.session-dialog__button:hover { background: var(--surface-2); }
+.session-dialog__save { background: var(--vellum-2); border-color: var(--vellum-2); color: var(--ink); }
+.session-dialog__save:hover { background: var(--vellum); border-color: var(--vellum); }
+.session-dialog__delete { border-color: rgba(196, 87, 62, 0.4); color: var(--rust); }
+.session-dialog__delete:hover { background: rgba(196, 87, 62, 0.12); }
 .session-dialog__error { color: var(--rust); font-size: 13px; margin: 12px 0 0; }
 .session-dialog button:disabled { opacity: 0.4; cursor: default; }
 
