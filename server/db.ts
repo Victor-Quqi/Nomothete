@@ -108,6 +108,9 @@ DELETE FROM checks
 -- answers, so half the npm searches stayed unasked until tomorrow. They are not
 -- stored any more; drop the ones already in here.
 DELETE FROM http_cache WHERE status >= 400 AND status <> 404;
+
+-- Remove stored results for the retired word-frequency check.
+DELETE FROM checks WHERE checkId = 'dictionary';
 `
 
 export function getDb(): DatabaseSync {

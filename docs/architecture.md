@@ -23,7 +23,7 @@ server/
   checks/
     index.ts           CHECKS 清单与调度
     normalize.ts       三家注册表的归一化规则与 collisionCandidates()
-    local.ts           0 ms 档：合法性 / 常用词 / 本地索引
+    local.ts           0 ms 档：合法性 / 本地索引
     registry.ts        Availability 与 Publishability
     reach.ts           同名邻域 / GitHub / 域名
 web/

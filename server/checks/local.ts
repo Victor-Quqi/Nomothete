@@ -1,74 +1,9 @@
 /**
  * The 0 ms tier: everything answerable without leaving the machine.
  */
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { getDb } from '../db.ts'
-import { NORMALIZERS, REGISTRIES, registryForm, syllables, validateForRegistry } from './normalize.ts'
+import { NORMALIZERS, REGISTRIES, registryForm, validateForRegistry } from './normalize.ts'
 import type { Check } from './types.ts'
-
-const here = path.dirname(fileURLToPath(import.meta.url))
-const WORDS_PATH = path.resolve(here, '../../data/common-english.txt')
-
-/** word → frequency rank (1 = most common word in the corpus). */
-let ranks: Map<string, number> | null = null
-
-function wordRanks(): Map<string, number> {
-  if (!ranks) {
-    ranks = new Map()
-    try {
-      const lines = fs.readFileSync(WORDS_PATH, 'utf8').split('\n')
-      lines.forEach((w, i) => {
-        const t = w.trim()
-        if (t) ranks!.set(t, i + 1)
-      })
-    } catch {
-      // Ship without it rather than fail to start; the check reports as much.
-    }
-  }
-  return ranks
-}
-
-export function lookupWordRank(name: string): number | null {
-  const r = wordRanks().get(name.toLowerCase().replace(/[^a-z]/g, ''))
-  return r ?? null
-}
-
-/**
- * Prior P1, the one prior with three independent evidence lines behind it. This
- * check reports; it never rejects. A rare real word (scoria, apricity) does not
- * trip it — only frequency of everyday use does.
- */
-export const dictionaryCheck: Check = {
-  id: 'dictionary',
-  label: '常用词',
-  tier: 'local',
-  when: 'always',
-
-  async run({ name }) {
-    const total = wordRanks().size
-    if (total === 0) return { missing: true }
-    return { rank: lookupWordRank(name), total, length: name.length, syllables: syllables(name) }
-  },
-
-  // Say where the line is, and stop. "常用词" on its own invites the reader to
-  // wonder what counts; the answer is a place in a frequency list. Everything
-  // after that — that a common word is hard to search for — the headline
-  // already said.
-  describe(data) {
-    const { missing, rank, total } = data as { missing?: boolean; rank: number | null; total: number }
-    if (missing) return { status: 'error', headline: '词表未载入', detail: '找不到 data/common-english.txt。' }
-    if (rank === null) {
-      return { status: 'clear', headline: '不是常用英语词', detail: `不在最常用的 ${total} 个英语词里。` }
-    }
-    return {
-      status: 'caution',
-      headline: rank <= 2000 ? '高频英语词' : '常见英语词',
-      detail: `英语词频第 ${rank} 名（共 ${total}）。`,
-    }
-  },
-}
 
 /**
  * The local index. It starts empty and is fed by every registry answer the app

@@ -6,14 +6,13 @@
  * whatever badges come back.
  */
 import { getDb, nowMs } from '../db.ts'
-import { dictionaryCheck, localIndexCheck, validityCheck } from './local.ts'
+import { localIndexCheck, validityCheck } from './local.ts'
 import { availabilityCheck, publishabilityCheck } from './registry.ts'
 import { domainCheck, githubCheck, npmNeighbourhoodCheck } from './reach.ts'
 import type { Check, CheckResult } from './types.ts'
 
 export const CHECKS: Check[] = [
   validityCheck,
-  dictionaryCheck,
   localIndexCheck,
   availabilityCheck,
   npmNeighbourhoodCheck,

@@ -13,7 +13,6 @@ const ORDER = [
   'neighbourhood',
   'github',
   'domain',
-  'dictionary',
 ]
 
 function rank(c: CheckResult): number {

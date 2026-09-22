@@ -9,7 +9,6 @@
  * It does two jobs: it weights which Strategy runs next, and it becomes a
  * paragraph in the next prompt.
  */
-import { lookupWordRank } from '../checks/local.ts'
 import { syllables } from '../checks/normalize.ts'
 import type { Candidate, Seed, Verdict } from '../store.ts'
 import { FAMILY_BY_ID, STRATEGIES, STRATEGY_BY_ID, type FamilyId } from './strategies.ts'
@@ -115,20 +114,6 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
           pSyl < nSyl
             ? `你在往更短的名字走：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`
             : `你不怕长词：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`,
-      })
-    }
-
-    const pReal = posNames.filter(n => lookupWordRank(n) !== null).length
-    const ratio = pReal / posNames.length
-    if (posNames.length >= 4 && (ratio >= 0.6 || ratio <= 0.15)) {
-      traits.push({
-        id: 'realword',
-        n: posNames.length,
-        direction: ratio >= 0.6 ? 'toward' : 'away',
-        statement:
-          ratio >= 0.6
-            ? `你更喜欢现成的英语词：${posNames.length} 个里有 ${pReal} 个是。`
-            : `你更喜欢生造或冷僻的词：${posNames.length} 个里只有 ${pReal} 个是现成英语词。`,
       })
     }
 
