@@ -323,13 +323,13 @@ export function Workspace({
         {/* Two lines only when there are two things to say. A session nobody
             named has one sentence, and it goes on the top line. */}
         <div className="topbar__title">
-          <div className="topbar__h" onClick={() => openDrawer('brief')} title="看完整简介">
+          <button className="topbar__h" onClick={() => openDrawer('brief')} title="看完整简介">
             {session.title || session.brief}
-          </div>
+          </button>
           {session.title && (
-            <div className="topbar__brief" onClick={() => openDrawer('brief')} title="看完整简介">
+            <button className="topbar__brief" onClick={() => openDrawer('brief')} title="看完整简介">
               {session.brief}
-            </div>
+            </button>
           )}
         </div>
         <div className="topbar__acts">

@@ -601,6 +601,13 @@ kbd {
   min-width: 0;
   flex: 1;
 }
+.topbar__h, .topbar__brief {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  text-align: left;
+}
 .topbar__h {
   cursor: pointer;
   font-family: var(--font-display);
@@ -619,7 +626,7 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 68ch;
+  max-width: min(68ch, 100%);
   cursor: pointer;
 }
 .topbar__h:hover { color: #fff; }
@@ -932,11 +939,14 @@ kbd {
 }
 .rarity__bars i[data-on='true'] { opacity: 0.95; }
 
-.plate__rationale {
+.plate__rationale, .detail__rationale {
   font-size: 13.2px;
   line-height: 1.72;
   color: var(--vellum-2);
   margin: 0 0 13px;
+}
+.detail__rationale { margin-bottom: 18px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.plate__rationale {
   /* Clamped so the wall of plates stays a scannable grid rather than a ragged
      one; the full rationale lives in the detail drawer. */
   display: -webkit-box;

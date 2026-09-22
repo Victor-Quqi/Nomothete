@@ -95,7 +95,7 @@ export function DetailPanel({
         </div>
       )}
 
-      <p className="plate__rationale" style={{ marginBottom: 18 }}>
+      <p className="detail__rationale">
         {candidate.rationale}
       </p>
 
