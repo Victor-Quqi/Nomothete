@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
@@ -31,7 +31,7 @@ interface Props {
   family?: Family
   focused: boolean
   /** Only keyboard navigation drags the viewport around; hover never does. */
-  autoScroll: boolean
+  autoScroll: false | 'smooth' | 'instant'
   onFocus: (id: string) => void
   onVerdict: (id: string, v: Verdict) => void
   onNote: (id: string, note: string) => void
@@ -103,17 +103,19 @@ function PlateInner({
     return () => io.disconnect()
   }, [])
 
-  // The keyboard reads from the middle of the canvas rather than from whichever
-  // edge you arrived at. 'nearest' parks the plate at the bottom on the way
-  // down and at the top on the way up, so one keystroke moves your eye a
-  // different distance depending on which way you came, and the row you are
-  // reading always has its next row hidden. Centring puts every focused plate
-  // in the same band — the reading band the dwell timer above watches — with
-  // context on both sides of it. Moving along a row costs no scroll at all,
-  // since the plate is already at that height, and the browser clamps at the
-  // ends, so the first and last rows stay where they are.
-  useEffect(() => {
-    if (focused && autoScroll) el.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  // Scroll the grid slot before painting the new highlight. Repeated keys
+  // follow immediately so they cannot keep restarting a smooth scroll.
+  useLayoutEffect(() => {
+    if (!focused || !autoScroll) return
+    const slot = el.current?.parentElement
+    const grid = slot?.parentElement
+    const canvas = grid?.parentElement
+    if (!slot || !grid || !canvas) return
+    const top = canvas.scrollTop + grid.getBoundingClientRect().top - canvas.getBoundingClientRect().top +
+      slot.offsetTop + slot.offsetHeight / 2 - canvas.clientHeight / 2
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const distant = Math.abs(top - canvas.scrollTop) > canvas.clientHeight
+    canvas.scrollTo({ top: Math.max(0, top), behavior: reduced || distant ? 'instant' : autoScroll })
   }, [focused, autoScroll])
 
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.note])

@@ -50,13 +50,10 @@ export function App() {
   const a = useAtelier()
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [focusId, setFocusId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
 
   const openDrawer = useCallback((kind: DrawerKind, id?: string) => setDrawer({ kind, id }), [])
   const closeDrawer = useCallback(() => setDrawer(null), [])
-
-  useEffect(() => setFocusId(null), [a.sessionId])
 
   // ⌘K anywhere, plus N for a new session while nothing is focused.
   useEffect(() => {
@@ -191,7 +188,7 @@ export function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Workspace a={a} openDrawer={openDrawer} focusId={focusId} setFocusId={setFocusId} />
+              <Workspace a={a} openDrawer={openDrawer} />
             </motion.div>
           ) : (
             <motion.div

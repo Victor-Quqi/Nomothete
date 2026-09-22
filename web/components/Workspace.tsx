@@ -33,19 +33,18 @@ function trouble(c: Candidate): number {
 export function Workspace({
   a,
   openDrawer,
-  focusId,
-  setFocusId,
 }: {
   a: Atelier
   openDrawer: (kind: DrawerKind, id?: string) => void
-  focusId: string | null
-  setFocusId: (id: string | null) => void
 }) {
+  // Keep navigation below the session's Motion context so it only redraws
+  // the two plates whose focus changed.
+  const [focusId, setFocusId] = useState<string | null>(null)
   const [lane, setLane] = useState<Lane>('all')
   const [family, setFamily] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>('arrival')
   const [find, setFind] = useState('')
-  const [kbd, setKbd] = useState(false)
+  const [kbd, setKbd] = useState<false | 'smooth' | 'instant'>(false)
   const findRef = useRef<HTMLInputElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
@@ -164,11 +163,11 @@ export function Workspace({
 
   // ── keyboard ──────────────────────────────────────────────────────────────
   const move = useCallback(
-    (delta: number) => {
+    (delta: number, repeat = false) => {
       if (visible.length === 0) return
       const idx = visible.findIndex(c => c.id === focusId)
       const next = idx < 0 ? (delta > 0 ? 0 : visible.length - 1) : (idx + delta + visible.length) % visible.length
-      setKbd(true)
+      setKbd(repeat ? 'instant' : 'smooth')
       setFocusId(visible[next].id)
     },
     [visible, focusId, setFocusId],
@@ -183,7 +182,7 @@ export function Workspace({
     const after = visible.slice(idx + 1)
     const target = [...after, ...visible.slice(0, idx + 1)].find(c => c.verdict === 0)
     if (!target) return
-    setKbd(true)
+    setKbd('smooth')
     setFocusId(target.id)
   }, [visible, focusId, setFocusId])
 
@@ -208,12 +207,12 @@ export function Workspace({
         case 'j':
         case 'ArrowDown':
           e.preventDefault()
-          move(1)
+          move(1, e.repeat)
           break
         case 'k':
         case 'ArrowUp':
           e.preventDefault()
-          move(-1)
+          move(-1, e.repeat)
           break
         case '1':
         case '2':
@@ -296,7 +295,7 @@ export function Workspace({
   if (!session) return null
 
   return (
-    <div className="work">
+    <div className="work" data-keyboard={!!kbd}>
       <div className="topbar">
         {/* Two lines only when there are two things to say. A session nobody
             named has one sentence, and it goes on the top line. */}
@@ -420,7 +419,7 @@ export function Workspace({
                 strategy={a.strategyById.get(c.strategyId)}
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
                 focused={visibleIds.has(c.id) && focusId === c.id}
-                autoScroll={visibleIds.has(c.id) && kbd && focusId === c.id}
+                autoScroll={visibleIds.has(c.id) && focusId === c.id ? kbd : false}
                 onFocus={focusPlate}
                 onVerdict={a.setVerdict}
                 onNote={a.setNote}

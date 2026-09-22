@@ -660,6 +660,13 @@ kbd {
   border-color: rgba(239, 231, 216, 0.3);
   box-shadow: 0 0 0 1px rgba(239, 231, 216, 0.12), 0 26px 50px -28px rgba(0, 0, 0, 0.95);
 }
+/* A held key may move again before a border transition becomes visible. */
+.work[data-keyboard='true'] .plate,
+.work[data-keyboard='true'] .plate::before,
+.work[data-keyboard='true'] .plate__say,
+.work[data-keyboard='true'] .plate__copy {
+  transition: none;
+}
 .plate--up1 { border-color: rgba(169, 138, 74, 0.45); }
 .plate--up2 {
   border-color: rgba(232, 180, 79, 0.6);
