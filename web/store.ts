@@ -66,6 +66,13 @@ export function useAtelier() {
   const [connected, setConnected] = useState(false)
 
   const [toasts, setToasts] = useState<Toast[]>([])
+  /**
+   * Names whose slow tier was started by hand. The server never writes a
+   * pending row, so nothing else remembers that a run is in flight — and both
+   * the seal on the plate and the button in the drawer have to say the same
+   * thing about it, so neither of them is where it can live.
+   */
+  const [asked, setAsked] = useState<ReadonlySet<string>>(() => new Set())
   const toastSeq = useRef(0)
 
   // Judging with the keyboard is fast enough to overshoot by one row. The stack
@@ -364,10 +371,16 @@ export function useAtelier() {
 
   const recheck = useCallback(
     async (candidateId: string) => {
+      setAsked(s => new Set(s).add(candidateId))
       try {
         await api.recheck(candidateId)
         toast('深度检查已排队', 'plain')
       } catch (err) {
+        setAsked(s => {
+          const next = new Set(s)
+          next.delete(candidateId)
+          return next
+        })
         toast((err as Error).message, 'error')
       }
     },
@@ -462,6 +475,7 @@ export function useAtelier() {
     connected,
     loadingSession,
     toasts,
+    asked,
     ...lookups,
     open,
     reloadSessions,

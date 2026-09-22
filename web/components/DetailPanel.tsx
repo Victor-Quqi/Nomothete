@@ -1,77 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { byCheckOrder } from '../checks.ts'
+import { NO_CHECKS, deepRunning, groupChecks } from '../checks.ts'
 import { REGISTRIES, registryForm } from '../normalize.ts'
 import { isMute, speakName } from '../speak.ts'
+import { CheckFinding, CheckRow, RecheckLine } from './CheckList.tsx'
 import { SayButton } from './SayButton.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
-import type { Bootstrap, Candidate, CheckResult, Family, StrategyInfo, Verdict } from '../types.ts'
-
-/**
- * Somewhere to click through to. Three at most: GitHub hands back its five
- * top-starred repositories, and the tail of that list is a ★1 fork with a
- * forty-character name — a line of noise under a sentence that already said the
- * hits are small.
- */
-function linksOf(check: CheckResult): { href: string; text: string }[] {
-  const out: { href: string; text: string }[] = []
-  const d = check.data
-  if (d?.registries) {
-    for (const r of d.registries) if (r.url) out.push({ href: r.url, text: `${r.label} 上的同名` })
-  }
-  if (d?.top) {
-    for (const r of d.top.slice(0, 3)) {
-      const name = r.name.length > 34 ? `${r.name.slice(0, 33)}…` : r.name
-      out.push({ href: r.url, text: `${name} ★${r.stars.toLocaleString()}` })
-    }
-  }
-  return out
-}
-
-/** A check that found something. It gets room to say what, and where to look. */
-function CheckCard({ check }: { check: CheckResult }) {
-  const links = linksOf(check)
-  return (
-    <div className="check">
-      <div className="check__top">
-        <span className={`dot dot--${check.status}`} />
-        <span className="check__label">{check.label}</span>
-      </div>
-      <div className="check__detail">
-        <b style={{ color: 'var(--vellum)', fontWeight: 500 }}>{check.headline}。</b> {check.detail}
-      </div>
-      {links.length > 0 && (
-        <div className="check__links">
-          {links.map(l => (
-            <a key={l.href} href={l.href} target="_blank" rel="noreferrer noopener">
-              {l.text} ↗
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * A check that found nothing. It still gets said — a search that came back empty
- * is a fact — but one line is the whole of it, and every one of these sentences
- * restates its own headline, so the headline is all that shows.
- */
-function CheckRow({ check }: { check: CheckResult }) {
-  return (
-    <div className="found">
-      <span className={`dot dot--${check.status}`} />
-      <span className="found__label">{check.label}</span>
-      <span className="found__what">{check.headline}</span>
-    </div>
-  )
-}
+import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 export function DetailPanel({
   candidate,
   strategy,
   family,
   manifest,
+  asked,
   onVerdict,
   onNote,
   onRecheck,
@@ -81,6 +22,8 @@ export function DetailPanel({
   family?: Family
   /** What the server can check, so the drawer can name what it has not done yet. */
   manifest?: Bootstrap['checks']
+  /** Its slow tier was started by hand and nothing has come back yet. */
+  asked: boolean
   onVerdict: (v: Verdict) => void
   onNote: (note: string) => void
   onRecheck: () => void
@@ -120,16 +63,8 @@ export function DetailPanel({
     return [...groups].map(([form, labels]) => ({ form, who: labels.join('、') }))
   }, [candidate.name])
 
-  const checks = useMemo(() => (candidate.checks ?? []).slice().sort(byCheckOrder), [candidate.checks])
-  const findings = checks.filter(c => c.status !== 'clear' && c.status !== 'error' && c.status !== 'pending')
-  const quiet = checks.filter(c => c.status === 'clear')
-  const failed = checks.filter(c => c.status === 'error')
-
-  const deepDone = checks.some(c => c.tier === 'ratelimited')
-  const deepLabels = (manifest ?? [])
-    .filter(c => c.when === 'after-upvote')
-    .map(c => c.label)
-    .join('、')
+  const checks = candidate.checks ?? NO_CHECKS
+  const { findings, quiet, failed } = useMemo(() => groupChecks(checks), [checks])
 
   return (
     <>
@@ -172,7 +107,7 @@ export function DetailPanel({
         <>
           <div className="section-h">检查发现</div>
           {findings.map(c => (
-            <CheckCard key={c.checkId} check={c} />
+            <CheckFinding key={c.checkId} check={c} />
           ))}
         </>
       )}
@@ -187,7 +122,7 @@ export function DetailPanel({
             </button>
           </div>
           {quiet.map(c =>
-            expanded ? <CheckCard key={c.checkId} check={c} /> : <CheckRow key={c.checkId} check={c} />,
+            expanded ? <CheckFinding key={c.checkId} check={c} /> : <CheckRow key={c.checkId} check={c} />,
           )}
         </>
       )}
@@ -196,28 +131,17 @@ export function DetailPanel({
         <>
           <div className="section-h">没查成</div>
           {failed.map(c => (
-            <div key={c.checkId}>
-              <CheckRow check={c} />
-              {c.detail && <p className="found__why">{c.detail}</p>}
-            </div>
+            <CheckFinding key={c.checkId} check={c} />
           ))}
         </>
       )}
 
-      <div className="detail__more">
-        {deepDone ? (
-          <button className="btn btn--ghost btn--sm" style={{ paddingLeft: 0 }} onClick={onRecheck}>
-            重新检查 ↻
-          </button>
-        ) : (
-          <>
-            <span>{deepLabels ? `还没查 ${deepLabels}。这几项慢，打出 ▲ 后自动开始。` : '更慢的几项，打出 ▲ 后自动开始。'}</span>
-            <button className="btn btn--ghost btn--sm" onClick={onRecheck}>
-              现在执行 →
-            </button>
-          </>
-        )}
-      </div>
+      <RecheckLine
+        checks={checks}
+        manifest={manifest}
+        running={deepRunning(checks, candidate.verdict, asked)}
+        onRecheck={onRecheck}
+      />
 
       <div className="section-h">备注</div>
       <textarea

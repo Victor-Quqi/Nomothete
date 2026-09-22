@@ -830,7 +830,8 @@ kbd {
   border-radius: 99px;
   font-size: 12px;
   border: 1px solid;
-  cursor: help;
+  /* Hover explains the pill, pressing opens the drawer. */
+  cursor: pointer;
   transition: all 0.2s var(--ease-out);
   white-space: nowrap;
   max-width: 100%;
@@ -844,6 +845,21 @@ kbd {
 .seal--error, .seal--pending { color: var(--vellum-4); border-color: var(--hair); }
 .seal--pending i { animation: blink 1.4s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: 0.25; } }
+
+/* An offer, not a finding: dashed, so it never reads as a sixth seal. */
+.seals__ask {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--vellum-4);
+  border: 1px dashed var(--hair-2);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  white-space: nowrap;
+}
+.seals__ask:hover { color: var(--brass); border-color: var(--brass); }
 
 .plate__foot {
   display: flex;
@@ -1174,55 +1190,46 @@ kbd {
   line-height: 1.7;
   resize: vertical;
 }
-.detail__more {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--vellum-4);
-}
+/* ── how a check reports, on a plate and in the drawer alike ─────────── */
 
-/* A check that found nothing is one line — the sentence it would have expanded
-   into only restates the headline. 「每项细说」 puts the cards back. */
+/* A check that found nothing is one line: a search that came back empty is a
+   fact, but the sentence under it only ever restated its own headline. A
+   finding keeps the line and says what it found underneath. */
 .found {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
   padding: 7px 0;
-  font-size: 13px;
   border-bottom: 1px solid var(--hair);
 }
 .found:last-child { border-bottom: none; }
-.found__label { width: 72px; flex: none; color: var(--vellum-4); }
+.found__line { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.found__label { min-width: var(--found-label, 72px); flex: none; color: var(--vellum-4); }
 .found__what { flex: 1; min-width: 0; color: var(--vellum-2); }
-.found__why { font-size: 12.5px; line-height: 1.7; color: var(--vellum-4); margin: 0 0 9px 87px; }
-
-.dot { width: 5px; height: 5px; border-radius: 99px; flex: none; align-self: center; background: var(--verdigris); }
-.dot--caution { background: var(--amber); }
-.dot--taken, .dot--blocked, .dot--invalid { background: var(--rust); }
-.dot--error, .dot--pending { background: var(--vellum-4); }
-
-.check {
-  border: 1px solid var(--hair);
-  border-radius: var(--r-md);
-  padding: 12px 13px;
-  margin-bottom: 9px;
-}
-.check__top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.check__label { font-size: 13.5px; color: var(--vellum); flex: 1; }
-.check__detail { font-size: 13px; line-height: 1.75; color: var(--vellum-3); }
-.check__links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
-.check__links a {
+.found__why { font-size: 12.5px; line-height: 1.7; color: var(--vellum-3); margin: 5px 0 0; }
+.found__links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+.found__links a {
   font-size: 12.5px;
   color: var(--vellum-3);
   text-decoration: none;
   border-bottom: 1px solid var(--hair-2);
   transition: color 0.2s;
 }
-.check__links a:hover { color: var(--brass); border-color: var(--brass-soft); }
+.found__links a:hover { color: var(--brass); border-color: var(--brass-soft); }
+
+.dot { width: 5px; height: 5px; border-radius: 99px; flex: none; align-self: center; background: var(--verdigris); }
+.dot--caution { background: var(--amber); }
+.dot--taken, .dot--blocked, .dot--invalid { background: var(--rust); }
+.dot--error, .dot--pending { background: var(--vellum-4); }
+
+/* The slow tier, and the way in to it that is not a ▲. */
+.recheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--vellum-4);
+}
 
 /* A divider that happens to be labelled. Nothing here is a heading over a
    heading — one size below the drawer title, no micro-caps. */

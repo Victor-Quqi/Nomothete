@@ -1,12 +1,14 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { NO_CHECKS, deepDone, deepRunning } from '../checks.ts'
+import { waitingLabels } from './CheckList.tsx'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import { isMute, speakName } from '../speak.ts'
 import { SayButton } from './SayButton.tsx'
 import { scrollToPlate } from './scrollToPlate.ts'
-import type { Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
+import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
   2: ' plate--up2',
@@ -33,10 +35,16 @@ interface Props {
   focused: boolean
   /** Only keyboard navigation drags the viewport around; hover never does. */
   autoScroll: false | 'smooth' | 'instant'
+  /** Its slow tier was started by hand and nothing has come back yet. */
+  asked: boolean
+  /** What the server can check, so the card can name what it has not done yet. */
+  manifest?: Bootstrap['checks']
   onFocus: (id: string) => void
   onVerdict: (id: string, v: Verdict) => void
   onNote: (id: string, note: string) => void
   onOpen: (id: string) => void
+  /** Start the slow tier now, without a ▲ and without opening anything. */
+  onRecheck: (id: string) => void
   /** Run another batch down this same strategy. */
   onMore: (strategyId: string) => void
 }
@@ -47,10 +55,13 @@ function PlateInner({
   family,
   focused,
   autoScroll,
+  asked,
+  manifest,
   onFocus,
   onVerdict,
   onNote,
   onOpen,
+  onRecheck,
   onMore,
 }: Props) {
   const [noteOpen, setNoteOpen] = useState(false)
@@ -113,9 +124,14 @@ function PlateInner({
 
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.note])
 
-  const checks = candidate.checks ?? []
-  const deepPending = candidate.verdict > 0 && !checks.some(c => c.tier === 'ratelimited')
-  const pending = checks.length === 0 ? '正在检查…' : deepPending ? '正在查注册表和 GitHub…' : null
+  const checks = candidate.checks ?? NO_CHECKS
+  // The slow tier starts on its own after a ▲, and the drawer's button is the
+  // other way in. Either way the plate says so while it runs.
+  const deep = deepRunning(checks, candidate.verdict, asked)
+  const pending = checks.length === 0 ? '正在检查…' : deep ? '正在查注册表和 GitHub…' : null
+  // Liking a name is not the price of checking it. The offer stands on the card
+  // itself so that asking costs neither a ▲ nor a trip through the drawer.
+  const canAsk = checks.length > 0 && !deep && !deepDone(checks)
 
   const rarity = 1 - candidate.probability
   const bars = Math.max(1, Math.min(5, Math.ceil(rarity * 5)))
@@ -232,7 +248,27 @@ function PlateInner({
 
       <p className="plate__rationale">{candidate.rationale}</p>
 
-      <Seals checks={checks} pending={pending} onOpen={open} />
+      <Seals
+        checks={checks}
+        pending={pending}
+        onInspect={open}
+        action={
+          canAsk && (
+            <Tip
+              className="seals__ask"
+              onClick={() => onRecheck(candidate.id)}
+              content={
+                <>
+                  <b>{waitingLabels(manifest) || '还有几项慢的'}还没查</b>
+                  <p>▲ 之后会自动开始。不想先表态，就现在查。</p>
+                </>
+              }
+            >
+              现在查 →
+            </Tip>
+          )
+        }
+      />
 
       <div className="plate__foot">
         <VerdictDial verdict={candidate.verdict} onChange={v => onVerdict(candidate.id, v)} />

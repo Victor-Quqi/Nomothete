@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { byCheckOrder } from '../checks.ts'
 import { Tip } from './Tip.tsx'
@@ -12,18 +13,32 @@ import type { CheckResult } from '../types.ts'
  * tooltip; only a finding gets a seal of its own.
  *
  * The wording still never says "safe" or "available" — the vocabulary is
- * 查无记录 / 已有同名 (CONTEXT.md), and a search that found nothing stays a
- * weak claim no matter how many searches agree.
+ * 查无记录 / 已有同名 (CONTEXT.md). That is the whole of the hedge: say what was
+ * searched and what came back, and let the reader draw the conclusion. Adding a
+ * line underneath to warn them not to over-read it says nothing the rows did
+ * not already say.
+ *
+ * Three rungs of detail would be one too many: the pill is what was found, the
+ * tooltip unpacks it for the price of a hover, and the drawer is everything —
+ * evidence, links, the slow tier, the full rationale. A middle rung that cost
+ * the same click as the drawer and said less had no reason to exist, so
+ * pressing a seal goes straight to the drawer.
  */
 export function Seals({
   checks,
   pending,
-  onOpen,
+  onInspect,
+  action,
 }: {
   checks: CheckResult[]
   /** Text for the one provisional seal, when something is still out. */
   pending?: string | null
-  onOpen?: () => void
+  onInspect?: () => void
+  /**
+   * Something to do about what the seals say, on the same row as them. An
+   * action, not a fourth thing to read — it goes where the eye already is.
+   */
+  action?: ReactNode
 }) {
   const findings = checks.filter(c => c.status !== 'clear').sort(byCheckOrder)
   const clear = checks.filter(c => c.status === 'clear').sort(byCheckOrder)
@@ -42,13 +57,14 @@ export function Seals({
           >
             <Tip
               className={`seal seal--${c.status}`}
-              onClick={onOpen}
+              onClick={onInspect}
               content={
                 <>
                   <b>
                     {c.label} · {c.headline}
                   </b>
                   {c.detail && <p>{c.detail}</p>}
+                  <em>点开看证据和链接</em>
                 </>
               }
             >
@@ -69,7 +85,7 @@ export function Seals({
           >
             <Tip
               className="seal seal--clear"
-              onClick={onOpen}
+              onClick={onInspect}
               content={
                 <>
                   <b>{clear.length} 项检查没发现冲突</b>
@@ -79,7 +95,6 @@ export function Seals({
                       {c.headline}
                     </p>
                   ))}
-                  <em>查无记录，不等于可用。</em>
                 </>
               }
             >
@@ -102,6 +117,8 @@ export function Seals({
           </motion.span>
         )}
       </AnimatePresence>
+
+      {action}
     </div>
   )
 }

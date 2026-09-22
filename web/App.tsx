@@ -210,13 +210,22 @@ export function App() {
         </AnimatePresence>
       </div>
 
-      <Drawer open={!!drawer} onClose={closeDrawer} title={drawer ? DRAWER_TITLE[drawer.kind] : ''}>
+      <Drawer
+        open={!!drawer}
+        onClose={closeDrawer}
+        title={drawer ? DRAWER_TITLE[drawer.kind] : ''}
+        // Reading a name is not a thing you have to finish. The wall stays lit
+        // and clickable, so the next card's seals answer in one press instead
+        // of one press to leave plus one to ask.
+        modal={drawer?.kind !== 'detail'}
+      >
         {drawer?.kind === 'detail' && detail && a.session && (
           <DetailPanel
             candidate={detail}
             strategy={a.strategyById.get(detail.strategyId)}
             family={a.familyById.get(a.strategyById.get(detail.strategyId)?.family ?? '')}
             manifest={a.boot?.checks}
+            asked={a.asked.has(detail.id)}
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}
             onRecheck={() => a.recheck(detail.id)}

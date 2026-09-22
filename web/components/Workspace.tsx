@@ -420,10 +420,13 @@ export function Workspace({
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
                 focused={visibleIds.has(c.id) && focusId === c.id}
                 autoScroll={visibleIds.has(c.id) && focusId === c.id ? kbd : false}
+                asked={a.asked.has(c.id)}
+                manifest={a.boot?.checks}
                 onFocus={focusPlate}
                 onVerdict={a.setVerdict}
                 onNote={a.setNote}
                 onOpen={openPlate}
+                onRecheck={a.recheck}
                 onMore={generateMore}
               />
             </div>

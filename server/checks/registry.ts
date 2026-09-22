@@ -171,8 +171,7 @@ export const publishabilityCheck: Check = {
         checkId: 'publishability', label: '可注册性', tier: 'ratelimited', status: 'clear',
         headline: '三个注册表均查无记录',
         detail:
-          `「${name}」的 ${probedTotal} 种归一化等价写法逐个查询，均无记录。` +
-          `这是最强的一项检查；查无记录仍不等于可注册。`,
+          `「${name}」的 ${probedTotal} 种归一化等价写法逐个查询，均无记录。这是最强的一项检查。`,
         data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
       }
     }
