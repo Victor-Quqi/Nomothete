@@ -103,8 +103,17 @@ function PlateInner({
     return () => io.disconnect()
   }, [])
 
+  // The keyboard reads from the middle of the canvas rather than from whichever
+  // edge you arrived at. 'nearest' parks the plate at the bottom on the way
+  // down and at the top on the way up, so one keystroke moves your eye a
+  // different distance depending on which way you came, and the row you are
+  // reading always has its next row hidden. Centring puts every focused plate
+  // in the same band — the reading band the dwell timer above watches — with
+  // context on both sides of it. Moving along a row costs no scroll at all,
+  // since the plate is already at that height, and the browser clamps at the
+  // ends, so the first and last rows stay where they are.
   useEffect(() => {
-    if (focused && autoScroll) el.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    if (focused && autoScroll) el.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [focused, autoScroll])
 
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.note])
