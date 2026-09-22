@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Ghost } from './Ghost.tsx'
+import { Picker, type PickerOption } from './Picker.tsx'
 import { Tip } from './Tip.tsx'
 import type { Atelier } from '../store.ts'
 import type { Candidate, Verdict } from '../types.ts'
@@ -79,6 +80,25 @@ export function Workspace({
     return [...seen.entries()]
   }, [candidates, a.strategyById])
 
+  const familyOptions = useMemo<PickerOption[]>(
+    () =>
+      familiesPresent.map(([id, n]) => {
+        const f = a.familyById.get(id)
+        return { id, label: f?.label ?? id, hue: f?.hue ?? 38, n }
+      }),
+    [familiesPresent, a.familyById],
+  )
+  const familyTotal = useMemo(
+    () => familiesPresent.reduce((t, [, n]) => t + n, 0),
+    [familiesPresent],
+  )
+
+  // A family that stops being represented stops being a filter — otherwise an
+  // undo can leave the wall empty with no chip left to say why.
+  useEffect(() => {
+    if (family && !familiesPresent.some(([id]) => id === family)) setFamily(null)
+  }, [family, familiesPresent])
+
   const visible = useMemo(() => {
     const laneTest = LANES.find(l => l.id === lane)!.test
     const needle = find.trim().toLowerCase()
@@ -141,7 +161,12 @@ export function Workspace({
         if (e.key === 'Escape') (el as HTMLElement).blur()
         return
       }
-      if (document.querySelector('.drawer') || document.querySelector('.palette')) return
+      if (
+        document.querySelector('.drawer') ||
+        document.querySelector('.palette') ||
+        document.querySelector('.picker__menu')
+      )
+        return
 
       switch (e.key) {
         case 'j':
@@ -277,48 +302,49 @@ export function Workspace({
             <span className="chip__n">{laneCounts.get(l.id) ?? 0}</span>
           </button>
         ))}
-        {familiesPresent.length > 1 && <span style={{ width: 8 }} />}
-        {familiesPresent.length > 1 &&
-          familiesPresent.map(([id, n]) => {
-            const f = a.familyById.get(id)
-            return (
-              <button
-                key={id}
-                className={`chip${family === id ? ' chip--on' : ''}`}
-                onClick={() => setFamily(family === id ? null : id)}
-              >
-                <i
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: 99,
-                    background: `hsl(${f?.hue ?? 38} 55% 55%)`,
-                    display: 'inline-block',
-                  }}
-                />
-                {f?.label ?? id}
-                <span className="chip__n">{n}</span>
-              </button>
-            )
-          })}
+        {/* The four verdicts are the reading position and stay in the open. The
+            word families are a detour most sessions never take, so they fold
+            into one chip that says which detour you are on. */}
+        {familiesPresent.length > 1 && (
+          <>
+            <span style={{ width: 8 }} />
+            <Picker
+              options={familyOptions}
+              value={family}
+              onPick={setFamily}
+              clearLabel="全部词族"
+              clearN={familyTotal}
+              title="按词族筛选"
+            />
+          </>
+        )}
 
         <span className="filters__spacer" />
 
-        <input
-          ref={findRef}
-          className="filters__find"
-          value={find}
-          placeholder="搜索 /"
-          onChange={e => setFind(e.target.value)}
-        />
+        {/* The field grows when it takes focus, but the slot it sits in does
+            not: a row that re-wraps under the cursor is a row that moves the
+            card you were about to click. */}
+        <span className="filters__findslot">
+          <input
+            ref={findRef}
+            className="filters__find"
+            value={find}
+            placeholder="搜索 /"
+            onChange={e => setFind(e.target.value)}
+          />
+        </span>
 
-        <div className="filters__sort">
-          {SORTS.map(s => (
-            <button key={s.id} data-on={sort === s.id} onClick={() => setSort(s.id)}>
-              {s.label}
-            </button>
-          ))}
-        </div>
+        {/* Three orderings, one of which is always in force: the chip wears the
+            one in force, which is the only one worth a whole word on the bar. */}
+        <Picker
+          options={SORTS}
+          value={sort}
+          onPick={id => {
+            if (id) setSort(id as Sort)
+          }}
+          align="right"
+          title="排序"
+        />
       </div>
 
       <div className="canvas">
