@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 
 export interface Command {
@@ -21,9 +21,12 @@ export function CommandPalette({
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
   const input = useRef<HTMLInputElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const followKeyboard = useRef(true)
 
   useEffect(() => {
     if (open) {
+      followKeyboard.current = true
       setQ('')
       setI(0)
       setTimeout(() => input.current?.focus(), 30)
@@ -37,6 +40,11 @@ export function CommandPalette({
   }, [q, commands])
 
   useEffect(() => setI(0), [q])
+
+  useLayoutEffect(() => {
+    if (!open || !followKeyboard.current) return
+    list.current?.querySelector<HTMLElement>('[data-on="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+  }, [open, i, hits])
 
   return (
     <AnimatePresence>
@@ -61,13 +69,18 @@ export function CommandPalette({
               ref={input}
               value={q}
               placeholder="做点什么…"
-              onChange={e => setQ(e.target.value)}
+              onChange={e => {
+                followKeyboard.current = true
+                setQ(e.target.value)
+              }}
               onKeyDown={e => {
                 if (e.key === 'ArrowDown') {
                   e.preventDefault()
-                  setI(x => Math.min(hits.length - 1, x + 1))
+                  followKeyboard.current = true
+                  setI(x => Math.max(0, Math.min(hits.length - 1, x + 1)))
                 } else if (e.key === 'ArrowUp') {
                   e.preventDefault()
+                  followKeyboard.current = true
                   setI(x => Math.max(0, x - 1))
                 } else if (e.key === 'Enter') {
                   e.preventDefault()
@@ -82,14 +95,17 @@ export function CommandPalette({
                 }
               }}
             />
-            <div className="palette__list">
+            <div ref={list} className="palette__list">
               {hits.length === 0 && <div className="palette__empty">没有匹配的命令</div>}
               {hits.map((c, idx) => (
                 <button
                   key={c.id}
                   className="palette__item"
                   data-on={idx === i}
-                  onMouseEnter={() => setI(idx)}
+                  onMouseMove={() => {
+                    followKeyboard.current = false
+                    setI(idx)
+                  }}
                   onClick={() => {
                     onClose()
                     c.run()
