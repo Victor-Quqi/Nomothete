@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import type { Bootstrap, SessionSummary } from '../types.ts'
+import { SessionIcon, SessionMenu } from './SessionMenu.tsx'
 
 function when(ts: number): string {
   const d = Date.now() - ts
@@ -17,6 +18,10 @@ export function SessionRail({
   onOpen,
   onNew,
   onConfigure,
+  onRename,
+  onPin,
+  onDelete,
+  pendingId,
 }: {
   boot: Bootstrap | null
   sessions: SessionSummary[]
@@ -25,6 +30,10 @@ export function SessionRail({
   onOpen: (id: string) => void
   onNew: () => void
   onConfigure: () => void
+  onRename: (session: SessionSummary) => void
+  onPin: (session: SessionSummary) => void
+  onDelete: (session: SessionSummary) => void
+  pendingId: string | null
 }) {
   return (
     <aside className="rail">
@@ -44,8 +53,8 @@ export function SessionRail({
       <div className="rail__list">
         {sessions.length > 0 && <div className="rail__section">会话</div>}
         <AnimatePresence initial={false}>
-          {sessions.map(s => (
-            <motion.button
+          {[...sessions].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt).map(s => (
+            <motion.div
               key={s.id}
               layout
               initial={{ opacity: 0, x: -8 }}
@@ -53,15 +62,21 @@ export function SessionRail({
               exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               className={`rail__item${s.id === activeId ? ' rail__item--on' : ''}`}
-              onClick={() => onOpen(s.id)}
             >
-              <div className="rail__item-title">{s.title || s.brief}</div>
-              <div className="rail__item-meta">
-                <span>{s.candidateCount} 个候选</span>
-                {s.lovedCount > 0 && <b>▲{s.lovedCount}</b>}
-                <span style={{ marginLeft: 'auto' }}>{when(s.updatedAt)}</span>
-              </div>
-            </motion.button>
+              <button className="rail__open" onClick={() => onOpen(s.id)} aria-current={s.id === activeId ? 'page' : undefined}>
+                <span className="rail__item-heading">
+                  {s.pinned && <span className="rail__pin" aria-label="已置顶"><SessionIcon kind="pin" /></span>}
+                  <span className="rail__item-title">{s.title || s.brief}</span>
+                </span>
+                <span className="rail__item-meta">
+                  <span>{s.candidateCount} 个候选</span>
+                  {s.lovedCount > 0 && <b>▲{s.lovedCount}</b>}
+                  <span style={{ marginLeft: 'auto' }}>{when(s.updatedAt)}</span>
+                </span>
+              </button>
+              <SessionMenu title={s.title || s.brief} pinned={s.pinned} disabled={pendingId === s.id}
+                onRename={() => onRename(s)} onPin={() => onPin(s)} onDelete={() => onDelete(s)} />
+            </motion.div>
           ))}
         </AnimatePresence>
       </div>

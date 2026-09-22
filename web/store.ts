@@ -423,24 +423,23 @@ export function useAtelier() {
     [sessionId, toast],
   )
 
-  const rename = useCallback(
-    async (title: string) => {
-      if (!sessionId) return
-      setSession(s => (s ? { ...s, title } : s))
-      setSessions(ss => ss.map(s => (s.id === sessionId ? { ...s, title } : s)))
-      await api.patchSession(sessionId, { title }).catch(() => {})
+  const updateSession = useCallback(
+    async (id: string, patch: Partial<Pick<Session, 'title' | 'pinned'>>) => {
+      const { session: updated } = await api.patchSession(id, patch)
+      setSession(s => (s?.id === id ? { ...s, ...patch, updatedAt: updated.updatedAt } : s))
+      setSessions(ss => ss.map(s => (s.id === id ? { ...s, ...patch, updatedAt: updated.updatedAt } : s)))
     },
-    [sessionId],
+    [],
   )
 
   const removeSession = useCallback(
     async (id: string) => {
-      await api.deleteSession(id).catch(() => {})
+      await api.deleteSession(id)
       setSessions(ss => ss.filter(s => s.id !== id))
-      if (id === sessionId) open(null)
+      if (id === hashSessionId()) open(null)
       toast('会话已删除', 'plain')
     },
-    [sessionId, open, toast],
+    [open, toast],
   )
 
   // Keep the rail's counts honest without polling.
@@ -498,7 +497,7 @@ export function useAtelier() {
     recheck,
     setPriors,
     setThreshold,
-    rename,
+    updateSession,
     removeSession,
     setProvider,
     toast,

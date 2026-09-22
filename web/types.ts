@@ -24,6 +24,7 @@ export interface Seed {
 export interface Session {
   id: string
   title: string
+  pinned: boolean
   brief: string
   seeds: Seed[]
   priors: string[]

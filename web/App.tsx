@@ -7,6 +7,7 @@ import { Drawer } from './components/Drawer.tsx'
 import { Opening } from './components/Opening.tsx'
 import { PriorDossier } from './components/PriorDossier.tsx'
 import { SessionRail } from './components/SessionRail.tsx'
+import { SessionDialog, type SessionAction } from './components/SessionDialog.tsx'
 import { Settings } from './components/Settings.tsx'
 import { TastePanel } from './components/TastePanel.tsx'
 import { Toasts } from './components/Toasts.tsx'
@@ -51,6 +52,8 @@ export function App() {
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [sessionAction, setSessionAction] = useState<SessionAction | null>(null)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   const openDrawer = useCallback((kind: DrawerKind, id?: string) => setDrawer({ kind, id }), [])
   const closeDrawer = useCallback(() => setDrawer(null), [])
@@ -110,7 +113,7 @@ export function App() {
           group: '会话',
           label: '删除这个会话',
           run: () => {
-            if (a.sessionId && confirm('删除这个会话及其全部候选名？')) a.removeSession(a.sessionId)
+            if (a.session) setSessionAction({ kind: 'delete', id: a.session.id, title: a.session.title || a.session.brief })
           },
         },
       )
@@ -176,6 +179,20 @@ export function App() {
           onOpen={id => a.open(id)}
           onNew={() => a.open(null)}
           onConfigure={() => openDrawer('settings')}
+          pendingId={pinningId}
+          onRename={s => setSessionAction({ kind: 'rename', id: s.id, title: s.title || s.brief })}
+          onDelete={s => setSessionAction({ kind: 'delete', id: s.id, title: s.title || s.brief })}
+          onPin={async s => {
+            if (pinningId) return
+            setPinningId(s.id)
+            try {
+              await a.updateSession(s.id, { pinned: !s.pinned })
+            } catch (err) {
+              a.toast((err as Error).message, 'error')
+            } finally {
+              setPinningId(null)
+            }
+          }}
         />
 
         <AnimatePresence mode="wait">
@@ -295,6 +312,18 @@ export function App() {
       </Drawer>
 
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
+      {sessionAction && <SessionDialog
+        key={`${sessionAction.kind}-${sessionAction.id}`}
+        action={sessionAction}
+        onClose={() => setSessionAction(null)}
+        onSubmit={async title => {
+          if (sessionAction.kind === 'rename') await a.updateSession(sessionAction.id, { title })
+          else {
+            await a.removeSession(sessionAction.id)
+            if (sessionAction.id === a.sessionId) closeDrawer()
+          }
+        }}
+      />}
       <Toasts toasts={a.toasts} />
     </>
   )

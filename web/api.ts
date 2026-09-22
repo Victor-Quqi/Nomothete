@@ -45,7 +45,7 @@ export const api = {
 
   session: (id: string) => call<SessionPayload>(`/sessions/${id}`),
 
-  patchSession: (id: string, patch: Partial<Pick<Session, 'title' | 'brief' | 'priors' | 'threshold'>>) =>
+  patchSession: (id: string, patch: Partial<Pick<Session, 'title' | 'brief' | 'priors' | 'threshold' | 'pinned'>>) =>
     call<{ session: Session }>(`/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
   deleteSession: (id: string) => call<{ ok: true }>(`/sessions/${id}`, { method: 'DELETE' }),

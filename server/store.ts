@@ -14,6 +14,7 @@ export interface Seed {
 export interface Session {
   id: string
   title: string
+  pinned: boolean
   brief: string
   seeds: Seed[]
   priors: string[]
@@ -57,6 +58,7 @@ function rowToSession(r: any): Session {
   return {
     id: r.id,
     title: r.title,
+    pinned: Boolean(r.pinned),
     brief: r.brief,
     seeds: JSON.parse(r.seeds),
     priors: JSON.parse(r.priors),
@@ -107,7 +109,7 @@ export function listSessions(): (Session & { candidateCount: number; lovedCount:
       `SELECT s.*,
               (SELECT COUNT(*) FROM candidates c WHERE c.sessionId = s.id) AS candidateCount,
               (SELECT COUNT(*) FROM candidates c WHERE c.sessionId = s.id AND c.verdict > 0) AS lovedCount
-       FROM sessions s ORDER BY s.updatedAt DESC`,
+       FROM sessions s ORDER BY s.pinned DESC, s.updatedAt DESC`,
     )
     .all() as any[]
   return rows.map(r => ({ ...rowToSession(r), candidateCount: r.candidateCount, lovedCount: r.lovedCount }))
@@ -117,17 +119,18 @@ export function touchSession(id: string) {
   getDb().prepare('UPDATE sessions SET updatedAt = ? WHERE id = ?').run(nowMs(), id)
 }
 
-export function updateSession(id: string, patch: Partial<Pick<Session, 'title' | 'priors' | 'threshold' | 'brief'>>) {
+export function updateSession(id: string, patch: Partial<Pick<Session, 'title' | 'priors' | 'threshold' | 'brief' | 'pinned'>>) {
   const s = getSession(id)
   if (!s) return null
   getDb()
-    .prepare('UPDATE sessions SET title = ?, brief = ?, priors = ?, threshold = ?, updatedAt = ? WHERE id = ?')
+    .prepare('UPDATE sessions SET title = ?, brief = ?, priors = ?, threshold = ?, pinned = ?, updatedAt = ? WHERE id = ?')
     .run(
       patch.title ?? s.title,
       patch.brief ?? s.brief,
       JSON.stringify(patch.priors ?? s.priors),
       patch.threshold ?? s.threshold,
-      nowMs(),
+      Number(patch.pinned ?? s.pinned),
+      Object.keys(patch).some(key => key !== 'pinned' && patch[key as keyof typeof patch] !== undefined) ? nowMs() : s.updatedAt,
       id,
     )
   return getSession(id)

@@ -76,7 +76,9 @@ export function Opening({
   }, [boot, priors.length])
 
   useEffect(() => {
-    const t = setTimeout(() => area.current?.focus(), 420)
+    const t = setTimeout(() => {
+      if (document.activeElement === document.body) area.current?.focus()
+    }, 420)
     return () => clearTimeout(t)
   }, [])
 

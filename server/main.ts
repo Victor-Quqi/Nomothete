@@ -175,8 +175,16 @@ async function backfillChecks(sessionId: string, candidates: Candidate[]) {
 }
 
 api.patch('/sessions/:id', (req, res) => {
-  const { title, priors, threshold, brief } = req.body ?? {}
-  const session = updateSession(req.params.id, { title, priors, threshold, brief })
+  const { title, priors, threshold, brief, pinned } = req.body ?? {}
+  if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
+    res.status(400).json({ error: '请填写会话名' })
+    return
+  }
+  if (pinned !== undefined && typeof pinned !== 'boolean') {
+    res.status(400).json({ error: '置顶状态无效' })
+    return
+  }
+  const session = updateSession(req.params.id, { title: title?.trim(), priors, threshold, brief, pinned })
   if (!session) {
     res.status(404).json({ error: '会话不存在' })
     return

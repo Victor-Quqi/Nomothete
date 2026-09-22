@@ -92,13 +92,6 @@ CREATE TABLE IF NOT EXISTS http_cache (
   fetchedAt INTEGER NOT NULL
 );
 
--- Sessions used to be handed a title cut from the first 20 characters of their
--- own brief, which is not a title but the same sentence again, one line up and
--- often mid-word. Clear those: an unnamed session shows its brief, once.
-UPDATE sessions SET title = ''
- WHERE title <> ''
-   AND (title = brief OR (title LIKE '%…' AND instr(brief, rtrim(title, '…')) = 1));
-
 -- Every name here has a capital and npm has no uppercase packages, so the old
 -- checks judged Agemux by npm's rules, marked it illegal, and skipped the one
 -- request that would have said whether agemux is free. Drop both answers.
@@ -121,6 +114,18 @@ export function getDb(): DatabaseSync {
   if (!db) {
     db = new DatabaseSync(DB_PATH)
     db.exec(SCHEMA)
+    const columns = db.prepare('PRAGMA table_info(sessions)').all()
+    if (!columns.some(column => column.name === 'pinned')) {
+      // Clear legacy generated labels once, preserving later manual renames.
+      db.exec(`
+        BEGIN;
+        UPDATE sessions SET title = ''
+          WHERE title <> ''
+            AND (title = brief OR (title LIKE '%…' AND instr(brief, rtrim(title, '…')) = 1));
+        ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+        COMMIT;
+      `)
+    }
   }
   return db
 }
