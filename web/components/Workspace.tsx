@@ -420,7 +420,23 @@ export function Workspace({
       </div>
 
       <div className="canvas">
-        <div className="plates" ref={gridRef}>
+        <div
+          className="plates"
+          ref={gridRef}
+          // With the pane open the wall is a list and the pane is its detail
+          // view, so a click on a card shows that card. One handler up here
+          // rather than a prop on 227 memoised plates, which would all
+          // re-render every time the pane opened or closed.
+          onClick={e => {
+            if (!detailId) return
+            const el = e.target as HTMLElement
+            // Controls keep doing their own job: the dial, the buttons, the
+            // note box, the seals, and the name (which speaks it).
+            if (el.closest('button, a, textarea, input, [role="button"], .plate__name')) return
+            const id = el.closest<HTMLElement>('.plate-slot')?.dataset.candidate
+            if (id && id !== detailId) openDrawer('detail', id)
+          }}
+        >
           <AnimatePresence initial={false}>
             {ghosts.map(b => {
               const s = a.strategyById.get(b.strategyId)

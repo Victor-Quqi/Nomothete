@@ -167,7 +167,7 @@ export function App() {
     <>
       <Atmosphere working={a.running} />
 
-      <div className="shell">
+      <div className={`shell${drawer?.kind === 'detail' ? ' shell--pane' : ''}`}>
         <SessionRail
           boot={a.boot}
           sessions={a.sessions}
