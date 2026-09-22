@@ -4,6 +4,7 @@ import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Ghost } from './Ghost.tsx'
 import { Picker, type PickerOption } from './Picker.tsx'
 import { Tip } from './Tip.tsx'
+import { useGridTransition } from './useGridTransition.ts'
 import type { Atelier } from '../store.ts'
 import type { Candidate, Verdict } from '../types.ts'
 
@@ -46,6 +47,7 @@ export function Workspace({
   const [find, setFind] = useState('')
   const [kbd, setKbd] = useState(false)
   const findRef = useRef<HTMLInputElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
 
   // The focused plate owns its own name, note box and voice; the keyboard just
   // names the verb and lets it answer.
@@ -99,16 +101,8 @@ export function Workspace({
     if (family && !familiesPresent.some(([id]) => id === family)) setFamily(null)
   }, [family, familiesPresent])
 
-  const visible = useMemo(() => {
-    const laneTest = LANES.find(l => l.id === lane)!.test
-    const needle = find.trim().toLowerCase()
-    let list = candidates.filter(c => {
-      if (!laneTest(c)) return false
-      if (family && a.strategyById.get(c.strategyId)?.family !== family) return false
-      if (needle && !`${c.name} ${c.rationale}`.toLowerCase().includes(needle)) return false
-      return true
-    })
-    list = [...list]
+  const ordered = useMemo(() => {
+    const list = [...candidates]
     if (sort === 'arrival') {
       list.sort((x, y) => y.generation - x.generation || x.createdAt - y.createdAt)
     } else if (sort === 'rare') {
@@ -117,7 +111,28 @@ export function Workspace({
       list.sort((x, y) => trouble(x) - trouble(y) || x.probability - y.probability)
     }
     return list
-  }, [candidates, lane, family, find, sort, a.strategyById])
+  }, [candidates, sort])
+
+  const visible = useMemo(() => {
+    const laneTest = LANES.find(l => l.id === lane)!.test
+    const needle = find.trim().toLowerCase()
+    return ordered.filter(c => {
+      if (!laneTest(c)) return false
+      if (family && a.strategyById.get(c.strategyId)?.family !== family) return false
+      if (needle && !`${c.name} ${c.rationale}`.toLowerCase().includes(needle)) return false
+      return true
+    })
+  }, [ordered, lane, family, find, a.strategyById])
+  const visibleIds = useMemo(() => new Set(visible.map(c => c.id)), [visible])
+  const capturePositions = useGridTransition(gridRef, visible)
+  const captureGrid = () => {
+    capturePositions()
+    setKbd(false)
+  }
+
+  useEffect(() => {
+    if (focusId && !visibleIds.has(focusId)) setFocusId(null)
+  }, [focusId, visibleIds, setFocusId])
 
   const latestGeneration = session?.generation ?? 0
   const liveBatches = useMemo(
@@ -296,7 +311,11 @@ export function Workspace({
           <button
             key={l.id}
             className={`chip${lane === l.id ? ' chip--on' : ''}`}
-            onClick={() => setLane(l.id)}
+            onClick={() => {
+              if (lane === l.id) return
+              captureGrid()
+              setLane(l.id)
+            }}
           >
             {l.label}
             <span className="chip__n">{laneCounts.get(l.id) ?? 0}</span>
@@ -311,7 +330,11 @@ export function Workspace({
             <Picker
               options={familyOptions}
               value={family}
-              onPick={setFamily}
+              onPick={id => {
+                if (family === id) return
+                captureGrid()
+                setFamily(id)
+              }}
               clearLabel="全部词族"
               clearN={familyTotal}
               title="按词族筛选"
@@ -330,7 +353,10 @@ export function Workspace({
             className="filters__find"
             value={find}
             placeholder="搜索 /"
-            onChange={e => setFind(e.target.value)}
+            onChange={e => {
+              captureGrid()
+              setFind(e.target.value)
+            }}
           />
         </span>
 
@@ -340,7 +366,10 @@ export function Workspace({
           options={SORTS}
           value={sort}
           onPick={id => {
-            if (id) setSort(id as Sort)
+            if (id && id !== sort) {
+              captureGrid()
+              setSort(id as Sort)
+            }
           }}
           align="right"
           title="排序"
@@ -348,7 +377,7 @@ export function Workspace({
       </div>
 
       <div className="canvas">
-        <div className="plates">
+        <div className="plates" ref={gridRef}>
           <AnimatePresence initial={false}>
             {ghosts.map(b => {
               const s = a.strategyById.get(b.strategyId)
@@ -361,23 +390,24 @@ export function Workspace({
                 />
               )
             })}
+          </AnimatePresence>
 
-            {visible.map(c => (
+          {ordered.map(c => (
+            <div key={c.id} className="plate-slot" data-candidate={c.id} hidden={!visibleIds.has(c.id)}>
               <CandidatePlate
-                key={c.id}
                 candidate={c}
                 strategy={a.strategyById.get(c.strategyId)}
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
-                focused={focusId === c.id}
-                autoScroll={kbd && focusId === c.id}
+                focused={visibleIds.has(c.id) && focusId === c.id}
+                autoScroll={visibleIds.has(c.id) && kbd && focusId === c.id}
                 onFocus={focusPlate}
                 onVerdict={a.setVerdict}
                 onNote={a.setNote}
                 onOpen={openPlate}
                 onMore={generateMore}
               />
-            ))}
-          </AnimatePresence>
+            </div>
+          ))}
         </div>
 
         {visible.length === 0 && ghosts.length === 0 && (
