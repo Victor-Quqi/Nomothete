@@ -100,6 +100,9 @@ export const availabilityCheck: Check = {
       tier: 'free',
       status,
       headline,
+      // Just the per-registry breakdown. That a ▲ buys a deeper search is one
+      // fact with one home, and the drawer is it — repeating it on every card
+      // also means repeating it long after the deeper search has already run.
       detail:
         results
           .map(r => {
@@ -112,8 +115,7 @@ export const availabilityCheck: Check = {
               default: return `${r.spec.label}：查询失败`
             }
           })
-          .join('　') +
-        '。这只是按原样搜了一下。给它一个 ▲，会去查得更细。',
+          .join('　') + '。这是按原样搜的。',
       data: {
         registries: results.map(r => ({
           id: r.spec.id,

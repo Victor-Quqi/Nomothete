@@ -1,12 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { byCheckOrder } from '../checks.ts'
 import { Tip } from './Tip.tsx'
 import type { CheckResult } from '../types.ts'
-
-const ORDER = ['validity', 'availability', 'publishability', 'neighbourhood', 'dictionary', 'local-index', 'github', 'domain']
-
-function byOrder(a: CheckResult, b: CheckResult): number {
-  return ORDER.indexOf(a.checkId) - ORDER.indexOf(b.checkId)
-}
 
 /**
  * Seals report what the checks found — and only that.
@@ -30,8 +25,8 @@ export function Seals({
   pending?: string | null
   onOpen?: () => void
 }) {
-  const findings = checks.filter(c => c.status !== 'clear').sort(byOrder)
-  const clear = checks.filter(c => c.status === 'clear').sort(byOrder)
+  const findings = checks.filter(c => c.status !== 'clear').sort(byCheckOrder)
+  const clear = checks.filter(c => c.status === 'clear').sort(byCheckOrder)
 
   return (
     <div className="seals">

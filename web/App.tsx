@@ -216,6 +216,7 @@ export function App() {
             candidate={detail}
             strategy={a.strategyById.get(detail.strategyId)}
             family={a.familyById.get(a.strategyById.get(detail.strategyId)?.family ?? '')}
+            manifest={a.boot?.checks}
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}
             onRecheck={() => a.recheck(detail.id)}

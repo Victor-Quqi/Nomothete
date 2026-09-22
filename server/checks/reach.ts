@@ -61,8 +61,10 @@ export const npmNeighbourhoodCheck: Check = {
       headline: `npm 上 ${total} 个相关结果`,
       detail:
         (exactNorm.length > 0 ? `npm 上已经有 ${exactNorm.join('、')}。` : '') +
+        // Three is enough to show what the neighbourhood looks like. The count
+        // is what carries the crowding; a longer list only reads as clutter.
         (nearMisses.length > 0
-          ? `形近的有 ${nearMisses.slice(0, 6).join('、')}${nearMisses.length > 6 ? ' 等' : ''}。`
+          ? `形近的有 ${nearMisses.slice(0, 3).join('、')}${nearMisses.length > 3 ? ` 等 ${nearMisses.length} 个` : ''}。`
           : '') +
         `这不影响能否使用，只影响检索时与这 ${total} 个结果的区分度。`,
       data: { total, nearMisses, exactNorm },
@@ -124,9 +126,9 @@ export const githubCheck: Check = {
         detail:
           (exact.length > 0 ? `其中 ${exact.map(e => e.full_name).join('、')} 与它完全同名。` : '') +
           (notable.length > 0
-            ? `最显眼的是 ${notable.map(i => `${i.full_name}（★${i.stargazers_count.toLocaleString()}）`).join('、')}。`
-            : '命中的仓库都很小' + (crowded ? '，但数量可观。' : '。')) +
-          '星数高的同名项目会长期占据搜索结果。',
+            ? `最显眼的是 ${notable.map(i => `${i.full_name}（★${i.stargazers_count.toLocaleString()}）`).join('、')}。` +
+              '星数高的同名项目会长期占据搜索结果。'
+            : '命中的仓库都很小' + (crowded ? '，但数量足以占满搜索结果。' : '。')),
         data: {
           total: payload.total_count,
           top: top.map(i => ({ name: i.full_name, stars: i.stargazers_count, url: i.html_url, description: i.description })),
