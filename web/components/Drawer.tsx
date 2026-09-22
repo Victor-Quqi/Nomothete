@@ -1,5 +1,29 @@
 import { useEffect, type ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
+
+function DrawerPanel({ modal, children }: { modal: boolean; children: ReactNode }) {
+  const [present, remove] = usePresence()
+  const reducedMotion = useReducedMotion()
+  useEffect(() => {
+    if (present) return
+    const timer = setTimeout(() => remove?.(), reducedMotion ? 0 : 350)
+    return () => clearTimeout(timer)
+  }, [present, remove, reducedMotion])
+  return (
+    <aside
+      className="drawer"
+      data-open={present}
+      onTransitionEnd={e => {
+        if (!present && e.target === e.currentTarget && e.propertyName === 'transform') remove?.()
+      }}
+      role="dialog"
+      aria-modal={modal}
+      inert={!present}
+    >
+      {children}
+    </aside>
+  )
+}
 
 export function Drawer({
   open,
@@ -48,15 +72,7 @@ export function Drawer({
               onClick={onClose}
             />
           )}
-          <motion.aside
-            className="drawer"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 320, damping: 36, mass: 0.9 }}
-            role="dialog"
-            aria-modal={modal}
-          >
+          <DrawerPanel modal={modal}>
             <div className="drawer__head">
               <div className="drawer__title">{title}</div>
               {actions}
@@ -65,7 +81,7 @@ export function Drawer({
               </button>
             </div>
             <div className="drawer__body">{children}</div>
-          </motion.aside>
+          </DrawerPanel>
         </>
       )}
     </AnimatePresence>

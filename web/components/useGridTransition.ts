@@ -45,7 +45,10 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     if (!grid || (!positions && added.size === 0)) return
     before.current = null
     if (positions) {
-      for (const animation of animations.current.values()) animation.cancel()
+      for (const [node, animation] of animations.current) {
+        animation.cancel()
+        delete node.dataset.moving
+      }
       animations.current.clear()
       grid.parentElement!.scrollTo({ top: 0, behavior: 'instant' })
     }
@@ -74,14 +77,63 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
   useLayoutEffect(() => {
     const grid = gridRef.current
     if (!grid) return
+    const canvas = grid.parentElement!
     let width = grid.clientWidth
+    let columns = getComputedStyle(grid).gridTemplateColumns.split(' ').length
+    let previous = new Map<HTMLElement, DOMRect>()
+    let settled: ReturnType<typeof setTimeout> | undefined
+    const remember = () => {
+      previous = new Map(visibleSlots(grid).map(node => [node, node.getBoundingClientRect()]))
+    }
+    remember()
     const observer = new ResizeObserver(() => {
       if (grid.clientWidth === width) return
       width = grid.clientWidth
-      resetPlateMeasurements(grid)
+      // Width changes every frame while the detail pane moves. Reset the
+      // offscreen measurements once the pane settles, not on every frame.
+      clearTimeout(settled)
+      settled = setTimeout(() => resetPlateMeasurements(grid), 100)
+      const nextColumns = getComputedStyle(grid).gridTemplateColumns.split(' ').length
+      if (nextColumns !== columns && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const nodes = new Set([...previous.keys(), ...visibleSlots(grid)])
+        for (const node of nodes) {
+          animations.current.get(node)?.cancel()
+          animations.current.delete(node)
+          delete node.dataset.moving
+        }
+        const targets = [...nodes].filter(node => node.isConnected && !node.hidden)
+          .map(node => ({ node, rect: node.getBoundingClientRect(), from: previous.get(node) }))
+        for (const { node, rect, from } of targets) {
+          if (!from) continue
+          const dx = from.x - rect.x
+          const dy = from.y - rect.y
+          if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue
+          node.dataset.moving = ''
+          const animation = node.animate([
+            { transform: `translate(${dx}px, ${dy}px)` },
+            { transform: 'translate(0, 0)' },
+          ], { duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' })
+          animations.current.set(node, animation)
+          const finish = () => {
+            if (animations.current.get(node) !== animation) return
+            animations.current.delete(node)
+            delete node.dataset.moving
+          }
+          animation.onfinish = finish
+          animation.oncancel = finish
+        }
+      }
+      columns = nextColumns
+      remember()
     })
     observer.observe(grid)
-    return () => observer.disconnect()
+    canvas.addEventListener('scroll', remember, { passive: true })
+    return () => {
+      observer.disconnect()
+      canvas.removeEventListener('scroll', remember)
+      clearTimeout(settled)
+      for (const node of grid.querySelectorAll<HTMLElement>('[data-moving]')) delete node.dataset.moving
+    }
   }, [gridRef])
 
   useLayoutEffect(() => () => {
