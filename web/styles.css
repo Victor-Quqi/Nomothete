@@ -583,9 +583,20 @@ kbd {
   white-space: nowrap;
   transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
 }
-.picker__row:hover { background: rgba(239, 231, 216, 0.05); color: var(--vellum); }
-.picker__row:focus-visible { border-radius: var(--r-sm); }
 .picker__row[data-on='true'] { background: rgba(239, 231, 216, 0.09); color: var(--vellum); }
+/* Hover focuses the row, so :focus covers the pointer and the arrow keys alike
+   and one rule says how the cursor looks. The brass hairline sits this one out:
+   inside an open list the lit row is where you are, not a control you tabbed
+   to, and the wash has to out-read the row that is merely chosen or walking the
+   list with the keys looks like it is doing nothing. */
+.picker__row:focus,
+.picker__row:hover {
+  background: rgba(239, 231, 216, 0.15);
+  color: var(--vellum);
+  border-radius: var(--r-sm);
+  box-shadow: none;
+  outline: none;
+}
 .picker__label { flex: 1; }
 
 /* ── plates ──────────────────────────────────────────────────────────────── */
@@ -638,11 +649,13 @@ kbd {
   opacity: 0;
   transition: opacity 0.35s var(--ease-out);
 }
-.plate:hover::before { opacity: 1; }
-.plate:hover {
-  border-color: var(--hair-2);
-  box-shadow: 0 26px 50px -30px rgba(0, 0, 0, 0.95);
-}
+/* The pointer and the arrow keys arrive at the same place: hovering a plate
+   makes it the focused one, the way a hovered row moves the palette's cursor.
+   So the state is written once, on .plate--focus, and there is no :hover rule
+   of its own — a second one would light a second plate whenever the pointer sat
+   on one while the keys walked on to another, and would light it differently.
+   The .plate__say and .plate__copy above already read from this class alone. */
+.plate--focus::before { opacity: 1; }
 .plate--focus {
   border-color: rgba(239, 231, 216, 0.3);
   box-shadow: 0 0 0 1px rgba(239, 231, 216, 0.12), 0 26px 50px -28px rgba(0, 0, 0, 0.95);
@@ -653,9 +666,18 @@ kbd {
   background: linear-gradient(180deg, rgba(40, 33, 18, 0.7), rgba(17, 16, 20, 0.92));
   box-shadow: 0 0 0 1px rgba(232, 180, 79, 0.16), 0 26px 56px -30px rgba(217, 164, 65, 0.4);
 }
+/* A verdict keeps its own edge while it holds focus: the brass is the only
+   thing saying this one is a keeper, so the ring brightens rather than
+   repainting it — the up1 border wins the same way, being stated later. */
+.plate--up2.plate--focus {
+  box-shadow: 0 0 0 1px rgba(232, 180, 79, 0.45), 0 26px 56px -30px rgba(217, 164, 65, 0.45);
+}
 .plate--down1 { opacity: 0.66; }
 .plate--down2 { opacity: 0.4; filter: saturate(0.4); }
-.plate--down1:hover, .plate--down2:hover { opacity: 0.95; filter: none; }
+/* A rejected plate comes back to full strength while you are reading it,
+   whichever way you got there. */
+.plate--down1.plate--focus,
+.plate--down2.plate--focus { opacity: 0.95; filter: none; }
 
 .plate__gild {
   position: absolute;

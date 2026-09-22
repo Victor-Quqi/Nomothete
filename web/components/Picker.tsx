@@ -146,6 +146,7 @@ export function Picker({ options, value, onPick, clearLabel, clearN, align = 'le
                   ref={el => {
                     if (value === null) el?.focus()
                   }}
+                  onMouseEnter={e => e.currentTarget.focus({ preventScroll: true })}
                   onClick={() => pick(null)}
                 >
                   {dotted && <i className="picker__dot" />}
@@ -163,6 +164,10 @@ export function Picker({ options, value, onPick, clearLabel, clearN, align = 'le
                   ref={el => {
                     if (o.id === value) el?.focus()
                   }}
+                  // Hovering a row moves the cursor onto it, so the pointer and
+                  // the arrow keys leave the menu in the same state — one row
+                  // lit, and the next key press steps from where you are.
+                  onMouseEnter={e => e.currentTarget.focus({ preventScroll: true })}
                   onClick={() => pick(o.id)}
                 >
                   {dotted && (
