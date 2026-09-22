@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 
 interface Props {
+  /**
+   * What the hover has to add. Null means it has nothing — the element stays
+   * exactly as clickable, and simply never opens a card to repeat itself.
+   */
   content: ReactNode
   children: ReactNode
   className?: string
@@ -21,6 +25,7 @@ export function Tip({ content, children, className, onClick, delay = 240 }: Prop
   const [box, setBox] = useState<{ x: number; y: number; below: boolean } | null>(null)
 
   const show = useCallback(() => {
+    if (!content) return
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       const r = ref.current?.getBoundingClientRect()
@@ -32,7 +37,7 @@ export function Tip({ content, children, className, onClick, delay = 240 }: Prop
         below,
       })
     }, delay)
-  }, [delay])
+  }, [content, delay])
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current)

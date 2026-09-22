@@ -489,9 +489,10 @@ export function Workspace({
         {a.discards.length > 0 && (
           <Tip
             className="dock__discards"
+            // No title line: it would read 丢掉的 N 个 over a trigger that
+            // already reads 丢掉 N 个.
             content={
               <>
-                <b>丢掉的 {a.discards.length} 个</b>
                 <p>{a.discards.slice(-14).map(d => d.name).join('　')}</p>
                 <em>自报罕见度低于阈值。</em>
               </>

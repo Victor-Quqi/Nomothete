@@ -129,8 +129,10 @@ function PlateInner({
   // other way in. Either way the plate says so while it runs.
   const deep = deepRunning(checks, candidate.verdict, asked)
   const pending = checks.length === 0 ? '正在检查…' : deep ? '正在查注册表和 GitHub…' : null
-  // Liking a name is not the price of checking it. The offer stands on the card
-  // itself so that asking costs neither a ▲ nor a trip through the drawer.
+  // Liking a name is not the price of checking it, so the offer stays on the
+  // card — in the head, with the card's other quiet verbs, out of sight until
+  // the plate has focus. It is a verb, not a finding, and never sat well
+  // among the seals.
   const canAsk = checks.length > 0 && !deep && !deepDone(checks)
 
   const rarity = 1 - candidate.probability
@@ -201,6 +203,26 @@ function PlateInner({
         <h3 className={`plate__name${saying ? ' plate__name--speaking' : ''}`} onClick={speak}>
           {candidate.name}
         </h3>
+        {canAsk && (
+          <Tip
+            className="plate__ask"
+            onClick={() => onRecheck(candidate.id)}
+            // An unlabelled glyph needs one thing said: what pressing it does.
+            // That a ▲ starts the same run is the drawer's line, and it says it.
+            content={<b>查{waitingLabels(manifest) || '剩下几项慢的'}</b>}
+          >
+            <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+              <circle cx="6.9" cy="6.9" r="4.1" stroke="currentColor" strokeWidth="1.3" fill="none" />
+              <path
+                d="M10 10l3.4 3.4"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </svg>
+          </Tip>
+        )}
         <SayButton
           state={saying ? 'on' : isMute() ? 'mute' : 'idle'}
           onClick={speak}
@@ -216,9 +238,10 @@ function PlateInner({
           <Tip
             className="plate__strategy"
             onClick={() => onMore(candidate.strategyId)}
+            // No title line: it would be the strategy's name, which is what the
+            // pointer is resting on.
             content={
               <>
-                <b>{strategy.label}</b>
                 <p>{strategy.brief}</p>
                 <em>按这个思路再来一批</em>
               </>
@@ -248,27 +271,7 @@ function PlateInner({
 
       <p className="plate__rationale">{candidate.rationale}</p>
 
-      <Seals
-        checks={checks}
-        pending={pending}
-        onInspect={open}
-        action={
-          canAsk && (
-            <Tip
-              className="seals__ask"
-              onClick={() => onRecheck(candidate.id)}
-              content={
-                <>
-                  <b>{waitingLabels(manifest) || '还有几项慢的'}还没查</b>
-                  <p>▲ 之后会自动开始。不想先表态，就现在查。</p>
-                </>
-              }
-            >
-              现在查 →
-            </Tip>
-          )
-        }
-      />
+      <Seals checks={checks} pending={pending} onInspect={open} />
 
       <div className="plate__foot">
         <VerdictDial verdict={candidate.verdict} onChange={v => onVerdict(candidate.id, v)} />

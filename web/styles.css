@@ -673,6 +673,7 @@ kbd {
 .work[data-keyboard='true'] .plate,
 .work[data-keyboard='true'] .plate::before,
 .work[data-keyboard='true'] .plate__say,
+.work[data-keyboard='true'] .plate__ask,
 .work[data-keyboard='true'] .plate__copy {
   transition: none;
 }
@@ -746,17 +747,23 @@ kbd {
 /* The head's glyphs follow focus, not the pointer: hovering focuses a plate
    anyway, and s and c fire from the keyboard, where there is no pointer. */
 .plate__say,
+.plate__ask,
 .plate__copy { opacity: 0; }
 .plate--focus .plate__say,
+.plate--focus .plate__ask,
 .plate--focus .plate__copy { opacity: 1; }
 
+.plate__ask,
 .plate__copy {
   flex: none;
+  display: inline-flex;
   color: var(--vellum-4);
   padding: 5px;
   border-radius: var(--r-sm);
+  cursor: pointer;
   transition: all 0.2s var(--ease-out);
 }
+.plate__ask:hover,
 .plate__copy:hover { color: var(--brass); background: rgba(217, 164, 65, 0.1); }
 
 .plate__meta {
@@ -828,6 +835,9 @@ kbd {
   overflow: hidden;
 }
 
+/* Findings only. Nothing else is allowed in this row: anything threaded in
+   beside the pills comes to rest wherever they happen to stop, which is a
+   different place on every card. */
 .seals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; min-height: 22px; }
 .seal {
   display: inline-flex;
@@ -846,27 +856,11 @@ kbd {
 .seal span { overflow: hidden; text-overflow: ellipsis; }
 .seal i { width: 5px; height: 5px; border-radius: 99px; background: currentColor; flex: none; }
 .seal:hover { filter: brightness(1.25); }
-.seal--clear { color: var(--verdigris); border-color: rgba(79, 179, 160, 0.28); background: rgba(79, 179, 160, 0.07); }
 .seal--caution { color: var(--amber); border-color: rgba(207, 145, 70, 0.3); background: rgba(207, 145, 70, 0.07); }
 .seal--taken, .seal--blocked, .seal--invalid { color: var(--rust); border-color: rgba(196, 87, 62, 0.32); background: rgba(196, 87, 62, 0.07); }
 .seal--error, .seal--pending { color: var(--vellum-4); border-color: var(--hair); }
 .seal--pending i { animation: blink 1.4s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: 0.25; } }
-
-/* An offer, not a finding: dashed, so it never reads as a sixth seal. */
-.seals__ask {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: 99px;
-  font-size: 12px;
-  color: var(--vellum-4);
-  border: 1px dashed var(--hair-2);
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
-  white-space: nowrap;
-}
-.seals__ask:hover { color: var(--brass); border-color: var(--brass); }
 
 .plate__foot {
   display: flex;
@@ -1447,7 +1441,10 @@ kbd {
   color: var(--vellum-2);
 }
 .tip b { display: block; color: var(--vellum); font-weight: 500; }
+/* Most tips open straight onto the sentence: a title line that repeats the
+   thing under the pointer is not a title, it is an echo. */
 .tip p { margin: 6px 0 0; }
+.tip p:first-child { margin-top: 0; }
 .tip em {
   display: block;
   margin-top: 8px;
@@ -1457,10 +1454,6 @@ kbd {
   color: var(--vellum-4);
 }
 .tip code { font-family: var(--font-mono); font-size: 12.5px; }
-/* A label-and-value line, for the tooltips that carry a small table now that
-   the plate itself carries only findings. */
-.tip__row { display: flex; gap: 10px; }
-.tip__row > span { flex: none; width: 56px; color: var(--vellum-4); }
 
 /* ── filter field ────────────────────────────────────────────────────────── */
 /* The slot always reserves the field's widest state, so focusing the field

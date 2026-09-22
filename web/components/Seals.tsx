@@ -1,47 +1,47 @@
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { byCheckOrder } from '../checks.ts'
+import { linksOf } from './CheckList.tsx'
 import { Tip } from './Tip.tsx'
 import type { CheckResult } from '../types.ts'
 
 /**
  * Seals report what the checks found — and only that.
  *
- * A name with nothing wrong used to stamp five separate seals saying five
- * different ways of "没找到"，挤满一整行、抢走了唯一那条真发现的位置。So the
- * silent checks now collapse into one pill and keep their sentences in the
- * tooltip; only a finding gets a seal of its own.
+ * Nothing found prints nothing. A pill reading "5 项检查没发现冲突" sat on very
+ * nearly every card, the same size and colour and place as the one pill that
+ * meant something — so the wall could not be scanned for trouble. Quiet is the
+ * signal now: seals on a card mean something is wrong with that name. What was
+ * searched, and what each search said, is in the pane.
  *
- * The wording still never says "safe" or "available" — the vocabulary is
- * 查无记录 / 已有同名 (CONTEXT.md). That is the whole of the hedge: say what was
- * searched and what came back, and let the reader draw the conclusion. Adding a
- * line underneath to warn them not to over-read it says nothing the rows did
- * not already say.
- *
- * Three rungs of detail would be one too many: the pill is what was found, the
- * tooltip unpacks it for the price of a hover, and the drawer is everything —
- * evidence, links, the slow tier, the full rationale. A middle rung that cost
- * the same click as the drawer and said less had no reason to exist, so
- * pressing a seal goes straight to the drawer.
+ * The wording never says "safe" or "available" — the vocabulary is
+ * 查无记录 / 已有同名 (CONTEXT.md).
  */
+function tipFor(c: CheckResult): ReactNode {
+  const links = linksOf(c).length
+  if (!c.detail && links === 0) return null
+  // The headline is on the pill, an inch under the pointer. All the title line
+  // can add is which check said it.
+  return (
+    <>
+      <b>{c.label}</b>
+      {c.detail && <p>{c.detail}</p>}
+      {links > 0 && <em>点开看 {links} 条链接</em>}
+    </>
+  )
+}
+
 export function Seals({
   checks,
   pending,
   onInspect,
-  action,
 }: {
   checks: CheckResult[]
   /** Text for the one provisional seal, when something is still out. */
   pending?: string | null
   onInspect?: () => void
-  /**
-   * Something to do about what the seals say, on the same row as them. An
-   * action, not a fourth thing to read — it goes where the eye already is.
-   */
-  action?: ReactNode
 }) {
   const findings = checks.filter(c => c.status !== 'clear').sort(byCheckOrder)
-  const clear = checks.filter(c => c.status === 'clear').sort(byCheckOrder)
 
   return (
     <div className="seals">
@@ -58,51 +58,17 @@ export function Seals({
             <Tip
               className={`seal seal--${c.status}`}
               onClick={onInspect}
-              content={
-                <>
-                  <b>
-                    {c.label} · {c.headline}
-                  </b>
-                  {c.detail && <p>{c.detail}</p>}
-                  <em>点开看证据和链接</em>
-                </>
-              }
+              // A hover that repeats the pill is worse than no hover: it costs
+              // a wait and a glance and hands back the words already on screen.
+              // So it opens only when the check found something the pill has no
+              // room for, and it promises links only when there are links.
+              content={tipFor(c)}
             >
               <i />
               <span>{c.headline}</span>
             </Tip>
           </motion.span>
         ))}
-
-        {clear.length > 0 && (
-          <motion.span
-            key="clear"
-            initial={{ opacity: 0, scale: 0.86, filter: 'blur(3px)' }}
-            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 34 }}
-            style={{ display: 'inline-flex' }}
-          >
-            <Tip
-              className="seal seal--clear"
-              onClick={onInspect}
-              content={
-                <>
-                  <b>{clear.length} 项检查没发现冲突</b>
-                  {clear.map(c => (
-                    <p key={c.checkId} className="tip__row">
-                      <span>{c.label}</span>
-                      {c.headline}
-                    </p>
-                  ))}
-                </>
-              }
-            >
-              <i />
-              <span>{clear.length} 项检查没发现冲突</span>
-            </Tip>
-          </motion.span>
-        )}
 
         {pending && (
           <motion.span
@@ -117,8 +83,6 @@ export function Seals({
           </motion.span>
         )}
       </AnimatePresence>
-
-      {action}
     </div>
   )
 }
