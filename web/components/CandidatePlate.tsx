@@ -5,6 +5,7 @@ import { Tip } from './Tip.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import { isMute, speakName } from '../speak.ts'
 import { SayButton } from './SayButton.tsx'
+import { scrollToPlate } from './scrollToPlate.ts'
 import type { Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
@@ -107,15 +108,7 @@ function PlateInner({
   // follow immediately so they cannot keep restarting a smooth scroll.
   useLayoutEffect(() => {
     if (!focused || !autoScroll) return
-    const slot = el.current?.parentElement
-    const grid = slot?.parentElement
-    const canvas = grid?.parentElement
-    if (!slot || !grid || !canvas) return
-    const top = canvas.scrollTop + grid.getBoundingClientRect().top - canvas.getBoundingClientRect().top +
-      slot.offsetTop + slot.offsetHeight / 2 - canvas.clientHeight / 2
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const distant = Math.abs(top - canvas.scrollTop) > canvas.clientHeight
-    canvas.scrollTo({ top: Math.max(0, top), behavior: reduced || distant ? 'instant' : autoScroll })
+    if (el.current) scrollToPlate(el.current, autoScroll)
   }, [focused, autoScroll])
 
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.note])

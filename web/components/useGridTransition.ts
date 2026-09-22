@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { resetPlateMeasurements } from './scrollToPlate.ts'
 
 type Position = { x: number; y: number; opacity: number }
 
@@ -38,6 +39,7 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
   useLayoutEffect(() => {
     const positions = before.current
     const grid = gridRef.current
+    if (grid) resetPlateMeasurements(grid)
     const added = new Set(items.filter(item => !previousIds.current.has(item.id)).map(item => item.id))
     previousIds.current = new Set(items.map(item => item.id))
     if (!grid || (!positions && added.size === 0)) return
@@ -68,6 +70,19 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
       }
     }
   }, [gridRef, items])
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    let width = grid.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (grid.clientWidth === width) return
+      width = grid.clientWidth
+      resetPlateMeasurements(grid)
+    })
+    observer.observe(grid)
+    return () => observer.disconnect()
+  }, [gridRef])
 
   useLayoutEffect(() => () => {
     for (const animation of animations.current.values()) animation.cancel()

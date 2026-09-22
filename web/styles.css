@@ -625,6 +625,8 @@ kbd {
   contain-intrinsic-size: auto 264px;
 }
 .plate-slot[hidden] { display: none; }
+.plate-slot[data-prepared] { content-visibility: visible; }
+.work[data-keyboard='true'] .canvas { overflow-anchor: none; }
 
 .plate {
   position: relative;
