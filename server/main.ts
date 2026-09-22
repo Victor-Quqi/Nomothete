@@ -169,6 +169,7 @@ async function backfillChecks(sessionId: string, candidates: Candidate[]) {
     await fillMissingChecks(c.id, c.name, {
       signal,
       onResult: result => publish(sessionId, { type: 'check', candidateId: c.id, result }),
+      onGone: checkId => publish(sessionId, { type: 'check:gone', candidateId: c.id, checkId }),
     }).catch(() => {})
   }
 }
@@ -282,7 +283,7 @@ api.post('/candidates/:id/recheck', (req, res) => {
     res.status(404).json({ error: '候选不存在' })
     return
   }
-  startDeepChecks(candidate.sessionId, candidate.id, candidate.name)
+  startDeepChecks(candidate.sessionId, candidate.id, candidate.name, true)
   res.json({ ok: true })
 })
 

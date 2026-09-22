@@ -20,6 +20,8 @@ export type ServerEvent =
   | { type: 'candidate'; candidate: Candidate }
   | { type: 'candidate:discarded'; batchId: string; name: string; probability: number }
   | { type: 'check'; candidateId: string; result: CheckResult }
+  /** A re-run found nothing where the stored answer had found something. */
+  | { type: 'check:gone'; candidateId: string; checkId: string }
   | { type: 'verdict'; candidateId: string; verdict: number }
   | { type: 'generation:done'; generation: number }
   /** The rail's label for this session, written after the session was. */

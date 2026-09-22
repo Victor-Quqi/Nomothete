@@ -1,5 +1,5 @@
 import { getDb, newId, nowMs } from './db.ts'
-import { loadChecks } from './checks/index.ts'
+import { loadChecks, readCheckRow } from './checks/index.ts'
 import type { CheckResult } from './checks/types.ts'
 import { DEFAULT_PRIOR_IDS } from './naming/priors.ts'
 
@@ -210,7 +210,7 @@ export function getCandidate(id: string): Candidate | null {
   const r = getDb().prepare('SELECT * FROM candidates WHERE id = ?').get(id)
   if (!r) return null
   const c = rowToCandidate(r)
-  c.checks = loadChecks(c.id)
+  c.checks = loadChecks(c.id, c.name)
   return c
 }
 
@@ -224,19 +224,15 @@ export function listCandidates(sessionId: string): Candidate[] {
       'SELECT c.* FROM checks c JOIN candidates n ON n.id = c.candidateId WHERE n.sessionId = ?',
     )
     .all(sessionId) as any[]
+  // One query for the whole wall, then the same re-reading loadChecks does for
+  // a single candidate: the row supplies the facts, this build supplies the
+  // words. Reword a check and all two hundred cards agree on the next render.
+  const nameById = new Map(all.map(c => [c.id, c.name]))
   const byCandidate = new Map<string, CheckResult[]>()
   for (const r of checkRows) {
-    const list = byCandidate.get(r.candidateId) ?? []
-    list.push({
-      checkId: r.checkId,
-      label: r.label,
-      tier: r.tier,
-      status: r.status,
-      headline: r.headline,
-      detail: r.detail ?? undefined,
-      data: r.data ? JSON.parse(r.data) : undefined,
-    })
-    byCandidate.set(r.candidateId, list)
+    const result = readCheckRow(r, nameById.get(r.candidateId) ?? '')
+    if (!result) continue
+    byCandidate.set(r.candidateId, [...(byCandidate.get(r.candidateId) ?? []), result])
   }
   for (const c of all) c.checks = byCandidate.get(c.id) ?? []
   return all

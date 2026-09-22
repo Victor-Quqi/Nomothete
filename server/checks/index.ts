@@ -50,22 +50,78 @@ export function persistCheck(candidateId: string, r: CheckResult) {
     )
 }
 
-export function loadChecks(candidateId: string): CheckResult[] {
+/**
+ * Put words to what a check found.
+ *
+ * Every reader goes through here, including the one loading rows written months
+ * ago by a build whose wording has since been thrown out. The words come from
+ * this build; only the facts come from the row. Rows too old to carry facts, and
+ * rows recording a thrown exception, keep whatever they were written with —
+ * there is nothing to re-derive them from.
+ */
+export function describeCheck(
+  check: Check,
+  data: Record<string, unknown> | undefined,
+  name: string,
+): CheckResult | null {
+  const reading = data ? check.describe(data, name) : null
+  if (!reading) return null
+  return { checkId: check.id, label: check.label, tier: check.tier, ...reading, data }
+}
+
+/** A row as stored. `data` is still JSON at this point. */
+export interface CheckRow {
+  checkId: string
+  label: string
+  tier: string
+  status: string
+  headline: string
+  detail: string | null
+  data: string | null
+}
+
+const ROW_COLUMNS = 'checkId, label, tier, status, headline, detail, data'
+
+/**
+ * A stored row, read back as this build would say it.
+ *
+ * Null means this build would not show the check at all — a re-reading that
+ * comes back empty makes the row stale, not authoritative.
+ */
+export function readCheckRow(row: CheckRow, name: string): CheckResult | null {
+  let data: Record<string, unknown> | undefined
+  try {
+    data = row.data ? (JSON.parse(row.data) as Record<string, unknown>) : undefined
+    const check = CHECKS.find(c => c.id === row.checkId)
+    if (check && data) return describeCheck(check, data, name)
+  } catch {
+    // Facts written by a build whose shape this one no longer understands.
+    // Falling back to the words stored beside them beats losing the check, and
+    // beats a 500 on the whole session.
+  }
+  return {
+    checkId: row.checkId,
+    label: row.label,
+    tier: row.tier as CheckResult['tier'],
+    status: row.status as CheckResult['status'],
+    headline: row.headline,
+    detail: row.detail ?? undefined,
+    data,
+  }
+}
+
+export function loadChecks(candidateId: string, name: string): CheckResult[] {
   const rows = getDb()
-    .prepare('SELECT checkId, label, tier, status, headline, detail, data FROM checks WHERE candidateId = ?')
-    .all(candidateId) as {
-    checkId: string; label: string; tier: string; status: string
-    headline: string; detail: string | null; data: string | null
-  }[]
-  return rows.map(r => ({
-    checkId: r.checkId,
-    label: r.label,
-    tier: r.tier as CheckResult['tier'],
-    status: r.status as CheckResult['status'],
-    headline: r.headline,
-    detail: r.detail ?? undefined,
-    data: r.data ? JSON.parse(r.data) : undefined,
-  }))
+    .prepare(`SELECT ${ROW_COLUMNS} FROM checks WHERE candidateId = ?`)
+    .all(candidateId) as unknown as CheckRow[]
+  return rows.map(r => readCheckRow(r, name)).filter((c): c is CheckResult => c !== null)
+}
+
+interface RunOpts {
+  signal: AbortSignal
+  onResult?: (r: CheckResult) => void
+  /** A stored answer was erased because this run found nothing to say. */
+  onGone?: (checkId: string) => void
 }
 
 /**
@@ -75,31 +131,40 @@ export function loadChecks(candidateId: string): CheckResult[] {
 export async function runChecks(
   candidateId: string,
   name: string,
-  opts: { deep: boolean; signal: AbortSignal; onResult?: (r: CheckResult) => void },
+  opts: RunOpts & { deep?: boolean; all?: boolean },
 ): Promise<CheckResult[]> {
-  const wanted = CHECKS.filter(c => (opts.deep ? c.when === 'after-upvote' : c.when === 'always'))
-  return run(candidateId, name, wanted, opts.signal, opts.onResult)
+  const wanted = opts.all
+    ? CHECKS
+    : CHECKS.filter(c => (opts.deep ? c.when === 'after-upvote' : c.when === 'always'))
+  return run(candidateId, name, wanted, opts.signal, opts.onResult, opts.onGone)
 }
 
 /**
- * Run the always-checks this candidate has no stored answer for.
+ * Ask again for the answers that may have changed since the name was generated.
  *
- * A check writes its row once, when the name is generated. Add a check later,
- * or delete an answer that a newer build knows was wrong, and the card keeps
- * showing the old set until something asks again. This is that something.
+ *   - Checks with no row at all, whatever their tier: a check added after a
+ *     session was made has never run for the names already in it.
+ *   - Every local check. `local-index` is fed by every registry answer this app
+ *     receives, so a name that was unique when it was generated may collide
+ *     with something learned since — and asking costs no network and no time.
+ *
+ * The networked tiers are left alone: three registries and an npm search for
+ * every candidate on every session open is not free. They refresh on a recheck.
+ *
+ * Wording is not a reason to be here. That is re-derived on every read.
  */
 export async function fillMissingChecks(
   candidateId: string,
   name: string,
-  opts: { signal: AbortSignal; onResult?: (r: CheckResult) => void },
+  opts: RunOpts,
 ): Promise<CheckResult[]> {
   const rows = getDb()
     .prepare('SELECT checkId FROM checks WHERE candidateId = ?')
     .all(candidateId) as { checkId: string }[]
   const have = new Set(rows.map(r => r.checkId))
-  const missing = CHECKS.filter(c => c.when === 'always' && !have.has(c.id))
-  if (missing.length === 0) return []
-  return run(candidateId, name, missing, opts.signal, opts.onResult)
+  const wanted = CHECKS.filter(c => (c.when === 'always' && !have.has(c.id)) || c.tier === 'local')
+  if (wanted.length === 0) return []
+  return run(candidateId, name, wanted, opts.signal, opts.onResult, opts.onGone)
 }
 
 async function run(
@@ -108,13 +173,23 @@ async function run(
   wanted: Check[],
   signal: AbortSignal,
   onResult?: (r: CheckResult) => void,
+  onGone?: (checkId: string) => void,
 ): Promise<CheckResult[]> {
   const out: CheckResult[] = []
   await Promise.all(
     wanted.map(async check => {
       try {
-        const r = await check.run({ name, deep: check.when === 'after-upvote', signal })
-        if (!r) return
+        const data = await check.run({ name, deep: check.when === 'after-upvote', signal })
+        const r = describeCheck(check, data ?? undefined, name)
+        // Null means "nothing to say". On a re-run that has to erase what the
+        // last run said, or the card keeps a finding this build no longer makes.
+        if (!r) {
+          const { changes } = getDb()
+            .prepare('DELETE FROM checks WHERE candidateId = ? AND checkId = ?')
+            .run(candidateId, check.id)
+          if (changes > 0) onGone?.(check.id)
+          return
+        }
         persistCheck(candidateId, r)
         out.push(r)
         onResult?.(r)

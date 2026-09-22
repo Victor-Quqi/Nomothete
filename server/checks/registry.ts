@@ -13,7 +13,7 @@
 import { probe, probeAll } from './http.ts'
 import { collisionCandidates, registryForm, validateForRegistry, type RegistryId } from './normalize.ts'
 import { rememberName } from './local.ts'
-import type { Check, CheckContext, CheckResult } from './types.ts'
+import type { Check, CheckContext } from './types.ts'
 
 interface RegistrySpec {
   id: RegistryId
@@ -58,73 +58,92 @@ async function exists(spec: RegistrySpec, name: string, signal: AbortSignal): Pr
   }
 }
 
+interface RegistryAnswer {
+  id: RegistryId
+  label: string
+  form: string
+  state: 'taken' | 'clear' | 'invalid' | 'error'
+  url: string | null
+}
+
 /** Availability across the three registries, in one badge. */
 export const availabilityCheck: Check = {
   id: 'availability',
   label: '注册表',
   tier: 'free',
   when: 'always',
-  async run({ name, signal }: CheckContext): Promise<CheckResult> {
-    // Each registry is asked about the string it would be given, which on npm is
-    // the lowercase one. Asking about `Agemux` there answers nothing: npm has no
-    // such package and never will, because npm has no uppercase packages.
-    const results = await Promise.all(
-      SPECS.map(async spec => {
-        const form = registryForm(spec.id, name)
-        if (!validateForRegistry(spec.id, form).ok) return { spec, form, state: 'invalid' as const }
-        const e = await exists(spec, form, signal)
-        if (e === null) return { spec, form, state: 'error' as const }
+
+  // Each registry is asked about the string it would be given, which on npm is
+  // the lowercase one. Asking about `Agemux` there answers nothing: npm has no
+  // such package and never will, because npm has no uppercase packages.
+  async run({ name, signal }: CheckContext) {
+    const registries = await Promise.all(
+      SPECS.map(async (spec): Promise<RegistryAnswer> => {
+        const base = { id: spec.id, label: spec.label, form: registryForm(spec.id, name) }
+        if (!validateForRegistry(spec.id, base.form).ok) return { ...base, state: 'invalid', url: null }
+        const e = await exists(spec, base.form, signal)
+        if (e === null) return { ...base, state: 'error', url: null }
         if (e) {
-          rememberName(spec.id, form.toLowerCase())
-          return { spec, form, state: 'taken' as const }
+          rememberName(spec.id, base.form.toLowerCase())
+          return { ...base, state: 'taken', url: spec.page(base.form) }
         }
-        return { spec, form, state: 'clear' as const }
+        return { ...base, state: 'clear', url: null }
       }),
     )
+    return { registries }
+  },
 
-    const taken = results.filter(r => r.state === 'taken')
-    const clear = results.filter(r => r.state === 'clear')
-    const failed = results.filter(r => r.state === 'error')
+  describe(data, name) {
+    const stored = (data as { registries?: Partial<RegistryAnswer>[] }).registries ?? []
+    if (stored.length === 0) return null
+    // `form` was added to the row shape after most of these were written, and
+    // it is a pure function of the name and the registry, so recompute it
+    // rather than making every line below defend against its absence.
+    const all = stored.map(r => ({
+      ...r,
+      form: r.form ?? (r.id ? registryForm(r.id, name) : name),
+    })) as RegistryAnswer[]
+    const taken = all.filter(r => r.state === 'taken')
+    const clear = all.filter(r => r.state === 'clear')
+    const failed = all.filter(r => r.state === 'error')
 
-    const status = taken.length > 0 ? 'taken' : clear.length > 0 ? 'clear' : 'error'
     const headline =
       taken.length > 0
-        ? `${taken.map(t => t.spec.label).join('、')} 已有同名`
-        : failed.length === SPECS.length
+        ? `${taken.map(t => t.label).join('、')} 已有同名`
+        : failed.length === all.length
           ? '注册表未答复'
-          : `${clear.map(c => c.spec.label).join('、')} 查无记录`
+          : `${clear.map(c => c.label).join('、')} 查无记录`
+
+    // Case alone is not a different string worth reporting: every name here has
+    // a capital and npm's id for it is simply the lowercase one, so `（作 …）`
+    // keyed on exact equality printed a row on literally every candidate.
+    const restated = (r: RegistryAnswer) => r.form.toLowerCase() !== name.toLowerCase()
+
+    // The headline already names some of the three. The breakdown says the rest
+    // — plus any registry that was asked about a different string than the one
+    // on the card, which the headline has no room for and the reader needs.
+    const named = new Set(
+      (taken.length > 0 ? taken : failed.length === all.length ? all : clear).map(r => r.id),
+    )
+    const unsaid = all.filter(r => !named.has(r.id) || restated(r))
 
     return {
-      checkId: 'availability',
-      label: '注册表',
-      tier: 'free',
-      status,
+      status: taken.length > 0 ? 'taken' : clear.length > 0 ? 'clear' : 'error',
       headline,
-      // Just the per-registry breakdown. That a ▲ buys a deeper search is one
-      // fact with one home, and the drawer is it — repeating it on every card
-      // also means repeating it long after the deeper search has already run.
       detail:
-        results
-          .map(r => {
-            // Say which string was asked about when it is not the one on the card.
-            const as = r.form === name ? '' : `（作 ${r.form}）`
-            switch (r.state) {
-              case 'taken': return `${r.spec.label}${as}：已有同名`
-              case 'clear': return `${r.spec.label}${as}：查无记录`
-              case 'invalid': return `${r.spec.label}：名字不合法`
-              default: return `${r.spec.label}：查询失败`
-            }
-          })
-          .join('　') + '。这是按原样搜的。',
-      data: {
-        registries: results.map(r => ({
-          id: r.spec.id,
-          label: r.spec.label,
-          form: r.form,
-          state: r.state,
-          url: r.state === 'taken' ? r.spec.page(r.form) : null,
-        })),
-      },
+        unsaid.length > 0
+          ? unsaid
+              .map(r => {
+                const as = restated(r) ? `（作 ${r.form}）` : ''
+                switch (r.state) {
+                  case 'taken': return `${r.label}${as}：已有同名`
+                  case 'clear': return `${r.label}${as}：查无记录`
+                  case 'invalid': return `${r.label}：名字不合法`
+                  default: return `${r.label}：查询失败`
+                }
+              })
+              .join('　')
+          : undefined,
     }
   },
 }
@@ -144,7 +163,8 @@ export const publishabilityCheck: Check = {
   label: '可注册性',
   tier: 'ratelimited',
   when: 'after-upvote',
-  async run({ name, signal }: CheckContext): Promise<CheckResult> {
+
+  async run({ name, signal }: CheckContext) {
     const perRegistry = await Promise.all(
       SPECS.map(async spec => {
         const variants = collisionCandidates(spec.id, name, spec.id === 'pypi' ? 40 : 28)
@@ -159,30 +179,43 @@ export const publishabilityCheck: Check = {
             rememberName(spec.id, legal[i])
           }
         })
-        return { spec, probed: legal.length, collisions }
+        return { id: spec.id, label: spec.label, probed: legal.length, collisions }
       }),
     )
+    return { probed: perRegistry.reduce((n, r) => n + r.probed, 0), perRegistry }
+  },
 
+  describe(data) {
+    const { perRegistry } = data as {
+      perRegistry: { id: RegistryId; label?: string; probed: number; collisions: string[] }[]
+    }
+    if (!perRegistry?.length) return null
+    const who = (r: { id: RegistryId; label?: string }) =>
+      r.label ?? SPECS.find(s => s.id === r.id)?.label ?? r.id
     const blocked = perRegistry.filter(r => r.collisions.length > 0)
     const probedTotal = perRegistry.reduce((n, r) => n + r.probed, 0)
 
     if (blocked.length === 0) {
       return {
-        checkId: 'publishability', label: '可注册性', tier: 'ratelimited', status: 'clear',
-        headline: '三个注册表均查无记录',
-        detail:
-          `「${name}」的 ${probedTotal} 种归一化等价写法逐个查询，均无记录。这是最强的一项检查。`,
-        data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
+        status: 'clear',
+        // 另外: collisionCandidates never returns the name itself, so this
+        // check is only ever about the other writings. Without that word a name
+        // whose exact form is taken shows 「已有同名」 and 「N 种写法均查无记录」
+        // side by side and reads as a contradiction.
+        headline: `另外 ${probedTotal} 种写法也查无记录`,
+        // What "写法" means, in the two examples that make it obvious. The
+        // headline cannot carry it, and without it the pill is a number about
+        // nothing.
+        detail: 'npm 把 react-native 和 reactnative、PyPI 把 lion 和 l10n 当成同一个名字。',
       }
     }
 
     return {
-      checkId: 'publishability', label: '可注册性', tier: 'ratelimited', status: 'blocked',
-      headline: `${blocked[0].spec.label} 上无法注册`,
+      status: 'blocked',
+      headline: `${who(blocked[0])} 上无法注册`,
       detail: blocked
-        .map(b => `${b.spec.label}：已存在 ${b.collisions.slice(0, 4).join('、')}，归一化后视作同一名字。`)
+        .map(b => `${who(b)} 上已存在 ${b.collisions.slice(0, 4).join('、')}，归一化后是同一个名字。`)
         .join(''),
-      data: { probed: probedTotal, perRegistry: perRegistry.map(r => ({ id: r.spec.id, probed: r.probed, collisions: r.collisions })) },
     }
   },
 }

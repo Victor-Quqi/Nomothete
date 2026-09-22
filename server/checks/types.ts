@@ -42,13 +42,38 @@ export interface CheckContext {
   signal: AbortSignal
 }
 
+/** What a check concludes, given facts. Everything here is words about data. */
+export interface CheckReading {
+  status: CheckStatus
+  headline: string
+  detail?: string
+}
+
+/**
+ * A check is two halves that must stay apart.
+ *
+ * `run` goes and finds things out. It may take a second and hit the network,
+ * and what it returns is facts — counts, states, names — with no opinion and no
+ * prose in them.
+ *
+ * `describe` turns those facts into a verdict and a sentence. It is pure and
+ * instant, so it runs again every time a stored answer is read. That is the
+ * whole point of the split: for a year this app wrote its sentences into the
+ * database beside the facts, and a card kept whatever words the build that
+ * generated it happened to use. Reword a check and 227 cards disagreed with
+ * each other, and the only way to fix one was to pay for the network call
+ * again. Facts are worth storing. Sentences are not.
+ */
 export interface Check {
   id: string
   label: string
   tier: CheckTier
   /** Whether this check runs for every Candidate or only after an upvote. */
   when: 'always' | 'after-upvote'
-  run(ctx: CheckContext): Promise<CheckResult | null>
+  /** Gather. Null means there is nothing about this name worth keeping. */
+  run(ctx: CheckContext): Promise<Record<string, unknown> | null>
+  /** Speak. Null means the facts turned out to be nothing worth showing. */
+  describe(data: Record<string, unknown>, name: string): CheckReading | null
 }
 
 export const TIER_LABEL: Record<CheckTier, string> = {

@@ -10,7 +10,7 @@
 import { env } from '../env.ts'
 import { probe } from './http.ts'
 import { npmNormalize } from './normalize.ts'
-import type { Check, CheckContext, CheckResult } from './types.ts'
+import type { Check, CheckContext } from './types.ts'
 
 /** How crowded the npm namespace already is around this word. Free, one call. */
 export const npmNeighbourhoodCheck: Check = {
@@ -18,8 +18,9 @@ export const npmNeighbourhoodCheck: Check = {
   label: '同名邻域',
   tier: 'free',
   when: 'always',
-  async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
-    let payload: { total?: number; objects?: { package: { name: string; description?: string } }[] }
+
+  async run({ name, signal }: CheckContext) {
+    let payload: { total?: number; objects?: { package: { name: string } }[] }
     try {
       const r = await probe(
         `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(name)}&size=20`,
@@ -33,41 +34,41 @@ export const npmNeighbourhoodCheck: Check = {
 
     const objects = payload.objects ?? []
     const target = npmNormalize(name)
-    const nearMisses = objects
-      .map(o => o.package.name)
-      .filter(n => {
+    const names = objects.map(o => o.package.name)
+    return {
+      total: payload.total ?? objects.length,
+      nearMisses: names.filter(n => {
         const norm = npmNormalize(n)
         return norm !== target && (norm.includes(target) || target.includes(norm))
-      })
-    const exactNorm = objects.map(o => o.package.name).filter(n => npmNormalize(n) === target)
-
-    const total = payload.total ?? objects.length
-    if (exactNorm.length === 0 && nearMisses.length === 0 && total < 30) {
-      return {
-        checkId: 'neighbourhood', label: '同名邻域', tier: 'free', status: 'clear',
-        headline: `npm 上 ${total} 个相关结果`,
-        detail: `在 npm 上搜「${name}」有 ${total} 个结果，其中没有重名或形近的。`,
-        data: { total, nearMisses, exactNorm },
-      }
+      }),
+      exactNorm: names.filter(n => npmNormalize(n) === target),
     }
+  },
 
-    const crowded = total >= 200 || nearMisses.length >= 6
+  describe(data) {
+    const { total, nearMisses, exactNorm } = data as {
+      total: number
+      nearMisses?: string[]
+      exactNorm?: string[]
+    }
+    const near = nearMisses ?? []
+    const crowded = total >= 200 || near.length >= 6
     return {
-      checkId: 'neighbourhood', label: '同名邻域', tier: 'free',
-      status: crowded || exactNorm.length > 0 ? 'caution' : 'clear',
       // Always phrase this one as crowding. The exact collision is the
       // availability check's sentence to say; repeating it here would put two
       // seals with the same message side by side.
+      status: crowded || (exactNorm ?? []).length > 0 ? 'caution' : 'clear',
       headline: `npm 上 ${total} 个相关结果`,
+      // The near misses, or nothing. The count is already on the pill, and the
+      // exact collision is the availability check's line — printing it here too
+      // put the same fact in two places on one card.
+      //
+      // Three is enough to show what the neighbourhood looks like. The count is
+      // what carries the crowding; a longer list only reads as clutter.
       detail:
-        (exactNorm.length > 0 ? `npm 上已经有 ${exactNorm.join('、')}。` : '') +
-        // Three is enough to show what the neighbourhood looks like. The count
-        // is what carries the crowding; a longer list only reads as clutter.
-        (nearMisses.length > 0
-          ? `形近的有 ${nearMisses.slice(0, 3).join('、')}${nearMisses.length > 3 ? ` 等 ${nearMisses.length} 个` : ''}。`
-          : '') +
-        `这不影响能否使用，只影响检索时与这 ${total} 个结果的区分度。`,
-      data: { total, nearMisses, exactNorm },
+        near.length > 0
+          ? `形近的有 ${near.slice(0, 3).join('、')}${near.length > 3 ? ` 等 ${near.length} 个` : ''}。`
+          : undefined,
     }
   },
 }
@@ -78,7 +79,8 @@ export const githubCheck: Check = {
   label: 'GitHub',
   tier: 'ratelimited',
   when: 'after-upvote',
-  async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
+
+  async run({ name, signal }: CheckContext) {
     const token = env('GITHUB_TOKEN')
     try {
       const r = await probe(
@@ -92,68 +94,73 @@ export const githubCheck: Check = {
           },
         },
       )
-      if (r.status === 403 || r.status === 429) {
-        return {
-          checkId: 'github', label: 'GitHub', tier: 'ratelimited', status: 'error',
-          headline: 'GitHub 限流',
-          detail: '稍后重试。设置 NOMOTHETE_GITHUB_TOKEN 可提高查询频率上限。',
-        }
-      }
+      if (r.status === 403 || r.status === 429) return { rateLimited: true }
       if (r.status < 200 || r.status >= 300) return null
       const payload = JSON.parse(r.body) as {
         total_count: number
         items: { full_name: string; stargazers_count: number; html_url: string; description: string | null }[]
       }
-      const top = (payload.items ?? []).slice(0, 5)
-      const notable = top.filter(i => i.stargazers_count >= 100)
-      const exact = top.filter(i => i.full_name.split('/')[1]?.toLowerCase() === name.toLowerCase())
-
-      if (payload.total_count === 0) {
-        return {
-          checkId: 'github', label: 'GitHub', tier: 'ratelimited', status: 'clear',
-          headline: '没有同名仓库',
-          detail: `GitHub 上没有仓库名包含「${name}」。`,
-          data: { total: 0, top: [] },
-        }
-      }
-      // Sheer volume is a Searchability signal on its own: even if every hit is
-      // tiny, a thousand of them still swallow the search results.
-      const crowded = payload.total_count >= 400
       return {
-        checkId: 'github', label: 'GitHub', tier: 'ratelimited',
-        status: notable.length > 0 || exact.length > 0 || crowded ? 'caution' : 'clear',
-        headline: `${payload.total_count} 个仓库名包含这个词`,
-        detail:
-          (exact.length > 0 ? `其中 ${exact.map(e => e.full_name).join('、')} 与它完全同名。` : '') +
-          (notable.length > 0
-            ? `最显眼的是 ${notable.map(i => `${i.full_name}（★${i.stargazers_count.toLocaleString()}）`).join('、')}。` +
-              '星数高的同名项目会长期占据搜索结果。'
-            : '命中的仓库都很小' + (crowded ? '，但数量足以占满搜索结果。' : '。')),
-        data: {
-          total: payload.total_count,
-          top: top.map(i => ({ name: i.full_name, stars: i.stargazers_count, url: i.html_url, description: i.description })),
-        },
+        total: payload.total_count,
+        top: (payload.items ?? []).slice(0, 5).map(i => ({
+          name: i.full_name,
+          stars: i.stargazers_count,
+          url: i.html_url,
+          description: i.description,
+        })),
       }
     } catch {
       return null
     }
   },
+
+  describe(data, name) {
+    const { rateLimited, total, top } = data as {
+      rateLimited?: boolean
+      total: number
+      top?: { name: string; stars: number }[]
+    }
+    if (rateLimited) {
+      return { status: 'error', headline: 'GitHub 限流', detail: '设置 NOMOTHETE_GITHUB_TOKEN 可提高频率上限。' }
+    }
+    if (total === 0) return { status: 'clear', headline: '没有同名仓库' }
+
+    const hits = top ?? []
+    const notable = hits.filter(i => i.stars >= 100)
+    const exact = hits.filter(i => i.name.split('/')[1]?.toLowerCase() === name.toLowerCase())
+    // Sheer volume is a Searchability signal on its own: even if every hit is
+    // tiny, a thousand of them still swallow the search results.
+    const crowded = total >= 400
+
+    return {
+      status: notable.length > 0 || exact.length > 0 || crowded ? 'caution' : 'clear',
+      headline: `${total} 个仓库名包含这个词`,
+      detail:
+        (exact.length > 0 ? `${exact.map(e => e.name).join('、')} 与它完全同名。` : '') +
+        (notable.length > 0
+          ? `最大的是 ${notable.map(i => `${i.name}（★${i.stars.toLocaleString()}）`).join('、')}。`
+          : '命中的仓库都很小。'),
+    }
+  },
 }
 
-/** .com and .dev, via RDAP. Rate limited; upvote first. */
+/** .com, .dev and .io, via RDAP. Rate limited; upvote first. */
 export const domainCheck: Check = {
   id: 'domain',
   label: '域名',
   tier: 'ratelimited',
   when: 'after-upvote',
-  async run({ name, signal }: CheckContext): Promise<CheckResult | null> {
+
+  async run({ name, signal }: CheckContext) {
     const label = name.toLowerCase().replace(/[^a-z0-9-]/g, '')
     if (!label || label.length < 2) return null
-    const tlds = ['com', 'dev', 'io']
     const results = await Promise.all(
-      tlds.map(async tld => {
+      ['com', 'dev', 'io'].map(async tld => {
         try {
-          const r = await probe(`https://rdap.org/domain/${label}.${tld}`, { signal, ttlMs: 1000 * 60 * 60 * 24 * 3 })
+          const r = await probe(`https://rdap.org/domain/${label}.${tld}`, {
+            signal,
+            ttlMs: 1000 * 60 * 60 * 24 * 3,
+          })
           if (r.status === 404) return { tld, state: 'free' as const }
           if (r.status >= 200 && r.status < 300) return { tld, state: 'registered' as const }
           return { tld, state: 'unknown' as const }
@@ -162,18 +169,43 @@ export const domainCheck: Check = {
         }
       }),
     )
-    const free = results.filter(r => r.state === 'free')
-    const known = results.filter(r => r.state !== 'unknown')
-    if (known.length === 0) return null
+    // Nothing answered at all: no facts, so nothing to store and nothing to say.
+    return results.some(r => r.state !== 'unknown') ? { label, results } : null
+  },
+
+  describe(data) {
+    const { label, results } = data as {
+      label: string
+      results?: { tld: string; state: 'free' | 'registered' | 'unknown' }[]
+    }
+    const all = results ?? []
+    if (all.length === 0) return null
+    const free = all.filter(r => r.state === 'free')
+
+    // .com is the only one of the three that is actually scarce, so it decides
+    // the status on its own. Reporting "clear" because .dev happened to be free
+    // buried the one fact a reader wanted, and buried it under a green dot.
+    const taken = all.find(r => r.tld === 'com')?.state === 'registered'
+
+    // Say only what the headline left out. It names .com when .com is gone, and
+    // names every free tld otherwise — so in the ordinary case (.com taken,
+    // .dev and .io free, as they nearly always are) there is nothing left, and
+    // the check hands back no sentence rather than a longer copy of its own pill.
+    const unsaid = all.filter(r => r.state !== 'free' && !(taken && r.tld === 'com'))
+
     return {
-      checkId: 'domain', label: '域名', tier: 'ratelimited',
-      status: free.length > 0 ? 'clear' : 'caution',
-      headline: free.length > 0 ? `${free.map(f => `.${f.tld}`).join(' ')} 查无注册记录` : '.com .dev .io 均已注册',
+      status: taken ? 'caution' : free.length > 0 ? 'clear' : 'caution',
+      headline: taken
+        ? `${label}.com 已注册`
+        : free.length > 0
+          ? `${free.map(f => `.${f.tld}`).join(' ')} 查无注册记录`
+          : '.com .dev .io 均已注册',
       detail:
-        results
-          .map(r => `${label}.${r.tld}：${r.state === 'free' ? '查无记录' : r.state === 'registered' ? '已注册' : '查询失败'}`)
-          .join('　') + '。仅查询域名注册记录，未查商标。',
-      data: { label, results },
+        unsaid.length > 0
+          ? unsaid
+              .map(r => `${label}.${r.tld}：${r.state === 'registered' ? '已注册' : '查询失败'}`)
+              .join('　')
+          : undefined,
     }
   },
 }

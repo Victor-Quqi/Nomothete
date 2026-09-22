@@ -393,12 +393,20 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
   return { generation, strategies: strategyIds }
 }
 
-/** The rate-limited tier, triggered by a positive Verdict. */
-export function startDeepChecks(sessionId: string, candidateId: string, name: string) {
+/**
+ * The rate-limited tier, triggered by a positive Verdict.
+ *
+ * `all` asks every tier again instead, which is what a reader pressing 重新检查
+ * means: the registries may have moved since the name was generated, and so may
+ * the sentence this build would use to report them.
+ */
+export function startDeepChecks(sessionId: string, candidateId: string, name: string, all = false) {
   const controller = new AbortController()
   void runChecks(candidateId, name, {
     deep: true,
+    all,
     signal: controller.signal,
     onResult: result => publish(sessionId, { type: 'check', candidateId, result }),
+    onGone: checkId => publish(sessionId, { type: 'check:gone', candidateId, checkId }),
   }).catch(() => {})
 }

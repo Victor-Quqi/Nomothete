@@ -238,6 +238,16 @@ export function useAtelier() {
           )
           break
 
+        case 'check:gone':
+          setCandidates(cs =>
+            cs.map(c =>
+              c.id === event.candidateId
+                ? { ...c, checks: (c.checks ?? []).filter(k => k.checkId !== event.checkId) }
+                : c,
+            ),
+          )
+          break
+
         case 'verdict':
           setCandidates(cs =>
             cs.map(c => (c.id === event.candidateId ? { ...c, verdict: event.verdict as Verdict } : c)),

@@ -184,6 +184,7 @@ export type ServerEvent =
   | { type: 'candidate'; candidate: Candidate }
   | { type: 'candidate:discarded'; batchId: string; name: string; probability: number }
   | { type: 'check'; candidateId: string; result: CheckResult }
+  | { type: 'check:gone'; candidateId: string; checkId: string }
   | { type: 'verdict'; candidateId: string; verdict: number }
   | { type: 'generation:done'; generation: number }
   | { type: 'session:title'; title: string }

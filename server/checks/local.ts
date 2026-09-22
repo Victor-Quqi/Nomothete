@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getDb } from '../db.ts'
 import { NORMALIZERS, REGISTRIES, registryForm, syllables, validateForRegistry } from './normalize.ts'
-import type { Check, CheckResult } from './types.ts'
+import type { Check } from './types.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const WORDS_PATH = path.resolve(here, '../../data/common-english.txt')
@@ -45,33 +45,27 @@ export const dictionaryCheck: Check = {
   label: '常用词',
   tier: 'local',
   when: 'always',
-  async run({ name }): Promise<CheckResult> {
-    if (wordRanks().size === 0) {
-      return {
-        checkId: 'dictionary', label: '常用词', tier: 'local', status: 'error',
-        headline: '词表未载入', detail: '找不到 data/common-english.txt。',
-      }
-    }
-    const rank = lookupWordRank(name)
-    const syl = syllables(name)
 
+  async run({ name }) {
+    const total = wordRanks().size
+    if (total === 0) return { missing: true }
+    return { rank: lookupWordRank(name), total, length: name.length, syllables: syllables(name) }
+  },
+
+  // Say where the line is, and stop. "常用词" on its own invites the reader to
+  // wonder what counts; the answer is a place in a frequency list. Everything
+  // after that — that a common word is hard to search for — the headline
+  // already said.
+  describe(data) {
+    const { missing, rank, total } = data as { missing?: boolean; rank: number | null; total: number }
+    if (missing) return { status: 'error', headline: '词表未载入', detail: '找不到 data/common-english.txt。' }
     if (rank === null) {
-      return {
-        checkId: 'dictionary', label: '常用词', tier: 'local', status: 'clear',
-        headline: '不是常用英语词',
-        detail: '检索时不会与该词的日常用法混杂。',
-        data: { rank: null, length: name.length, syllables: syl },
-      }
+      return { status: 'clear', headline: '不是常用英语词', detail: `不在最常用的 ${total} 个英语词里。` }
     }
-    const severe = rank <= 2000
     return {
-      checkId: 'dictionary', label: '常用词', tier: 'local',
       status: 'caution',
-      headline: severe ? '高频英语词' : '常见英语词',
-      detail: severe
-        ? '检索结果将长期与该词的日常用法混杂，难以被找到。'
-        : '频次不高，但检索结果仍会混入无关条目。',
-      data: { rank, severe, length: name.length, syllables: syl },
+      headline: rank <= 2000 ? '高频英语词' : '常见英语词',
+      detail: `英语词频第 ${rank} 名（共 ${total}）。`,
     }
   },
 }
@@ -86,7 +80,8 @@ export const localIndexCheck: Check = {
   label: '重名',
   tier: 'local',
   when: 'always',
-  async run({ name }): Promise<CheckResult | null> {
+
+  async run({ name }) {
     const db = getDb()
     const hits: { registry: string; actual: string }[] = []
     for (const { id } of REGISTRIES) {
@@ -98,14 +93,18 @@ export const localIndexCheck: Check = {
         if (r.actual.toLowerCase() !== name.toLowerCase()) hits.push({ registry: id, actual: r.actual })
       }
     }
-    if (hits.length === 0) return null // nothing to say; stay out of the UI
+    return hits.length > 0 ? { hits } : null // nothing to say; stay out of the UI
+  },
+
+  describe(data) {
+    const { hits } = data as { hits: { registry: string; actual: string }[] }
+    if (!hits?.length) return null
     return {
-      checkId: 'local-index', label: '重名', tier: 'local', status: 'blocked',
+      status: 'blocked',
       headline: `归一化后与 ${hits[0].actual} 同名`,
       detail:
-        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已存在。` +
-        `注册表不区分连字符、下划线与大小写，视作同一名字，无法注册。`,
-      data: { hits },
+        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已存在；` +
+        `注册表不区分连字符、下划线与大小写。`,
     }
   },
 }
@@ -131,18 +130,33 @@ export const validityCheck: Check = {
   label: '名字合法性',
   tier: 'local',
   when: 'always',
-  async run({ name }): Promise<CheckResult | null> {
+
+  async run({ name }) {
     const bad = REGISTRIES.map(r => {
       const form = registryForm(r.id, name)
       return { r, form, v: validateForRegistry(r.id, form) }
     }).filter(x => !x.v.ok)
     if (bad.length === 0) return null
     return {
-      checkId: 'validity', label: '名字合法性', tier: 'local', status: 'invalid',
-      headline: `${bad.map(b => b.r.label).join('、')} 不接受`,
-      detail: bad.map(b => `${b.r.label}：${(b.v as { reason: string }).reason}`).join('；') +
-        '。这要改名字本身，不是改写法。',
-      data: { failures: bad.map(b => ({ registry: b.r.id, form: b.form, reason: (b.v as { reason: string }).reason })) },
+      failures: bad.map(b => ({
+        registry: b.r.id,
+        label: b.r.label,
+        form: b.form,
+        reason: (b.v as { reason: string }).reason,
+      })),
+    }
+  },
+
+  describe(data) {
+    const { failures } = data as { failures: { registry: string; label?: string; reason: string }[] }
+    if (!failures?.length) return null
+    // `label` was added after some rows were written; fall back to the id.
+    const who = (f: { registry: string; label?: string }) =>
+      f.label ?? REGISTRIES.find(r => r.id === f.registry)?.label ?? f.registry
+    return {
+      status: 'invalid',
+      headline: `${failures.map(who).join('、')} 不接受`,
+      detail: failures.map(f => `${who(f)}：${f.reason}`).join('；') + '。',
     }
   },
 }
