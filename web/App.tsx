@@ -188,7 +188,11 @@ export function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Workspace a={a} openDrawer={openDrawer} />
+              <Workspace
+                a={a}
+                openDrawer={openDrawer}
+                detailId={drawer?.kind === 'detail' ? drawer.id : undefined}
+              />
             </motion.div>
           ) : (
             <motion.div

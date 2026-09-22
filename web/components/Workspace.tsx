@@ -33,9 +33,12 @@ function trouble(c: Candidate): number {
 export function Workspace({
   a,
   openDrawer,
+  detailId,
 }: {
   a: Atelier
   openDrawer: (kind: DrawerKind, id?: string) => void
+  /** The name the detail pane is showing, if it is open. */
+  detailId?: string
 }) {
   // Keep navigation below the session's Motion context so it only redraws
   // the two plates whose focus changed.
@@ -162,6 +165,18 @@ export function Workspace({
   const ghosts = useMemo(() => liveBatches.filter(b => b.state === 'running'), [liveBatches])
 
   // ── keyboard ──────────────────────────────────────────────────────────────
+
+  // With no scrim over the wall, the detail drawer is a pane rather than a
+  // page, and a pane that keeps showing the name you navigated away from is
+  // just wrong. Only the keys drag it along: the pointer hands out focus on
+  // every pass across the grid, and the pane would chase the cursor.
+  const follow = useCallback(
+    (id: string) => {
+      if (detailId) openDrawer('detail', id)
+    },
+    [detailId, openDrawer],
+  )
+
   const move = useCallback(
     (delta: number, repeat = false) => {
       if (visible.length === 0) return
@@ -169,8 +184,9 @@ export function Workspace({
       const next = idx < 0 ? (delta > 0 ? 0 : visible.length - 1) : (idx + delta + visible.length) % visible.length
       setKbd(repeat ? 'instant' : 'smooth')
       setFocusId(visible[next].id)
+      follow(visible[next].id)
     },
-    [visible, focusId, setFocusId],
+    [visible, focusId, setFocusId, follow],
   )
 
   // Wrapping from the current position rather than the top: the unjudged ones
@@ -184,7 +200,8 @@ export function Workspace({
     if (!target) return
     setKbd('smooth')
     setFocusId(target.id)
-  }, [visible, focusId, setFocusId])
+    follow(target.id)
+  }, [visible, focusId, setFocusId, follow])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -196,8 +213,12 @@ export function Workspace({
         if (e.key === 'Escape') (el as HTMLElement).blur()
         return
       }
+      // A modal drawer is the only thing on screen, so the keys belong to it.
+      // The detail pane is not modal — the wall behind it answers the mouse,
+      // and a wall that answers the mouse but not the keys is lying to one of
+      // them. Escape still reaches the drawer first; it stops the event there.
       if (
-        document.querySelector('.drawer') ||
+        document.querySelector('.drawer[aria-modal="true"]') ||
         document.querySelector('.palette') ||
         document.querySelector('.picker__menu')
       )
@@ -238,7 +259,9 @@ export function Workspace({
           }
           break
         case 'n':
-          if (focusId) {
+          // The pane is already showing this name's note box. A second one on
+          // the plate underneath would be two fields over one sentence.
+          if (focusId && !detailId) {
             e.preventDefault()
             plateAction('note')
           }
@@ -290,7 +313,7 @@ export function Workspace({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [move, jumpUnjudged, focusId, a, openDrawer, running, session, setFocusId])
+  }, [move, jumpUnjudged, focusId, detailId, a, openDrawer, running, session, setFocusId])
 
   if (!session) return null
 
