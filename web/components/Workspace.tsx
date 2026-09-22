@@ -56,7 +56,28 @@ export function Workspace({
 
   const { candidates, session, batches, running, generate } = a
 
+  // Pointing at a plate gives it focus — and a plate that slid under a parked
+  // cursor has not been pointed at. Keyboard navigation scrolls the canvas and
+  // a filter re-lays the grid; either way the browser re-runs hover for
+  // whatever is now under the pointer and synthesises a move to announce it.
+  // Taking that as pointing handed focus to a plate nobody chose, so ArrowDown
+  // could land above where it started. The synthetic move repeats the last
+  // coordinates, so "the pointer actually travelled" is the whole test. The
+  // listener runs in the capture phase, which puts it ahead of the plate's own
+  // handler for the very same event.
+  const travelled = useRef(false)
+  const pointerAt = useRef({ x: -1, y: -1 })
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      travelled.current = e.clientX !== pointerAt.current.x || e.clientY !== pointerAt.current.y
+      pointerAt.current = { x: e.clientX, y: e.clientY }
+    }
+    window.addEventListener('pointermove', onMove, { capture: true, passive: true })
+    return () => window.removeEventListener('pointermove', onMove, { capture: true })
+  }, [])
+
   const focusPlate = useCallback((id: string) => {
+    if (!travelled.current) return
     setKbd(false)
     setFocusId(id)
   }, [setFocusId])

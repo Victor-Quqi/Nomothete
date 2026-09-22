@@ -165,7 +165,12 @@ function PlateInner({
       ref={el}
       className={`plate${VERDICT_CLASS[candidate.verdict] ?? ''}${focused ? ' plate--focus' : ''}`}
       style={{ ['--fam-hue' as string]: family?.hue ?? 38 }}
-      onMouseEnter={() => onFocus(candidate.id)}
+      // A move of the pointer across the plate, not an enter: enter also fires
+      // when the plate arrives under a cursor that never moved. Workspace has
+      // the last coordinates and throws those away.
+      onPointerMove={() => {
+        if (!focused) onFocus(candidate.id)
+      }}
       onDoubleClick={open}
     >
       <AnimatePresence>
