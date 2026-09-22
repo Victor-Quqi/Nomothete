@@ -1253,7 +1253,6 @@ kbd {
 .section-h:first-child { margin-top: 0; }
 /* The rule moves inline so a control can sit past it, at the far end. */
 .section-h--tail::after { content: none; }
-.section-h__rule { flex: 1; height: 1px; background: var(--hair); }
 
 /* ── command palette ─────────────────────────────────────────────────────── */
 .palette__scrim {

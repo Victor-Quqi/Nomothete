@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NO_CHECKS, deepRunning, groupChecks } from '../checks.ts'
 import { REGISTRIES, registryForm } from '../normalize.ts'
 import { isMute, speakName } from '../speak.ts'
-import { CheckFinding, CheckRow, RecheckLine } from './CheckList.tsx'
+import { CheckFinding, RecheckLine } from './CheckList.tsx'
 import { SayButton } from './SayButton.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
@@ -30,10 +30,8 @@ export function DetailPanel({
 }) {
   const [draft, setDraft] = useState(candidate.note ?? '')
   const [saying, setSaying] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState('')
   useEffect(() => setDraft(candidate.note ?? ''), [candidate.id, candidate.note])
-  useEffect(() => setExpanded(false), [candidate.id])
 
   const speak = () => {
     setSaying(true)
@@ -116,14 +114,17 @@ export function DetailPanel({
         <>
           <div className="section-h section-h--tail">
             {findings.length > 0 ? `其余 ${quiet.length} 项没发现冲突` : `${quiet.length} 项检查没发现冲突`}
-            <i className="section-h__rule" />
-            <button className="btn btn--ghost btn--sm" onClick={() => setExpanded(e => !e)}>
-              {expanded ? '收起' : '每项细说'}
-            </button>
           </div>
-          {quiet.map(c =>
-            expanded ? <CheckFinding key={c.checkId} check={c} /> : <CheckRow key={c.checkId} check={c} />,
-          )}
+          {/*
+            No 每项细说 toggle. It promised to spell each one out and then, for
+            half of them, opened to nothing — a check with no more to say has no
+            more to say at either size. What is left is short enough to print,
+            so every check reads the same here as it does on a card: the line,
+            and the sentence underneath it if there is one.
+          */}
+          {quiet.map(c => (
+            <CheckFinding key={c.checkId} check={c} />
+          ))}
         </>
       )}
 

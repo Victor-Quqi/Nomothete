@@ -33,7 +33,7 @@ export function linksOf(check: CheckResult): { href: string; text: string }[] {
 }
 
 /** One line: the label, and the sentence the check came back with. */
-export function CheckRow({ check, children }: { check: CheckResult; children?: ReactNode }) {
+function CheckRow({ check, children }: { check: CheckResult; children?: ReactNode }) {
   return (
     <div className="found">
       <div className="found__line">
