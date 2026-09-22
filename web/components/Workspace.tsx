@@ -147,7 +147,7 @@ export function Workspace({
     })
   }, [ordered, lane, family, find, a.strategyById])
   const visibleIds = useMemo(() => new Set(visible.map(c => c.id)), [visible])
-  const capturePositions = useGridTransition(gridRef, visible)
+  const capturePositions = useGridTransition(gridRef, visible, !!detailId)
   const captureGrid = () => {
     capturePositions()
     setKbd(false)
