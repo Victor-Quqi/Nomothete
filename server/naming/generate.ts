@@ -48,7 +48,7 @@ const CandidateSchema = z.object({
   rationale: z.string().describe('where it comes from, what it means, how it connects to this project'),
 })
 
-const PER_STRATEGY = 6
+const PER_STRATEGY = 3
 
 /** Generation runs are per-session and cancellable; the browser is optional. */
 const running = new Map<string, AbortController>()
