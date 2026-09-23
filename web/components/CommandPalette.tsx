@@ -111,7 +111,7 @@ export function CommandPalette({
                     c.run()
                   }}
                 >
-                  <span style={{ color: 'var(--vellum-4)', fontSize: 11, width: 46, flex: 'none' }}>{c.group}</span>
+                  <span style={{ color: 'var(--vellum-4)', fontSize: 12, width: 46, flex: 'none' }}>{c.group}</span>
                   <span>{c.label}</span>
                   {c.hint && <small>{c.hint}</small>}
                 </button>

@@ -305,8 +305,8 @@ export function App() {
         {drawer?.kind === 'keys' &&
           KEYS.map(([k, v]) => (
             <div className="detail__form" key={k} style={{ background: 'transparent', padding: '9px 0' }}>
-              <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 13 }}>{k}</b>
-              <span style={{ fontSize: 13, color: 'var(--vellum-2)' }}>{v}</span>
+              <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 14 }}>{k}</b>
+              <span style={{ fontSize: 14, color: 'var(--vellum-2)' }}>{v}</span>
             </div>
           ))}
       </Drawer>
