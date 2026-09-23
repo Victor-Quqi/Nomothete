@@ -78,8 +78,18 @@ export function Workspace({
     return () => window.removeEventListener('pointermove', onMove, { capture: true })
   }, [])
 
+  // With the pane open, the name in focus is the one the pane shows. The way
+  // over to the pane crosses other plates, and focus that went with the
+  // pointer sent 1–5, s and c to a name that was not on the pane. Picking
+  // another is a click, as in any list beside its detail view.
+  const paneOpen = useRef(false)
+  useEffect(() => {
+    paneOpen.current = !!detailId
+    if (detailId) setFocusId(detailId)
+  }, [detailId])
+
   const focusPlate = useCallback((id: string) => {
-    if (!travelled.current) return
+    if (!travelled.current || paneOpen.current) return
     setKbd(false)
     setFocusId(id)
   }, [setFocusId])
@@ -168,8 +178,8 @@ export function Workspace({
 
   // With no scrim over the wall, the detail drawer is a pane rather than a
   // page, and a pane that keeps showing the name you navigated away from is
-  // just wrong. Only the keys drag it along: the pointer hands out focus on
-  // every pass across the grid, and the pane would chase the cursor.
+  // just wrong. The keys drag it along; the pointer does not move focus while
+  // it is open, so there is nothing for the pane to chase.
   const follow = useCallback(
     (id: string) => {
       if (detailId) openDrawer('detail', id)
@@ -216,7 +226,8 @@ export function Workspace({
       // A modal drawer is the only thing on screen, so the keys belong to it.
       // The detail pane is not modal — the wall behind it answers the mouse,
       // and a wall that answers the mouse but not the keys is lying to one of
-      // them. Escape still reaches the drawer first; it stops the event there.
+      // them. Escape still reaches the drawer first; it stops the event there
+      // unless a text field has it, which the branch above lets go of.
       if (
         document.querySelector('.drawer[aria-modal="true"]') ||
         document.querySelector('.palette') ||
@@ -259,9 +270,12 @@ export function Workspace({
           }
           break
         case 'n':
-          // The pane is already showing this name's note box. A second one on
-          // the plate underneath would be two fields over one sentence.
-          if (focusId && !detailId) {
+          // The pane already has this name's note box, so n goes there rather
+          // than opening a second field over the same sentence on the plate.
+          if (detailId) {
+            e.preventDefault()
+            document.querySelector<HTMLTextAreaElement>('.drawer .detail__note')?.focus()
+          } else if (focusId) {
             e.preventDefault()
             plateAction('note')
           }

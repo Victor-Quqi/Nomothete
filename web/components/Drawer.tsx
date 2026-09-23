@@ -49,14 +49,18 @@ export function Drawer({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-      }
+      if (e.key !== 'Escape') return
+      // Beside a pane, a text field (its note box, the wall's search) takes the
+      // first Escape to let go, and letting go is what saves a note. Closing
+      // over it would drop the draft with the field. The next Escape closes.
+      const el = document.activeElement
+      if (!modal && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return
+      e.stopPropagation()
+      onClose()
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, onClose])
+  }, [open, onClose, modal])
 
   return (
     <AnimatePresence>

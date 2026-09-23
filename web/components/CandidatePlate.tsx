@@ -331,6 +331,8 @@ function PlateInner({
               onKeyDown={e => {
                 if (e.key === 'Escape') {
                   e.stopPropagation()
+                  // The box leaves without a blur, so this is its save.
+                  if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)
                   setNoteOpen(false)
                 }
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
