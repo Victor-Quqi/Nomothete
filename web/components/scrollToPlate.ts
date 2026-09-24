@@ -5,9 +5,8 @@ export function resetPlateMeasurements(grid: HTMLElement) {
   }
 }
 
-/** Resolve nearby row heights before choosing a keyboard scroll destination. */
-export function scrollToPlate(plate: HTMLElement, behavior: 'smooth' | 'instant') {
-  const slot = plate.parentElement!
+/** Resolve nearby row heights before measuring a scroll destination. */
+export function preparePlate(slot: HTMLElement) {
   const grid = slot.parentElement!
   const canvas = grid.parentElement!
   const slots = Array.from(grid.children).filter((node): node is HTMLElement =>
@@ -24,10 +23,17 @@ export function scrollToPlate(plate: HTMLElement, behavior: 'smooth' | 'instant'
   // Save measured heights before returning old rows to deferred layout.
   const heights = previous.map(node => [node, node.offsetHeight] as const)
   for (const [node, height] of heights) {
-    if (height) node.style.containIntrinsicBlockSize = `${height}px`
+    if (height && node.style.containIntrinsicBlockSize !== `${height}px`) node.style.containIntrinsicBlockSize = `${height}px`
     if (!nearby.has(node)) delete node.dataset.prepared
   }
   for (const node of nearby) node.dataset.prepared = ''
+}
+
+export function scrollToPlate(plate: HTMLElement, behavior: 'smooth' | 'instant') {
+  const slot = plate.parentElement!
+  const grid = slot.parentElement!
+  const canvas = grid.parentElement!
+  preparePlate(slot)
 
   // This read lays out the prepared rows together, before the destination is measured.
   const top = canvas.scrollTop + grid.getBoundingClientRect().top - canvas.getBoundingClientRect().top +

@@ -775,7 +775,7 @@ kbd {
 }
 .plate-slot[hidden] { display: none; }
 .plate-slot[data-prepared] { content-visibility: visible; }
-.plates-snapshot { position: absolute; overflow: hidden; pointer-events: none; }
+.canvas[data-pane-transition] { overflow-anchor: none; }
 .work[data-keyboard='true'] .canvas { overflow-anchor: none; }
 
 .plate {
@@ -1191,7 +1191,7 @@ kbd {
   transition: all 0.2s;
 }
 .drawer__x:hover { color: var(--vellum); background: rgba(239, 231, 216, 0.06); }
-.drawer__body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 20px 22px 40px; }
+.drawer__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 20px 22px 40px; }
 .drawer__lead {
   font-size: 14px;
   line-height: 1.75;

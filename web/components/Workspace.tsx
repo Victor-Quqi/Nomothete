@@ -150,7 +150,11 @@ export function Workspace({
     setFocusId(id)
   }, [setFocusId])
 
-  const openPlate = useCallback((id: string) => openDrawer('detail', id), [openDrawer])
+  const openPlate = useCallback((id: string) => {
+    setKbd(false)
+    setFocusId(id)
+    openDrawer('detail', id)
+  }, [openDrawer])
 
   const generateMore = useCallback((strategyId: string) => {
     if (!running) generate({ strategyIds: [strategyId] })
@@ -213,7 +217,7 @@ export function Workspace({
     })
   }, [ordered, lane, family, find, a.strategyById])
   const visibleIds = useMemo(() => new Set(visible.map(c => c.id)), [visible])
-  const { capture: capturePositions, captureCommit } = useGridTransition(gridRef, visible, !!detailId)
+  const { capture: capturePositions, captureCommit, capturePane } = useGridTransition(gridRef, visible, detailId)
   const captureGrid = () => {
     capturePositions()
     setKbd(false)
@@ -503,10 +507,11 @@ export function Workspace({
             // note box, the seals, and the name (which speaks it).
             if (el.closest('button, a, textarea, input, [role="button"], .plate__name')) return
             const id = el.closest<HTMLElement>('.plate-slot')?.dataset.candidate
-            if (id && id !== detailId) openDrawer('detail', id)
+            if (id && id !== detailId) openPlate(id)
           }}
         >
           <BeforeCommit watch={visible} capture={captureCommit} />
+          <BeforeCommit watch={!!detailId} capture={capturePane} />
           {ordered.map(c => (
             <div key={c.id} className="plate-slot" data-candidate={c.id} hidden={!visibleIds.has(c.id)}>
               <CandidatePlate

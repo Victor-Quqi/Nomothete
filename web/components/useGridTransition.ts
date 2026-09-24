@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react'
 import { CardMotion } from './cardMotion.ts'
 import { resetPlateMeasurements } from './scrollToPlate.ts'
+import { transitionPane, type PaneAnchor } from './paneTransition.ts'
 
 type Position = { x: number; y: number; opacity: number }
 
@@ -45,73 +46,57 @@ function prepareVisible(grid: HTMLElement) {
  * Measure and animate only the cards intersecting the scroll viewport. How
  * they move is CardMotion's business; this hook decides when, and from where.
  */
-export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, items: readonly { id: string }[], paneOpen: boolean) {
+export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, items: readonly { id: string }[], detailId?: string) {
   const before = useRef<{ positions: Map<string, Position>; reset: boolean; scrolled: number } | null>(null)
   const motion = useRef<CardMotion | null>(null)
   motion.current ??= new CardMotion()
   const previousIds = useRef(new Set(items.map(item => item.id)))
-  const previousPane = useRef(paneOpen)
+  const previousDetail = useRef(detailId)
+  const paneAnchor = useRef<PaneAnchor | null>(null)
+  const paneMotion = useRef<ReturnType<typeof transitionPane> | null>(null)
+
+  // BeforeCommit reads the old viewport before the shell starts changing width.
+  const capturePane = () => {
+    const grid = gridRef.current
+    paneAnchor.current = null
+    if (!grid) return
+    const canvas = grid.parentElement!
+    const id = detailId ?? previousDetail.current
+    let slot = Array.from(grid.children).find((node): node is HTMLElement =>
+      node instanceof HTMLElement && node.dataset.candidate === id && !node.hidden,
+    )
+    const bounds = canvas.getBoundingClientRect()
+    const box = slot?.getBoundingClientRect()
+    // Closing after browsing elsewhere preserves the current reading position.
+    if (!slot || (!detailId && box && (box.bottom <= bounds.top || box.top >= bounds.bottom))) {
+      const visible = visibleSlots(grid)
+      slot = visible.find(node => node.getBoundingClientRect().top >= bounds.top) ?? visible[0]
+    }
+    if (slot) {
+      const rect = slot.getBoundingClientRect()
+      paneAnchor.current = {
+        slot, top: rect.top, left: rect.left - grid.getBoundingClientRect().left,
+      }
+    }
+  }
 
   useLayoutEffect(() => {
-    if (previousPane.current === paneOpen) return
-    previousPane.current = paneOpen
+    const wasOpen = !!previousDetail.current
+    previousDetail.current = detailId
+    if (wasOpen === !!detailId) {
+      paneMotion.current?.cancel()
+      return
+    }
+    // A rapid reversal must not restore the previous transition's anchor.
+    paneMotion.current?.cancel()
+    paneMotion.current?.finish()
+    paneMotion.current = null
     const grid = gridRef.current
-    if (!grid || window.matchMedia('(max-width: 1080px), (prefers-reduced-motion: reduce)').matches) return
-    const canvas = grid.parentElement!
-    const shell = grid.closest<HTMLElement>('.shell')!
-    const style = getComputedStyle(canvas)
-    const shellStyle = getComputedStyle(shell)
-    const targetWidth = shell.clientWidth - parseFloat(shellStyle.getPropertyValue('--rail-w')) -
-      (paneOpen ? parseFloat(shellStyle.getPropertyValue('--drawer-w')) : 0) -
-      parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - (canvas.offsetWidth - canvas.clientWidth)
-
-    // Keep a noninteractive copy of the visible old layout while the live
-    // grid is laid out once at its destination width.
-    const snapshot = document.createElement('div')
-    snapshot.className = 'plates-snapshot'
-    snapshot.inert = true
-    snapshot.setAttribute('aria-hidden', 'true')
-    const rect = grid.getBoundingClientRect()
-    const canvasRect = canvas.getBoundingClientRect()
-    snapshot.style.left = `${rect.left - canvasRect.left}px`
-    snapshot.style.top = `${canvas.scrollTop}px`
-    snapshot.style.height = `${canvas.clientHeight}px`
-    snapshot.style.width = `${grid.clientWidth}px`
-    for (const node of visibleSlots(grid)) {
-      const box = node.getBoundingClientRect()
-      const copy = node.cloneNode(true) as HTMLElement
-      copy.removeAttribute('id')
-      for (const child of copy.querySelectorAll('[id]')) child.removeAttribute('id')
-      Object.assign(copy.style, {
-        position: 'absolute', left: `${box.left - rect.left}px`, top: `${box.top - canvasRect.top}px`,
-        width: `${box.width}px`, height: `${box.height}px`, contentVisibility: 'visible', transform: 'none',
-      })
-      snapshot.append(copy)
-    }
+    if (!grid || window.matchMedia('(max-width: 1080px)').matches) return
     motion.current!.clear()
-    canvas.append(snapshot)
-    grid.style.width = `${Math.max(0, targetWidth)}px`
-    resetPlateMeasurements(grid)
-    const fadeOut = snapshot.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' })
-    const fadeIn = grid.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180 })
-    fadeOut.onfinish = () => snapshot.remove()
-    const finish = () => {
-      grid.style.removeProperty('width')
-      snapshot.remove()
-    }
-    const onEnd = (event: TransitionEvent) => {
-      if (event.target === shell && event.propertyName === 'grid-template-columns') finish()
-    }
-    shell.addEventListener('transitionend', onEnd)
-    const timer = setTimeout(finish, 380)
-    return () => {
-      clearTimeout(timer)
-      shell.removeEventListener('transitionend', onEnd)
-      fadeIn.cancel()
-      fadeOut.cancel()
-      finish()
-    }
-  }, [gridRef, paneOpen])
+    paneMotion.current = transitionPane(grid, paneAnchor.current, !!detailId)
+    paneAnchor.current = null
+  }, [gridRef, detailId])
 
   const read = () => {
     const grid = gridRef.current
@@ -148,17 +133,18 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     const snap = before.current
     before.current = null
     const grid = gridRef.current
-    if (grid) resetPlateMeasurements(grid)
+    if (grid && grid.parentElement!.dataset.paneTransition === undefined) resetPlateMeasurements(grid)
     const added = new Set(items.filter(item => !previousIds.current.has(item.id)).map(item => item.id))
     previousIds.current = new Set(items.map(item => item.id))
     if (!grid || (!snap && added.size === 0)) return
     if (snap?.reset) {
+      paneMotion.current?.cancel()
       snap.scrolled = grid.parentElement!.scrollTop
       grid.parentElement!.scrollTo({ top: 0, behavior: 'instant' })
     }
     prepareVisible(grid)
-    // The detail pane's cross-fade owns the wall while it runs.
-    if (grid.parentElement!.querySelector('.plates-snapshot')) return
+    // The pane owns card motion until its width settles.
+    if (grid.parentElement!.dataset.paneTransition !== undefined) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       // No movement: every card is at once where it belongs, and a card new
       // to the wall only fades in there.
@@ -202,9 +188,9 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     const observer = new ResizeObserver(() => {
       if (grid.clientWidth === width) return
       width = grid.clientWidth
-      // Width changes every frame while the detail pane moves. Reset the
-      // offscreen measurements once the pane settles, not on every frame.
       clearTimeout(settled)
+      if (grid.parentElement!.dataset.paneTransition !== undefined) return
+      // Ordinary window resizing invalidates the cached offscreen heights.
       settled = setTimeout(() => resetPlateMeasurements(grid), 100)
     })
     observer.observe(grid)
@@ -214,7 +200,11 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     }
   }, [gridRef])
 
-  useLayoutEffect(() => () => motion.current?.clear(), [])
+  useLayoutEffect(() => () => {
+    motion.current?.clear()
+    paneMotion.current?.cancel()
+    paneMotion.current?.finish()
+  }, [])
 
-  return { capture, captureCommit }
+  return { capture, captureCommit, capturePane }
 }
