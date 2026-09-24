@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence } from 'motion/react'
+import { BeforeCommit } from './BeforeCommit.tsx'
 import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
-import { Ghost } from './Ghost.tsx'
 import { Picker, type PickerOption } from './Picker.tsx'
 import { Tip } from './Tip.tsx'
 import { useGridTransition } from './useGridTransition.ts'
 import type { Atelier } from '../store.ts'
-import type { Candidate, Verdict } from '../types.ts'
+import type { Batch, Candidate, StrategyInfo, Verdict } from '../types.ts'
 
 export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys' | 'settings'
 
@@ -25,6 +24,63 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: 'rare', label: '越罕见越前' },
   { id: 'clean', label: '越干净越前' },
 ]
+
+const PHASE_NOTE: Record<string, string> = {
+  waiting: '已发出请求',
+  thinking: '正在推理',
+  writing: '正在写',
+}
+
+/**
+ * Seconds since `since`, ticking. A reasoning model can think for a minute
+ * before writing anything; a number going up reads as work, silence as broken.
+ */
+function useElapsed(since: number): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return Math.max(0, Math.round((now - since) / 1000))
+}
+
+/**
+ * What the running generation is doing, beside the button that stops it.
+ * `batches` is the whole current generation, finished ones included: once the
+ * last batch is done the server still has to close the generation, and that
+ * gap reads 正在收尾 rather than falling back to the first phase. The
+ * furthest-along running batch names the phase; hovering lists every one.
+ */
+function GenerationStatus({ batches, strategyById }: { batches: Batch[]; strategyById: Map<string, StrategyInfo> }) {
+  const [mountedAt] = useState(() => Date.now())
+  const since = batches.length ? Math.min(...batches.map(b => b.createdAt)) : mountedAt
+  const elapsed = useElapsed(since)
+  const running = batches.filter(b => b.state === 'running')
+  const phases = running.map(b => b.phase ?? 'waiting')
+  const phase =
+    batches.length > 0 && running.length === 0
+      ? '正在收尾'
+      : PHASE_NOTE[phases.includes('writing') ? 'writing' : phases.includes('thinking') ? 'thinking' : 'waiting']
+  return (
+    <Tip
+      className="dock__status"
+      content={
+        running.length > 0 ? (
+          <p>
+            {running.map(b => (
+              <span key={b.id} style={{ display: 'block' }}>
+                {strategyById.get(b.strategyId)?.label ?? b.strategyId} · {PHASE_NOTE[b.phase ?? 'waiting']}
+              </span>
+            ))}
+          </p>
+        ) : null
+      }
+    >
+      {running.length > 1 && <span className="dock__count">{running.length} 批 · </span>}
+      {phase} <b>{elapsed}s</b>
+    </Tip>
+  )
+}
 
 function trouble(c: Candidate): number {
   return (c.checks ?? []).filter(k => k.status !== 'clear' && k.status !== 'error').length
@@ -157,7 +213,7 @@ export function Workspace({
     })
   }, [ordered, lane, family, find, a.strategyById])
   const visibleIds = useMemo(() => new Set(visible.map(c => c.id)), [visible])
-  const capturePositions = useGridTransition(gridRef, visible, !!detailId)
+  const { capture: capturePositions, captureCommit } = useGridTransition(gridRef, visible, !!detailId)
   const captureGrid = () => {
     capturePositions()
     setKbd(false)
@@ -172,7 +228,6 @@ export function Workspace({
     () => batches.filter(b => b.generation === latestGeneration),
     [batches, latestGeneration],
   )
-  const ghosts = useMemo(() => liveBatches.filter(b => b.state === 'running'), [liveBatches])
 
   // ── keyboard ──────────────────────────────────────────────────────────────
 
@@ -451,20 +506,7 @@ export function Workspace({
             if (id && id !== detailId) openDrawer('detail', id)
           }}
         >
-          <AnimatePresence initial={false}>
-            {ghosts.map(b => {
-              const s = a.strategyById.get(b.strategyId)
-              return (
-                <Ghost
-                  key={`ghost-${b.id}`}
-                  batch={b}
-                  strategy={s}
-                  family={s ? a.familyById.get(s.family) : undefined}
-                />
-              )
-            })}
-          </AnimatePresence>
-
+          <BeforeCommit watch={visible} capture={captureCommit} />
           {ordered.map(c => (
             <div key={c.id} className="plate-slot" data-candidate={c.id} hidden={!visibleIds.has(c.id)}>
               <CandidatePlate
@@ -486,7 +528,7 @@ export function Workspace({
           ))}
         </div>
 
-        {visible.length === 0 && ghosts.length === 0 && (
+        {visible.length === 0 && (
           <div className="empty">
             <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
             <p>{candidates.length === 0 ? '第一批正在生成。' : '没有符合的名字。'}</p>
@@ -516,9 +558,12 @@ export function Workspace({
           </Tip>
         )}
         {running ? (
-          <button className="btn btn--sm" onClick={() => a.cancel()}>
-            停止
-          </button>
+          <>
+            <GenerationStatus batches={liveBatches} strategyById={a.strategyById} />
+            <button className="btn btn--sm" onClick={() => a.cancel()}>
+              停止
+            </button>
+          </>
         ) : (
           <button className="btn btn--primary btn--sm" onClick={() => a.generate()}>
             再来一批 <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>G</kbd>

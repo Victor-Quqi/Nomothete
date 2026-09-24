@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { CardMotion } from './cardMotion.ts'
 import { resetPlateMeasurements } from './scrollToPlate.ts'
 
 type Position = { x: number; y: number; opacity: number }
@@ -17,10 +18,37 @@ function visibleSlots(grid: HTMLElement) {
   return visible
 }
 
-/** Measure and animate only the cards intersecting the scroll viewport. */
+/**
+ * Give the slots in view their real layout before anything is measured.
+ *
+ * A slot the browser has never rendered, such as a card that just arrived or
+ * one pushed into view for the first time, is laid out at its
+ * contain-intrinsic-size placeholder until the browser notices it is on
+ * screen, a frame later. Measuring then would aim at the placeholder, and the
+ * cards behind it would jump again when the real height lands. Only slots in
+ * view are opened; offscreen ones keep deferring. Laying out real heights can
+ * change which slots are in view, so this repeats until the set settles.
+ */
+function prepareVisible(grid: HTMLElement) {
+  for (let pass = 0; pass < 4; pass++) {
+    let opened = false
+    for (const node of visibleSlots(grid)) {
+      if (node.dataset.prepared !== undefined) continue
+      node.dataset.prepared = ''
+      opened = true
+    }
+    if (!opened) return
+  }
+}
+
+/**
+ * Measure and animate only the cards intersecting the scroll viewport. How
+ * they move is CardMotion's business; this hook decides when, and from where.
+ */
 export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, items: readonly { id: string }[], paneOpen: boolean) {
-  const before = useRef<Map<string, Position> | null>(null)
-  const animations = useRef(new Map<HTMLElement, Animation>())
+  const before = useRef<{ positions: Map<string, Position>; reset: boolean; scrolled: number } | null>(null)
+  const motion = useRef<CardMotion | null>(null)
+  motion.current ??= new CardMotion()
   const previousIds = useRef(new Set(items.map(item => item.id)))
   const previousPane = useRef(paneOpen)
 
@@ -60,8 +88,7 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
       })
       snapshot.append(copy)
     }
-    for (const animation of animations.current.values()) animation.cancel()
-    animations.current.clear()
+    motion.current!.clear()
     canvas.append(snapshot)
     grid.style.width = `${Math.max(0, targetWidth)}px`
     resetPlateMeasurements(grid)
@@ -86,50 +113,83 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     }
   }, [gridRef, paneOpen])
 
-  const capture = () => {
+  const read = () => {
     const grid = gridRef.current
-    if (!grid) return
+    if (!grid) return null
+    const origin = grid.getBoundingClientRect()
     const positions = new Map<string, Position>()
     for (const node of visibleSlots(grid)) {
       const rect = node.getBoundingClientRect()
       positions.set(node.dataset.candidate!, {
-        x: rect.x, y: rect.y, opacity: Number(getComputedStyle(node).opacity),
+        x: rect.x - origin.x, y: rect.y - origin.y, opacity: Number(getComputedStyle(node).opacity),
       })
     }
-    before.current = positions
+    return positions
+  }
+
+  /** A filter or sort the user chose: the wall re-lays and returns to the top. */
+  const capture = () => {
+    const positions = read()
+    if (positions) before.current = { positions, reset: true, scrolled: 0 }
+  }
+
+  /**
+   * Any other change to the list, such as a name arriving over the stream.
+   * Called from BeforeCommit, so the positions are what is on screen at that
+   * frame, animations in flight included.
+   */
+  const captureCommit = () => {
+    if (before.current) return
+    const positions = read()
+    if (positions) before.current = { positions, reset: false, scrolled: 0 }
   }
 
   useLayoutEffect(() => {
-    const positions = before.current
+    const snap = before.current
+    before.current = null
     const grid = gridRef.current
     if (grid) resetPlateMeasurements(grid)
     const added = new Set(items.filter(item => !previousIds.current.has(item.id)).map(item => item.id))
     previousIds.current = new Set(items.map(item => item.id))
-    if (!grid || (!positions && added.size === 0)) return
-    before.current = null
-    if (positions) {
-      for (const animation of animations.current.values()) animation.cancel()
-      animations.current.clear()
+    if (!grid || (!snap && added.size === 0)) return
+    if (snap?.reset) {
+      snap.scrolled = grid.parentElement!.scrollTop
       grid.parentElement!.scrollTo({ top: 0, behavior: 'instant' })
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    prepareVisible(grid)
+    // The detail pane's cross-fade owns the wall while it runs.
+    if (grid.parentElement!.querySelector('.plates-snapshot')) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // No movement: every card is at once where it belongs, and a card new
+      // to the wall only fades in there.
+      motion.current!.clear()
+      for (const node of visibleSlots(grid)) {
+        if (added.has(node.dataset.candidate!)) node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'linear' })
+      }
+      return
+    }
 
-    // Finish every geometry read before starting animations.
-    const targets = visibleSlots(grid)
-      .filter(node => positions || added.has(node.dataset.candidate!))
-      .map(node => ({ node, rect: node.getBoundingClientRect() }))
-    for (const { node, rect } of targets) {
-      const previous = positions?.get(node.dataset.candidate!)
-      const dx = previous ? previous.x - rect.x : 0
-      const dy = previous ? previous.y - rect.y : 8
-      if (previous && Math.abs(dx) < 1 && Math.abs(dy) < 1 && previous.opacity === 1) continue
-      const animation = node.animate([
-        { transform: `translate(${dx}px, ${dy}px)`, opacity: previous?.opacity ?? 0 },
-        { transform: 'translate(0, 0)', opacity: 1 },
-      ], { duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' })
-      animations.current.set(node, animation)
-      animation.onfinish = () => {
-        if (animations.current.get(node) === animation) animations.current.delete(node)
+    // Positions are relative to the grid, so the reset path's scroll to the
+    // top reads as the cards moving up, as it does on screen.
+    const origin = grid.getBoundingClientRect()
+    const shift = snap?.reset ? snap.scrolled : 0
+    for (const node of visibleSlots(grid)) {
+      const rect = node.getBoundingClientRect()
+      const applied = motion.current!.offset(node)
+      const slot = { x: rect.x - origin.x - applied.x, y: rect.y - origin.y - applied.y, w: rect.width, h: rect.height }
+      const id = node.dataset.candidate!
+      const previous = snap?.positions.get(id)
+      if (previous) {
+        const was = { ...previous, y: previous.y - shift }
+        if (Math.abs(was.x - rect.x + origin.x) < 1 && Math.abs(was.y - rect.y + origin.y) < 1 && previous.opacity === 1) {
+          motion.current!.resettle(node, slot)
+        } else {
+          motion.current!.moved(node, was, slot)
+        }
+      } else if (added.has(id) || snap?.reset) {
+        motion.current!.entered(node, slot)
+      } else {
+        motion.current!.resettle(node, slot)
       }
     }
   }, [gridRef, items])
@@ -154,10 +214,7 @@ export function useGridTransition(gridRef: RefObject<HTMLDivElement | null>, ite
     }
   }, [gridRef])
 
-  useLayoutEffect(() => () => {
-    for (const animation of animations.current.values()) animation.cancel()
-    animations.current.clear()
-  }, [])
+  useLayoutEffect(() => () => motion.current?.clear(), [])
 
-  return capture
+  return { capture, captureCommit }
 }

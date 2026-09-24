@@ -959,7 +959,17 @@ kbd {
 /* Findings only. Nothing else is allowed in this row: anything threaded in
    beside the pills comes to rest wherever they happen to stop, which is a
    different place on every card. */
-.seals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; min-height: 22px; }
+.seals {
+  display: flex;
+  flex-wrap: wrap;
+  /* Lines and pills keep their own height when the row is animated taller
+     than its content; the default stretch would pull the capsules tall. */
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 13px;
+  min-height: 22px;
+}
 .seal {
   display: inline-flex;
   align-items: center;
@@ -1458,9 +1468,13 @@ kbd {
 /* ── generate bar ────────────────────────────────────────────────────────── */
 .dock {
   position: absolute;
-  left: 50%;
+  /* Centred without left: 50%, which would cap the dock's fitted width at
+     half the column and truncate it long before the column is full. */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   bottom: 26px;
-  transform: translateX(-50%);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -1484,6 +1498,21 @@ kbd {
 }
 .dock__discards:hover { color: var(--vellum-3); }
 .dock__discards s { text-decoration-color: var(--vellum-4); font-family: var(--font-mono); }
+.dock__status { font-size: 13.5px; color: var(--vellum-3); white-space: nowrap; cursor: default; }
+/* A narrow dock gives way from the left: the count goes first, then the
+   discards, then the status; the button never shrinks. */
+.dock > .btn { flex: none; }
+.dock__hint,
+.dock__discards,
+.dock__status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dock__hint { flex-shrink: 4; }
+.dock__discards { flex-shrink: 2; }
+.dock__status { flex-shrink: 1; }
+@media (max-width: 520px) {
+  .dock { gap: 6px; padding-left: 12px; bottom: 16px; max-width: calc(100% - 24px); }
+  .dock__count { display: none; }
+}
+.dock__status b { font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--brass-soft); }
 
 /* ── empty ───────────────────────────────────────────────────────────────── */
 .empty {
@@ -1501,60 +1530,6 @@ kbd {
   font-variation-settings: 'WONK' 1, 'SOFT' 60;
 }
 .empty p { font-size: 14.5px; line-height: 1.8; margin: 0; }
-
-/* ── skeleton plates while a batch is out ────────────────────────────────── */
-.ghost {
-  border: 1px dashed var(--hair);
-  border-radius: var(--r-lg);
-  padding: 20px 18px;
-  min-height: 176px;
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  position: relative;
-  overflow: hidden;
-}
-.ghost::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 25%, rgba(239, 231, 216, 0.035) 50%, transparent 75%);
-  transform: translateX(-100%);
-  animation: sheen 2.2s var(--ease-in-out) infinite;
-}
-@keyframes sheen { to { transform: translateX(100%); } }
-.ghost__line { height: 9px; border-radius: 99px; background: rgba(239, 231, 216, 0.05); }
-.ghost__line--title { height: 24px; width: 58%; }
-.ghost__strategy {
-  font-size: 13.5px;
-  color: var(--vellum-4);
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin-top: auto;
-  position: relative;
-}
-.ghost__dot { width: 5px; height: 5px; border-radius: 99px; flex: none; align-self: center; }
-.ghost__phase { color: var(--vellum-3); }
-/* The seconds sit at the far end, where a plate that has arrived carries its
-   verdict dial — a number going up in the place the answer will be. */
-.ghost__elapsed {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--brass-soft);
-}
-.ghost__ellipsis { width: 11px; display: inline-block; }
-.ghost__ellipsis::after {
-  content: '·';
-  animation: ellipsis 1.4s steps(1, end) infinite;
-}
-@keyframes ellipsis {
-  0%   { content: '·'; }
-  33%  { content: '··'; }
-  66%  { content: '···'; }
-}
 
 /* ── tooltips ────────────────────────────────────────────────────────────── */
 .tip-anchor {
