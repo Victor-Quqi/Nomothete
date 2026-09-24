@@ -3,6 +3,7 @@ import { NO_CHECKS, deepRunning, groupChecks } from '../checks.ts'
 import { REGISTRIES, registryForm } from '../normalize.ts'
 import { isMute, speakName } from '../speak.ts'
 import { CheckFinding, RecheckLine } from './CheckList.tsx'
+import { RationaleCheck } from './RationaleCheck.tsx'
 import { SayButton } from './SayButton.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
@@ -13,6 +14,7 @@ export function DetailPanel({
   family,
   manifest,
   asked,
+  autoVerify,
   onVerdict,
   onNote,
   onRecheck,
@@ -24,6 +26,8 @@ export function DetailPanel({
   manifest?: Bootstrap['checks']
   /** Its slow tier was started by hand and nothing has come back yet. */
   asked: boolean
+  /** Whether rationale verification runs on its own; off shows a browser search instead. */
+  autoVerify: boolean
   onVerdict: (v: Verdict) => void
   onNote: (note: string) => void
   onRecheck: () => void
@@ -100,6 +104,8 @@ export function DetailPanel({
       </p>
 
       <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
+
+      <RationaleCheck key={candidate.id} candidate={candidate} autoVerify={autoVerify} />
 
       {findings.length > 0 && (
         <>

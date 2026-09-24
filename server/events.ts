@@ -9,6 +9,7 @@
 import { EventEmitter } from 'node:events'
 import type { Candidate } from './store.ts'
 import type { CheckResult } from './checks/types.ts'
+import type { Verification } from './verify/store.ts'
 
 export type ServerEvent =
   | { type: 'generation:start'; generation: number; strategies: string[] }
@@ -23,6 +24,8 @@ export type ServerEvent =
   /** A re-run found nothing where the stored answer had found something. */
   | { type: 'check:gone'; candidateId: string; checkId: string }
   | { type: 'verdict'; candidateId: string; verdict: number }
+  /** Rationale verification changed state. Null: nothing to show (a cancelled first run). */
+  | { type: 'verification'; candidateId: string; verification: Verification | null }
   | { type: 'generation:done'; generation: number }
   /** The rail's label for this session, written after the session was. */
   | { type: 'session:title'; title: string }

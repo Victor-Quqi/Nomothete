@@ -94,7 +94,10 @@ function systemPrompt(chinese: boolean): string {
     '- It must work as a repo name and as a package name: ASCII, no more than two words, and typeable.',
     '- It must not appear in the exclusion list you are given, and must not be a near-variant of anything there.',
     '- It must not be two items from the supplied word list bolted end to end. That is the one shape to avoid.',
-    '- The rationale says where the name comes from, what it literally means, and how it connects to this specific project. Two sentences at most.',
+    '- The rationale says where the name comes from, what it means, and how it connects to this specific project. Two sentences at most.',
+    '- State as fact only what a reference work would confirm about an existing word: its language, root, meaning or history. If an origin is uncertain, say so or leave it out.',
+    '- For a word you coined or reshaped, say how you built it; do not present it as an attested word.',
+    '- The link to the project is your association; word it as one. Credit the project only with what the brief says it does, and do not claim the name is unused or unique.',
     chinese
       ? '- Write the rationale in Simplified Chinese. Keep the name itself, and any source word you quote, in the original Latin script.'
       : '- Write the rationale in English.',

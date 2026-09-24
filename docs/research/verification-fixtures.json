@@ -1,0 +1,168 @@
+[
+  {
+    "id": "deixis",
+    "name": "deixis",
+    "rationale": "deixis 表示指示、指向。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/deixis"
+  },
+  {
+    "id": "khorde",
+    "name": "chorde",
+    "rationale": "希腊语 χορδή（khordē，也转写作 chorde）有琴弦的含义。",
+    "expected": "supported",
+    "source": "https://www.etymonline.com/word/chord"
+  },
+  {
+    "id": "limen",
+    "name": "limen",
+    "rationale": "拉丁语 limen 意为门槛。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/limen"
+  },
+  {
+    "id": "telos",
+    "name": "telos",
+    "rationale": "希腊语 telos 有目的、目标的含义。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/telos"
+  },
+  {
+    "id": "nexus",
+    "name": "nexus",
+    "rationale": "nexus 有连接、联系的含义。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/nexus"
+  },
+  {
+    "id": "helix",
+    "name": "helix",
+    "rationale": "helix 指螺旋形结构。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/helix"
+  },
+  {
+    "id": "tessera",
+    "name": "tessera",
+    "rationale": "tessera 指用于拼成马赛克的小块材料。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/tessera"
+  },
+  {
+    "id": "suture",
+    "name": "suture",
+    "rationale": "suture 有缝合、接缝的含义。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/suture"
+  },
+  {
+    "id": "reticulum",
+    "name": "reticulum",
+    "rationale": "reticulum 来自拉丁语，意为小网。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/reticulum"
+  },
+  {
+    "id": "palimpsest",
+    "name": "palimpsest",
+    "rationale": "palimpsest 指擦去旧文字后重新书写的书写材料。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/palimpsest"
+  },
+  {
+    "id": "selvedge",
+    "name": "selvedge",
+    "rationale": "selvedge 指织物边缘为防止散开而形成的织边。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/selvage"
+  },
+  {
+    "id": "quire",
+    "name": "quire",
+    "rationale": "quire 可以指装订中叠合在一起的一组折页。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/quire"
+  },
+  {
+    "id": "sennit-true",
+    "name": "sennit",
+    "rationale": "sennit 指编织绳，词源不明。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/sennit"
+  },
+  {
+    "id": "cardiograph-true",
+    "name": "cardiograph",
+    "rationale": "cardiograph 指记录心脏活动的仪器。",
+    "expected": "supported",
+    "source": "https://www.merriam-webster.com/dictionary/cardiograph"
+  },
+  {
+    "id": "tabellio-true",
+    "name": "tabellio",
+    "rationale": "拉丁语 tabellio 指起草契约、遗嘱等文书的公证书吏。",
+    "expected": "supported",
+    "source": "https://en.wiktionary.org/wiki/tabellio"
+  },
+  {
+    "id": "telamon-true",
+    "name": "telamon",
+    "rationale": "telamon 是建筑中的承重男像柱。",
+    "expected": "supported",
+    "source": "https://www.britannica.com/technology/atlas-architecture"
+  },
+  {
+    "id": "deixis-false",
+    "name": "deixis",
+    "rationale": "deixis 是拉丁语，意为铁匠的锤子。",
+    "expected": "contradicted",
+    "source": "https://www.merriam-webster.com/dictionary/deixis"
+  },
+  {
+    "id": "sennit-false",
+    "name": "sennit",
+    "rationale": "sennit 源自古英语。",
+    "expected": "contradicted",
+    "source": "https://www.merriam-webster.com/dictionary/sennit"
+  },
+  {
+    "id": "reseau-false",
+    "name": "reseau",
+    "rationale": "摄影测量的 réseau 格网预先刻在底片上。",
+    "expected": "contradicted",
+    "source": "https://en.wikipedia.org/wiki/R%C3%A9seau_plate"
+  },
+  {
+    "id": "cardiograph-false",
+    "name": "cardiograph",
+    "rationale": "cardiograph 源自拉丁语 cardo，意为枢轴书写。",
+    "expected": "contradicted",
+    "source": "https://en.wiktionary.org/wiki/cardiograph"
+  },
+  {
+    "id": "chordeix",
+    "name": "Chordeix",
+    "rationale": "结合了 chorde（琴弦、连接线）与 deixis（指示、指向）。",
+    "expected": "mixed",
+    "strategyId": "greek-root"
+  },
+  {
+    "id": "coinage",
+    "name": "Velnoxa",
+    "rationale": "我拼出 Velnoxa，取轻巧与协作的意象。",
+    "expected": "no_claims"
+  },
+  {
+    "id": "invented-origin",
+    "name": "Velnoxa",
+    "rationale": "Velnoxa 是古希腊语，意为让所有部件协同工作而永远没有冲突。",
+    "expected": "unresolved"
+  },
+  {
+    "id": "tacket",
+    "name": "tacket",
+    "rationale": "tacket 指装帧中用于固定书页的羊皮纸条或细绳。",
+    "expected": "supported",
+    "source": "https://lob.is.ed.ac.uk/concept/1657"
+  }
+]

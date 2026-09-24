@@ -20,7 +20,18 @@ const SOURCE_LABEL: Record<ProviderConfig['source'], string> = {
  * script in this page can spend tokens through the local proxy either way, but
  * it cannot walk away with something that still works tomorrow.
  */
-export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => void }) {
+export function Settings({
+  onSaved,
+  autoVerify,
+  onAutoVerify,
+  savingAutoVerify,
+}: {
+  onSaved: (provider: ProviderStatus) => void
+  autoVerify: boolean
+  onAutoVerify: (on: boolean) => void
+  /** A save is in flight; the switch waits for it. */
+  savingAutoVerify: boolean
+}) {
   const [cfg, setCfg] = useState<ProviderConfig | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [probe, setProbe] = useState<ProbeResult | null>(null)
@@ -72,8 +83,34 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
     }
   }
 
+  // Not model configuration, so a config file never locks it.
+  const verifySwitch = (
+    <div className="cfg__switch">
+      <div className="prior__top">
+        <span className="prior__statement" id="cfg-auto-verify">自动联网核查</span>
+        <button
+          className="toggle"
+          role="switch"
+          aria-checked={autoVerify}
+          aria-labelledby="cfg-auto-verify"
+          aria-describedby="cfg-auto-verify-desc"
+          aria-busy={savingAutoVerify}
+          data-on={autoVerify}
+          disabled={savingAutoVerify}
+          onClick={() => onAutoVerify(!autoVerify)}
+        />
+      </div>
+      <p id="cfg-auto-verify-desc">打 ▲ 或手动检查后，经 Keenable 联网核对取义说明里的来源与词义。</p>
+    </div>
+  )
+
   if (!cfg) {
-    return <p className="drawer__lead">{error ?? '正在读取配置…'}</p>
+    return (
+      <>
+        <p className="drawer__lead">{error ?? '正在读取配置…'}</p>
+        {verifySwitch}
+      </>
+    )
   }
 
   const locked = !cfg.writable
@@ -188,6 +225,8 @@ export function Settings({ onSaved }: { onSaved: (provider: ProviderStatus) => v
           <span>{probe.message}</span>
         </div>
       )}
+
+      {verifySwitch}
     </div>
   )
 }

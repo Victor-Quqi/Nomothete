@@ -2,6 +2,7 @@ import { getDb, newId, nowMs } from './db.ts'
 import { loadChecks, readCheckRow } from './checks/index.ts'
 import type { CheckResult } from './checks/types.ts'
 import { DEFAULT_PRIOR_IDS } from './naming/priors.ts'
+import { readSessionVerifications, readVerification, transientState, type Verification } from './verify/store.ts'
 
 export type Verdict = -2 | -1 | 0 | 1 | 2
 
@@ -38,6 +39,8 @@ export interface Candidate {
   createdAt: number
   verdictAt: number | null
   checks?: CheckResult[]
+  /** Rationale verification. Separate from `checks`, which are registry answers. */
+  verification?: Verification | null
 }
 
 export interface Batch {
@@ -214,6 +217,7 @@ export function getCandidate(id: string): Candidate | null {
   if (!r) return null
   const c = rowToCandidate(r)
   c.checks = loadChecks(c.id, c.name)
+  c.verification = readVerification(c.id)
   return c
 }
 
@@ -237,7 +241,11 @@ export function listCandidates(sessionId: string): Candidate[] {
     if (!result) continue
     byCandidate.set(r.candidateId, [...(byCandidate.get(r.candidateId) ?? []), result])
   }
-  for (const c of all) c.checks = byCandidate.get(c.id) ?? []
+  const verifications = readSessionVerifications(sessionId)
+  for (const c of all) {
+    c.checks = byCandidate.get(c.id) ?? []
+    c.verification = transientState(c.id) ?? verifications.get(c.id) ?? null
+  }
   return all
 }
 

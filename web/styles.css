@@ -951,8 +951,8 @@ kbd {
      one; the full rationale lives in the detail drawer. */
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   overflow: hidden;
 }
 
@@ -1713,3 +1713,124 @@ input[type='range']:focus-visible::-moz-range-thumb {
   }
   .atmos__grain { display: none; }
 }
+
+/* ── rationale verification ──────────────────────────────────────────── */
+
+.cfg__switch {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+}
+.cfg__switch p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.7; color: var(--vellum-3); }
+
+/* Prose, not the registry rows: a claim and its evidence read top to bottom
+   at the drawer's full width. */
+.verify { margin-bottom: 6px; }
+.verify .verify__status { color: var(--vellum-3); }
+.verify .verify__status--against { color: var(--amber); }
+
+.verify__meta {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--vellum-3);
+  overflow-wrap: anywhere;
+}
+.verify__meta a,
+.verify__src {
+  color: var(--vellum-3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hair-2);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.verify__meta a:hover,
+.verify__src:hover { color: var(--brass); border-color: var(--brass-soft); }
+
+.verify__item { padding: 0 0 12px; }
+.verify__item + .verify__item { border-top: 1px solid var(--hair); padding-top: 12px; }
+.verify__item .verify__meta { margin: 4px 0 0; }
+
+.verify__claim,
+.verify__note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+.verify__claim { color: var(--vellum-3); }
+.verify__note { margin-top: 6px; color: var(--vellum); }
+.verify__claim b,
+.verify__note b {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--vellum-4);
+  margin-right: 8px;
+}
+
+.verify__cite { margin: 8px 0 0; }
+.verify__cite blockquote {
+  margin: 0;
+  padding: 1px 0 1px 12px;
+  border-left: 2px solid var(--hair-2);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--vellum-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.verify__cite--against blockquote { border-left-color: var(--amber); }
+.verify__cite figcaption { margin-top: 5px; padding-left: 14px; font-size: 13px; }
+
+.verify__fold { margin: 0 0 10px; }
+
+/* One line of parts: toggle or reason or link, dot-separated, wrapping whole. */
+.verify__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--vellum-3);
+}
+.verify__line > * + *::before { content: '·'; margin: 0 8px; color: var(--vellum-4); }
+.verify__line a {
+  color: var(--vellum-3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hair-2);
+  overflow-wrap: anywhere;
+  transition: color 0.2s;
+}
+.verify__line a:hover { color: var(--brass); border-color: var(--brass-soft); }
+.verify__line--item { margin-top: 4px; }
+
+.verify__toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--vellum-2);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.verify__toggle::after { content: ' ▾'; color: var(--vellum-4); }
+.verify__toggle[aria-expanded='true']::after { content: ' ▴'; }
+.verify__toggle:hover { color: var(--vellum); }
+.verify__toggle:focus-visible { outline: 1px solid var(--ring); outline-offset: 3px; border-radius: 4px; }
+.verify__fold > [id] { margin-top: 8px; }
+.verify__fold .verify__claim { font-size: 13.5px; }
+
+.plate__verify {
+  display: block;
+  margin: -6px 0 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--amber);
+  cursor: pointer;
+  text-align: left;
+}
+.plate__verify:hover { text-decoration: underline; text-underline-offset: 3px; }

@@ -66,7 +66,7 @@ export const STRATEGIES: Strategy[] = [
     device:
       'Compound two Latin roots into a single new word, joining them with the classical -i- or -o- linking vowel where it sounds right. Aim for the register of Terraform or Aperture, not of pharmaceutical brands.',
     lexicon: [
-      'limen (threshold)', 'vellum (calfskin)', 'cardo (hinge, pivot)', 'fornax (furnace)',
+      'limen (threshold)', 'membrana (skin, parchment)', 'cardo (hinge, pivot)', 'fornax (furnace)',
       'tessera (mosaic tile, token)', 'clavis (key)', 'lucerna (oil lamp)', 'rivus (stream)',
       'vadum (ford, shallows)', 'ansa (handle, loop)', 'cuneus (wedge)', 'gemma (bud, gem)',
       'stilus (stake, writing tool)', 'norma (carpenter\'s square, rule)', 'libra (balance)',
@@ -120,7 +120,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'craft',
     brief: '从装订、造纸、修书的工序里取词',
     device:
-      'Take a term from bookbinding, papermaking, or manuscript conservation and use it as the name. These words are old, concrete and almost never used by software.',
+      'Take a term from bookbinding, papermaking, or manuscript conservation and use it as the name. These words are old and concrete.',
     lexicon: [
       'signature (folded gathering)', 'headband (woven band at the spine)', 'kettle stitch (linking stitch)',
       'deckle (frame that forms a paper edge)', 'vellum (prepared calfskin)', 'gathering (folded sheets in order)',
@@ -174,7 +174,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'craft',
     brief: '从吹制、退火、窑炉里取词',
     device:
-      'Take a term from glassblowing, kilnwork, or ceramics and use it as the name. The vocabulary of heat, cooling and fragility is rich and unclaimed.',
+      'Take a term from glassblowing, kilnwork, or ceramics and use it as the name. The vocabulary of heat, cooling and fragility is rich.',
     lexicon: [
       'gather (molten glass collected on a pipe)', 'marver (steel table for rolling)', 'punty (solid rod holding the piece)',
       'lehr (annealing oven)', 'frit (pre-fused glass powder)', 'batch (raw mix before melting)',
@@ -194,7 +194,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'nature',
     brief: '从菌丝、孢子、共生结构里取词',
     device:
-      'Take a term from mycology or lichenology and use it as the name. Mycelial vocabulary maps unusually well onto distributed systems without anyone having claimed it.',
+      'Take a term from mycology or lichenology and use it as the name. Mycelial vocabulary maps unusually well onto distributed systems.',
     lexicon: [
       'mycelium (the fungal network)', 'hypha (a single filament)', 'rhizomorph (thick conducting strand)',
       'anastomosis (fusion of two hyphae)', 'sporocarp (fruiting body)', 'ascus (spore sac)',
@@ -284,7 +284,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'instrument',
     brief: '从擒纵、游丝、走时里取词',
     device:
-      'Take a term from horology — the mechanics of clocks and watches — and use it as the name. The escapement vocabulary in particular is precise, physical, and unclaimed.',
+      'Take a term from horology — the mechanics of clocks and watches — and use it as the name. The escapement vocabulary in particular is precise and physical.',
     lexicon: [
       'escapement (releases the gear train in steps)', 'detent (a catch that holds)', 'pallet (arm the escape wheel meets)',
       'balance (oscillating wheel)', 'hairspring (returns the balance)', 'remontoire (small rewound reserve)',
@@ -391,9 +391,9 @@ export const STRATEGIES: Strategy[] = [
     id: 'respell',
     label: '刻意错拼',
     family: 'formation',
-    brief: '把一个真词拼错，拼出唯一性',
+    brief: '把一个真词故意拼错，读音不变',
     device:
-      'Take a real word and respell it deliberately so it becomes globally unique while still reading aloud as the original. Google (googol), Clojure (closure), Disqus (discuss), Flickr (flicker). The misspelling should feel intentional, not like a typo.',
+      'Take a real word and respell it deliberately so it becomes a distinct name while still reading aloud as the original. Google (googol), Clojure (closure), Disqus (discuss), Flickr (flicker). The misspelling should feel intentional, not like a typo.',
     lexicon: [
       'substitute a letter that keeps the sound (c→k, s→z, ph→f)',
       'drop a silent vowel',
@@ -445,7 +445,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'formation',
     brief: '把两个互不相干领域的词直接撞在一起',
     device:
-      'Compound two ordinary English words drawn from two unrelated domains, so the pair is concrete but the combination has never existed. Heartbleed, Great Firewall, quick-scope. The collision should be vivid and instantly picturable.',
+      'Compound two ordinary English words drawn from two unrelated domains, so the pair is concrete but the combination is unexpected. Heartbleed, Great Firewall, quick-scope. The collision should be vivid and instantly picturable.',
     lexicon: [
       'one word from a physical trade, one from an abstract domain',
       'one word from weather, one from architecture',
@@ -492,7 +492,7 @@ export const STRATEGIES: Strategy[] = [
     family: 'tongue',
     brief: '从已经死掉的英语词里捡一个回来',
     device:
-      'Revive an obsolete or dialectal English word. It must be a real word with a citable historical sense — being obsolete is exactly what makes it globally unique now.',
+      'Revive an obsolete or dialectal English word. It must be a real word with a citable historical sense.',
     lexicon: [
       'apricity (the warmth of the sun in winter)', 'petrichor (the smell of rain on dry earth)',
       'gloaming (twilight)', 'snickersnee (a large knife; a fight with one)', 'uhtceare (lying awake before dawn with worry)',

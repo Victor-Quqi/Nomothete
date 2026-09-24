@@ -8,6 +8,7 @@ import { VerdictDial } from './VerdictDial.tsx'
 import { isMute, speakName } from '../speak.ts'
 import { SayButton } from './SayButton.tsx'
 import { scrollToPlate } from './scrollToPlate.ts'
+import { discrepancyLine } from '../verify.ts'
 import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
@@ -134,6 +135,8 @@ function PlateInner({
   // the plate has focus. It is a verb, not a finding, and never sat well
   // among the seals.
   const canAsk = checks.length > 0 && !deep && !deepDone(checks)
+
+  const discrepancy = discrepancyLine(candidate.verification)
 
   const rarity = 1 - candidate.probability
   const bars = Math.max(1, Math.min(5, Math.ceil(rarity * 5)))
@@ -270,6 +273,11 @@ function PlateInner({
       </div>
 
       <p className="plate__rationale">{candidate.rationale}</p>
+      {discrepancy && (
+        <button className="plate__verify" onClick={open}>
+          {discrepancy}
+        </button>
+      )}
 
       <Seals checks={checks} pending={pending} onInspect={open} />
 

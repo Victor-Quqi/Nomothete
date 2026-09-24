@@ -53,6 +53,31 @@ export interface Candidate {
   createdAt: number
   verdictAt: number | null
   checks?: CheckResult[]
+  verification?: Verification | null
+}
+
+/** `failed`: the search or page reading for this claim failed; it was not judged. */
+export type ClaimVerdict = 'supported' | 'contradicted' | 'insufficient' | 'failed'
+
+export interface ClaimFinding {
+  text: string
+  /** Search terms. Also what the browser search link asks. */
+  query: string
+  verdict: ClaimVerdict
+  note?: string
+  /** For failed and insufficient: why the claim is still open, in the model's or the service's words. */
+  reason?: string
+  sources: { url: string; title: string; excerpt: string }[]
+}
+
+/** Rationale verification. Never part of `checks`, which are registry answers. */
+export type Verification =
+  | { state: 'pending' }
+  | { state: 'done'; claims: ClaimFinding[]; checkedAt: number }
+  | { state: 'failed'; reason: string; checkedAt: number }
+
+export interface AppSettings {
+  autoVerify: boolean
 }
 
 export interface Batch {
@@ -164,6 +189,7 @@ export interface Bootstrap {
   priors: Prior[]
   checks: { id: string; label: string; tier: CheckTier; when: string; tierLabel: string }[]
   provider: ProviderStatus
+  settings: AppSettings
   sessions: SessionSummary[]
   dbPath: string
 }
@@ -187,6 +213,7 @@ export type ServerEvent =
   | { type: 'check'; candidateId: string; result: CheckResult }
   | { type: 'check:gone'; candidateId: string; checkId: string }
   | { type: 'verdict'; candidateId: string; verdict: number }
+  | { type: 'verification'; candidateId: string; verification: Verification | null }
   | { type: 'generation:done'; generation: number }
   | { type: 'session:title'; title: string }
   | { type: 'notice'; level: 'info' | 'error'; message: string }

@@ -247,13 +247,21 @@ export function App() {
             family={a.familyById.get(a.strategyById.get(detail.strategyId)?.family ?? '')}
             manifest={a.boot?.checks}
             asked={a.asked.has(detail.id)}
+            autoVerify={a.boot?.settings.autoVerify ?? true}
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}
             onRecheck={() => a.recheck(detail.id)}
           />
         )}
 
-        {drawer?.kind === 'settings' && <Settings onSaved={a.setProvider} />}
+        {drawer?.kind === 'settings' && (
+          <Settings
+            onSaved={a.setProvider}
+            autoVerify={a.boot?.settings.autoVerify ?? true}
+            onAutoVerify={a.setAutoVerify}
+            savingAutoVerify={a.savingSettings}
+          />
+        )}
 
         {drawer?.kind === 'taste' && a.profile && (
           <TastePanel profile={a.profile} familyById={a.familyById} />

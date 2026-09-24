@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
 import type {
+  AppSettings,
   Batch,
   Bootstrap,
   Candidate,
@@ -248,6 +249,12 @@ export function useAtelier() {
           )
           break
 
+        case 'verification':
+          setCandidates(cs =>
+            cs.map(c => (c.id === event.candidateId ? { ...c, verification: event.verification } : c)),
+          )
+          break
+
         case 'verdict':
           setCandidates(cs =>
             cs.map(c => (c.id === event.candidateId ? { ...c, verdict: event.verdict as Verdict } : c)),
@@ -459,6 +466,34 @@ export function useAtelier() {
     )
   }, [session, candidates])
 
+  // One save at a time, so the stored value and the switch cannot finish in
+  // different orders.
+  const [savingSettings, setSavingSettings] = useState(false)
+  const savingSettingsRef = useRef(false)
+  const bootRef = useRef(boot)
+  bootRef.current = boot
+
+  const setAutoVerify = useCallback(
+    async (autoVerify: boolean) => {
+      const current = bootRef.current?.settings
+      if (savingSettingsRef.current || !current) return
+      savingSettingsRef.current = true
+      setSavingSettings(true)
+      setBoot(b => (b ? { ...b, settings: { ...b.settings, autoVerify } } : b))
+      try {
+        const settings: AppSettings = await api.saveSettings({ autoVerify })
+        setBoot(b => (b ? { ...b, settings } : b))
+      } catch (err) {
+        setBoot(b => (b ? { ...b, settings: current } : b))
+        toast((err as Error).message, 'error')
+      } finally {
+        savingSettingsRef.current = false
+        setSavingSettings(false)
+      }
+    },
+    [toast],
+  )
+
   /** Keeps the rail honest after the settings drawer changes the endpoint. */
   const setProvider = useCallback((provider: ProviderStatus) => {
     setBoot(b => (b ? { ...b, provider } : b))
@@ -500,6 +535,8 @@ export function useAtelier() {
     updateSession,
     removeSession,
     setProvider,
+    setAutoVerify,
+    savingSettings,
     toast,
   }
 }

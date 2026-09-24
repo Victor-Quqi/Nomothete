@@ -28,6 +28,7 @@ import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/ge
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
 import { nameSession } from './naming/title.ts'
+import { getSettings, setAutoVerify } from './settings.ts'
 import { buildProfile, profileForPrompt } from './naming/taste.ts'
 import {
   createSession,
@@ -45,6 +46,8 @@ import {
   type Session,
   type Verdict,
 } from './store.ts'
+import { cancelAllVerifications, cancelSessionVerifications, requestVerification } from './verify/index.ts'
+import { verificationLines } from './verify/report.ts'
 
 const app = express()
 app.use(express.json({ limit: '256kb' }))
@@ -87,6 +90,7 @@ api.get('/bootstrap', (_req, res) => {
     priors: PRIORS,
     checks: CHECK_MANIFEST.map(c => ({ ...c, tierLabel: TIER_LABEL[c.tier] })),
     provider: providerStatus(),
+    settings: getSettings(),
     sessions: listSessions(),
     dbPath: DB_PATH,
   })
@@ -194,6 +198,7 @@ api.patch('/sessions/:id', (req, res) => {
 
 api.delete('/sessions/:id', (req, res) => {
   cancel(req.params.id)
+  cancelSessionVerifications(req.params.id)
   deleteSession(req.params.id)
   res.json({ ok: true })
 })
@@ -271,8 +276,11 @@ api.post('/candidates/:id/verdict', (req, res) => {
   // A positive Verdict is what buys the rate-limited tier.
   const alreadyDeep = (candidate.checks ?? []).some(c => c.tier === 'ratelimited')
   if (raw > 0 && !alreadyDeep) startDeepChecks(candidate.sessionId, candidate.id, candidate.name)
+  // Reuses a finished result; a like is not a request to search again.
+  if (raw > 0) requestVerification(candidate)
 
-  res.json({ candidate })
+  // Read again so the reply carries the pending mark the request just set.
+  res.json({ candidate: getCandidate(candidate.id) ?? candidate })
 })
 
 api.post('/candidates/:id/note', (req, res) => {
@@ -292,7 +300,9 @@ api.post('/candidates/:id/recheck', (req, res) => {
     return
   }
   startDeepChecks(candidate.sessionId, candidate.id, candidate.name, true)
-  res.json({ ok: true })
+  // `busy` also arrives as a notice and, without a stored result, on the card.
+  const verification = requestVerification(candidate, { refresh: true })
+  res.json({ ok: true, verification })
 })
 
 api.get('/sessions/:id/export', (req, res) => {
@@ -326,6 +336,8 @@ api.get('/sessions/:id/export', (req, res) => {
       lines.push('', c.rationale, '')
       const checks = (c.checks ?? []).filter(k => k.status !== 'clear' || k.tier !== 'local')
       if (checks.length) lines.push(checks.map(k => `- ${k.label}：${k.headline}`).join('\n'), '')
+      const verified = verificationLines(c.verification)
+      if (verified.length) lines.push(verified.join('\n'), '')
       if (c.note) lines.push(`> ${c.note}`, '')
     }
   }
@@ -441,6 +453,22 @@ api.put('/config', (req, res) => {
   forgetEffortRefusal()
 
   res.json(configPayload())
+})
+
+// Not part of the model config: editable even when nomothete.config.json locks it.
+api.get('/settings', (_req, res) => {
+  res.json(getSettings())
+})
+
+api.put('/settings', (req, res) => {
+  const { autoVerify } = req.body ?? {}
+  if (typeof autoVerify !== 'boolean') {
+    res.status(400).json({ error: 'autoVerify 只能是 true 或 false' })
+    return
+  }
+  setAutoVerify(autoVerify)
+  if (!autoVerify) cancelAllVerifications()
+  res.json(getSettings())
 })
 
 api.post('/config/test', async (_req, res) => {

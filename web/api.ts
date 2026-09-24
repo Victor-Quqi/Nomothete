@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   Bootstrap,
   Candidate,
   ProbeResult,
@@ -84,6 +85,9 @@ export const api = {
    */
   saveConfig: (body: { baseURL?: string; model?: string; apiKey?: string; reasoningEffort?: string }) =>
     call<ProviderConfig>('/config', { method: 'PUT', body: JSON.stringify(body) }),
+
+  saveSettings: (body: Partial<AppSettings>) =>
+    call<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(body) }),
 
   testConfig: () => call<ProbeResult>('/config/test', { method: 'POST', body: '{}' }),
 }

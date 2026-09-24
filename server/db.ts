@@ -61,6 +61,31 @@ CREATE TABLE IF NOT EXISTS checks (
   PRIMARY KEY (candidateId, checkId)
 );
 
+-- Rationale verification. Kept apart from checks: a supported etymology says
+-- nothing about registries, and must never count as a registry answer.
+-- Only finished outcomes are stored; pending lives in memory, so a restart
+-- cannot leave a card waiting forever.
+CREATE TABLE IF NOT EXISTS verifications (
+  candidateId TEXT PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,
+  state       TEXT NOT NULL,               -- done | failed
+  data        TEXT NOT NULL,
+  checkedAt   INTEGER NOT NULL
+);
+
+-- Global switches the UI edits. Not .env: these must stay editable when the
+-- model configuration comes from nomothete.config.json.
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Latest bounded verification trace, for diagnosing retrieval and citation failures.
+-- Kept out of candidate payloads and generation context.
+CREATE TABLE IF NOT EXISTS verification_traces (
+  candidateId TEXT PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,
+  data TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS batches (
   id          TEXT PRIMARY KEY,
   sessionId   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
