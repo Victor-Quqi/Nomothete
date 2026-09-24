@@ -111,7 +111,7 @@ export function DetailPanel({
         <>
           <div className="section-h">检查发现</div>
           {findings.map(c => (
-            <CheckFinding key={c.checkId} check={c} />
+            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
           ))}
         </>
       )}
@@ -129,7 +129,7 @@ export function DetailPanel({
             and the sentence underneath it if there is one.
           */}
           {quiet.map(c => (
-            <CheckFinding key={c.checkId} check={c} />
+            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
           ))}
         </>
       )}
@@ -138,7 +138,7 @@ export function DetailPanel({
         <>
           <div className="section-h">没查成</div>
           {failed.map(c => (
-            <CheckFinding key={c.checkId} check={c} />
+            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
           ))}
         </>
       )}

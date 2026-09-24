@@ -1343,6 +1343,13 @@ kbd {
   transition: color 0.2s;
 }
 .found__links a:hover { color: var(--brass); border-color: var(--brass-soft); }
+.found__what a {
+  color: var(--vellum-3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hair-2);
+  transition: color 0.2s;
+}
+.found__what a:hover { color: var(--brass); border-color: var(--brass-soft); }
 
 .dot { width: 5px; height: 5px; border-radius: 99px; flex: none; align-self: center; background: var(--verdigris); }
 .dot--caution { background: var(--amber); }

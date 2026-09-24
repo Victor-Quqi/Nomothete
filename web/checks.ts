@@ -25,6 +25,16 @@ export function byCheckOrder(a: CheckResult, b: CheckResult): number {
 }
 
 /**
+ * The words a check is shown with. Decided from `checkId` and `data`, never
+ * from the stored sentence. A rate-limited GitHub search is a passing state,
+ * not a setup task, so it reads as one and carries no configuration advice.
+ */
+export function presentCheck(c: CheckResult): { headline: string; detail?: string } {
+  if (c.checkId === 'github' && c.data?.rateLimited) return { headline: '暂时限流' }
+  return { headline: c.headline, detail: c.detail }
+}
+
+/**
  * One array for every candidate whose checks have not arrived, so `?? NO_CHECKS`
  * keeps a stable identity and the memo downstream of it holds.
  */

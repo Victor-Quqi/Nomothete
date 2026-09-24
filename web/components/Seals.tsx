@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { byCheckOrder } from '../checks.ts'
+import { byCheckOrder, presentCheck } from '../checks.ts'
 import { linksOf } from './CheckList.tsx'
 import { Tip } from './Tip.tsx'
 import type { CheckResult } from '../types.ts'
@@ -19,13 +19,14 @@ import type { CheckResult } from '../types.ts'
  */
 function tipFor(c: CheckResult): ReactNode {
   const links = linksOf(c).length
-  if (!c.detail && links === 0) return null
+  const { detail } = presentCheck(c)
+  if (!detail && links === 0) return null
   // The headline is on the pill, an inch under the pointer. All the title line
   // can add is which check said it.
   return (
     <>
       <b>{c.label}</b>
-      {c.detail && <p>{c.detail}</p>}
+      {detail && <p>{detail}</p>}
       {links > 0 && <em>点开看 {links} 条链接</em>}
     </>
   )

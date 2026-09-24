@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { deepDone } from '../checks.ts'
+import { deepDone, presentCheck } from '../checks.ts'
 import type { Bootstrap, CheckResult } from '../types.ts'
 
 /**
@@ -32,14 +32,48 @@ export function linksOf(check: CheckResult): { href: string; text: string }[] {
   return out
 }
 
-/** One line: the label, and the sentence the check came back with. */
-function CheckRow({ check, children }: { check: CheckResult; children?: ReactNode }) {
+/**
+ * GitHub's own repository search: name matches, most stars first. Built from
+ * the candidate's name rather than stored check data, so rows from older
+ * builds get it too, and so do zero-hit and rate-limited rows.
+ */
+function githubSearchUrl(name: string): string {
+  const q = encodeURIComponent(`${name} in:name`)
+  return `https://github.com/search?q=${q}&type=repositories&s=stars&o=desc`
+}
+
+/**
+ * One line: the label, and the sentence the check came back with. An action
+ * that belongs to the sentence follows it inline, after a comma, and wraps
+ * with it.
+ */
+function CheckRow({
+  check,
+  headline,
+  action,
+  children,
+}: {
+  check: CheckResult
+  headline: string
+  action?: { href: string; text: string }
+  children?: ReactNode
+}) {
   return (
     <div className="found">
       <div className="found__line">
         <span className={`dot dot--${check.status}`} />
         <span className="found__label">{check.label}</span>
-        <span className="found__what">{check.headline}</span>
+        <span className="found__what">
+          {headline}
+          {action && (
+            <>
+              ，
+              <a href={action.href} target="_blank" rel="noreferrer noopener" onClick={e => e.stopPropagation()}>
+                {action.text} ↗
+              </a>
+            </>
+          )}
+        </span>
       </div>
       {children}
     </div>
@@ -47,11 +81,13 @@ function CheckRow({ check, children }: { check: CheckResult; children?: ReactNod
 }
 
 /** The line, plus what was found and where to go look at it. */
-export function CheckFinding({ check }: { check: CheckResult }) {
+export function CheckFinding({ check, name }: { check: CheckResult; name?: string }) {
+  const { headline, detail } = presentCheck(check)
   const links = linksOf(check)
+  const action = check.checkId === 'github' && name ? { href: githubSearchUrl(name), text: '搜索仓库' } : undefined
   return (
-    <CheckRow check={check}>
-      {check.detail && <p className="found__why">{check.detail}</p>}
+    <CheckRow check={check} headline={headline} action={action}>
+      {detail && <p className="found__why">{detail}</p>}
       {links.length > 0 && (
         <div className="found__links">
           {links.map(l => (
