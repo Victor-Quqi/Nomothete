@@ -66,10 +66,10 @@ export function DetailPanel({
   }, [candidate.name])
 
   const checks = candidate.checks ?? NO_CHECKS
-  const { findings, quiet, failed } = useMemo(() => groupChecks(checks), [checks])
+  const { findings, quiet, failed } = useMemo(() => groupChecks(checks, candidate.name), [checks, candidate.name])
 
   return (
-    <>
+    <div className="detail">
       <div className="detail__head">
         <h2 className={`detail__name${saying ? ' detail__name--speaking' : ''}`} onClick={speak}>
           {candidate.name}
@@ -77,7 +77,7 @@ export function DetailPanel({
         <SayButton state={saying ? 'on' : isMute() ? 'mute' : 'idle'} onClick={speak} />
       </div>
 
-      <div className="plate__meta" style={{ marginBottom: 14 }}>
+      <div className="plate__meta detail__meta">
         {strategy && (
           <span className="plate__strategy" style={{ ['--fam-hue' as string]: family?.hue ?? 38 }}>
             <i />
@@ -90,8 +90,8 @@ export function DetailPanel({
       {forms.length > 0 && (
         <div className="detail__forms">
           {forms.map(f => (
-            <button className="detail__form" key={f.form} title="复制" onClick={() => copy(f.form)}>
-              <b>{f.who} 上写作</b>
+            <button className="detail__form" key={f.form} aria-label={`复制 ${f.who} 上的写法 ${f.form}`} title="复制" onClick={() => copy(f.form)}>
+              <b>{f.who}</b>
               <code>{f.form}</code>
               <span className="detail__form-copy">{copied === f.form ? '✓' : '⧉'}</span>
             </button>
@@ -107,57 +107,27 @@ export function DetailPanel({
 
       <RationaleCheck key={candidate.id} candidate={candidate} autoVerify={autoVerify} />
 
-      {findings.length > 0 && (
-        <>
-          <div className="section-h">检查发现</div>
-          {findings.map(c => (
-            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
-          ))}
-        </>
-      )}
+      <div className="detail__checks">
+        {[...findings, ...quiet, ...failed].map(c => (
+          <CheckFinding key={`${candidate.id}:${c.checkId}`} check={c} name={candidate.name} />
+        ))}
+        <RecheckLine
+          checks={checks}
+          manifest={manifest}
+          running={deepRunning(checks, candidate.verdict, asked)}
+          onRecheck={onRecheck}
+        />
+      </div>
 
-      {quiet.length > 0 && (
-        <>
-          <div className="section-h section-h--tail">
-            {findings.length > 0 ? `其余 ${quiet.length} 项没发现冲突` : `${quiet.length} 项检查没发现冲突`}
-          </div>
-          {/*
-            No 每项细说 toggle. It promised to spell each one out and then, for
-            half of them, opened to nothing — a check with no more to say has no
-            more to say at either size. What is left is short enough to print,
-            so every check reads the same here as it does on a card: the line,
-            and the sentence underneath it if there is one.
-          */}
-          {quiet.map(c => (
-            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
-          ))}
-        </>
-      )}
-
-      {failed.length > 0 && (
-        <>
-          <div className="section-h">没查成</div>
-          {failed.map(c => (
-            <CheckFinding key={c.checkId} check={c} name={candidate.name} />
-          ))}
-        </>
-      )}
-
-      <RecheckLine
-        checks={checks}
-        manifest={manifest}
-        running={deepRunning(checks, candidate.verdict, asked)}
-        onRecheck={onRecheck}
-      />
-
-      <div className="section-h">备注</div>
+      <label className="detail__note-label" htmlFor="candidate-note">备注</label>
       <textarea
+        id="candidate-note"
         className="detail__note"
         value={draft}
         placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
         onChange={e => setDraft(e.target.value)}
         onBlur={() => draft !== (candidate.note ?? '') && onNote(draft)}
       />
-    </>
+    </div>
   )
 }

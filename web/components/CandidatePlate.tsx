@@ -279,7 +279,7 @@ function PlateInner({
         </button>
       )}
 
-      <Seals checks={checks} pending={pending} onInspect={open} />
+      <Seals checks={checks} name={candidate.name} pending={pending} onInspect={open} />
 
       <div className="plate__foot">
         <VerdictDial verdict={candidate.verdict} onChange={v => onVerdict(candidate.id, v)} />

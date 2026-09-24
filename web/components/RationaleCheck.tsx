@@ -70,11 +70,11 @@ function Discrepancy({ claim }: { claim: ClaimFinding }) {
  * something to act on rather than a sentence about an absence. Starts closed;
  * the panel keys on the candidate, so opening one name never opens the next.
  */
-function Disclosure({ label, aside, children }: { label: string; aside?: ReactNode; children: ReactNode }) {
+function Disclosure({ label, aside, children, compact = false }: { label: ReactNode; aside?: ReactNode; children: ReactNode; compact?: boolean }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   return (
-    <div className="verify__fold">
+    <div className={`verify__fold${compact ? ' verify__fold--compact' : ''}`}>
       <p className="verify__line">
         <button type="button" className="verify__toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
           {label}
@@ -94,8 +94,8 @@ function Disclosure({ label, aside, children }: { label: string; aside?: ReactNo
  * A discrepancy is the one thing worth reading unprompted, so it is printed in
  * full with its evidence. Claims still to be checked get one line with a
  * search link, and each expands to what is still unestablished and whatever
- * excerpts were found for it. Supporting
- * sources wait behind 查看来源. Nothing here speaks to whether the name is good
+ * excerpts were found for it. Supporting sources stay collapsed until opened.
+ * Nothing here speaks to whether the name is good
  * or taken; that is the registry section below, kept apart on purpose.
  */
 export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate; autoVerify: boolean }) {
@@ -124,6 +124,23 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
   const failedCount = open.filter(c => c.verdict === 'failed').length
   const openSearch = open.length === 1 ? browserSearchUrl(candidate.name, open[0]) : fallback
   const sourceCount = new Set(backed.flatMap(c => c.sources.map(s => s.url))).size
+  const sources = backed.map((claim, i) => (
+    <div className="verify__item" key={i}>
+      <p className="verify__claim">{claim.text}</p>
+      <Citations sources={claim.sources} />
+    </div>
+  ))
+
+  if (sourceCount > 0 && !status && open.length === 0) {
+    return (
+      <section className="verify">
+        <Disclosure compact label={<><span>取义核查</span><span className="verify__source-count">· {sourceCount} 个来源</span></>}>
+          {!autoVerify && <Meta parts={['自动联网核查已关闭，下面是之前的结果']} search={fallback} />}
+          {sources}
+        </Disclosure>
+      </section>
+    )
+  }
 
   return (
     <section className="verify" aria-busy={v?.state === 'pending'}>
@@ -185,12 +202,7 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
 
       {sourceCount > 0 && (
         <Disclosure label={`查看来源 ${sourceCount}`}>
-          {backed.map((claim, i) => (
-            <div className="verify__item" key={i}>
-              <p className="verify__claim">{claim.text}</p>
-              <Citations sources={claim.sources} />
-            </div>
-          ))}
+          {sources}
         </Disclosure>
       )}
     </section>

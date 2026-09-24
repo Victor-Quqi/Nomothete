@@ -10,6 +10,7 @@
 import { env } from '../env.ts'
 import { probe } from './http.ts'
 import { npmNormalize } from './normalize.ts'
+import { npmNeighbourhood } from '../../shared/npmNeighbourhood.ts'
 import type { Check, CheckContext } from './types.ts'
 
 /** How crowded the npm namespace already is around this word. Free, one call. */
@@ -37,6 +38,7 @@ export const npmNeighbourhoodCheck: Check = {
     const names = objects.map(o => o.package.name)
     return {
       total: payload.total ?? objects.length,
+      names,
       nearMisses: names.filter(n => {
         const norm = npmNormalize(n)
         return norm !== target && (norm.includes(target) || target.includes(norm))
@@ -45,31 +47,9 @@ export const npmNeighbourhoodCheck: Check = {
     }
   },
 
-  describe(data) {
-    const { total, nearMisses, exactNorm } = data as {
-      total: number
-      nearMisses?: string[]
-      exactNorm?: string[]
-    }
-    const near = nearMisses ?? []
-    const crowded = total >= 200 || near.length >= 6
-    return {
-      // Always phrase this one as crowding. The exact collision is the
-      // availability check's sentence to say; repeating it here would put two
-      // seals with the same message side by side.
-      status: crowded || (exactNorm ?? []).length > 0 ? 'caution' : 'clear',
-      headline: `npm 上 ${total} 个相关结果`,
-      // The near misses, or nothing. The count is already on the pill, and the
-      // exact collision is the availability check's line — printing it here too
-      // put the same fact in two places on one card.
-      //
-      // Three is enough to show what the neighbourhood looks like. The count is
-      // what carries the crowding; a longer list only reads as clutter.
-      detail:
-        near.length > 0
-          ? `形近的有 ${near.slice(0, 3).join('、')}${near.length > 3 ? ` 等 ${near.length} 个` : ''}。`
-          : undefined,
-    }
+  describe(data, name) {
+    const { status, headline } = npmNeighbourhood(data, name)
+    return { status, headline }
   },
 }
 

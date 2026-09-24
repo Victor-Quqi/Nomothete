@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { Fragment, useId, useState, type ReactNode } from 'react'
 import { deepDone, presentCheck } from '../checks.ts'
+import { npmNeighbourhood } from '../../shared/npmNeighbourhood.ts'
 import type { Bootstrap, CheckResult } from '../types.ts'
 
 /**
@@ -11,17 +12,17 @@ import type { Bootstrap, CheckResult } from '../types.ts'
  * different story to tell, so there is no second rendering for it to drift from.
  */
 
-/**
- * Somewhere to click through to. Three at most: GitHub hands back its five
- * top-starred repositories, and the tail of that list is a ★1 fork with a
- * forty-character name — a line of noise under a sentence that already said the
- * hits are small.
- */
-export function linksOf(check: CheckResult): { href: string; text: string }[] {
+/** Package results and up to three GitHub repositories, with source links. */
+export function linksOf(check: CheckResult, name?: string): { href: string; text: string }[] {
   const out: { href: string; text: string }[] = []
   const d = check.data
+  if (check.checkId === 'neighbourhood' && d && name) {
+    for (const pkg of npmNeighbourhood(d, name).names) {
+      out.push({ href: `https://www.npmjs.com/package/${encodeURIComponent(pkg)}`, text: pkg })
+    }
+  }
   if (d?.registries) {
-    for (const r of d.registries) if (r.url) out.push({ href: r.url, text: `${r.label} 上的同名` })
+    for (const r of d.registries) if (r.url) out.push({ href: r.url, text: r.label })
   }
   if (d?.top) {
     for (const r of d.top.slice(0, 3)) {
@@ -42,11 +43,7 @@ function githubSearchUrl(name: string): string {
   return `https://github.com/search?q=${q}&type=repositories&s=stars&o=desc`
 }
 
-/**
- * One line: the label, and the sentence the check came back with. An action
- * that belongs to the sentence follows it inline, after a comma, and wraps
- * with it.
- */
+/** Keep source actions separate from the finding so neither splits mid-link. */
 function CheckRow({
   check,
   headline,
@@ -54,27 +51,23 @@ function CheckRow({
   children,
 }: {
   check: CheckResult
-  headline: string
+  headline: ReactNode
   action?: { href: string; text: string }
   children?: ReactNode
 }) {
   return (
-    <div className="found">
-      <div className="found__line">
-        <span className={`dot dot--${check.status}`} />
-        <span className="found__label">{check.label}</span>
-        <span className="found__what">
-          {headline}
-          {action && (
-            <>
-              ，
-              <a href={action.href} target="_blank" rel="noreferrer noopener" onClick={e => e.stopPropagation()}>
-                {action.text} ↗
-              </a>
-            </>
-          )}
+    <div className="found" data-status={check.status} data-action={action ? '' : undefined}>
+      <div className="found__head">
+        <span className="found__source">
+          {check.label}
         </span>
+        {action && (
+          <a className="found__action" aria-label={action.text} title={action.text} href={action.href} target="_blank" rel="noreferrer noopener" onClick={e => e.stopPropagation()}>
+            <span aria-hidden="true">↗</span>
+          </a>
+        )}
       </div>
+      <div className="found__what">{headline}</div>
       {children}
     </div>
   )
@@ -82,24 +75,70 @@ function CheckRow({
 
 /** The line, plus what was found and where to go look at it. */
 export function CheckFinding({ check, name }: { check: CheckResult; name?: string }) {
-  const { headline, detail } = presentCheck(check)
-  const links = linksOf(check)
-  const action = check.checkId === 'github' && name ? { href: githubSearchUrl(name), text: '搜索仓库' } : undefined
+  const [expanded, setExpanded] = useState(false)
+  const listId = useId()
+  const presented = presentCheck(check, name)
+  const { headline, detail } = presented
+  const links = linksOf(check, name)
+  const npm = check.checkId === 'neighbourhood'
+  const inlineRegistries = check.checkId === 'availability' && presented.status === 'taken' && links.length > 0
+  const shown = npm && !expanded ? links.slice(0, 3) : links
+  const action = name
+    ? check.checkId === 'github'
+      ? { href: githubSearchUrl(name), text: '搜索仓库' }
+      : check.checkId === 'neighbourhood'
+        ? { href: `https://www.npmjs.com/search?q=${encodeURIComponent(name)}`, text: '搜索 npm' }
+        : undefined
+    : undefined
   return (
-    <CheckRow check={check} headline={headline} action={action}>
+    <CheckRow check={presented} action={action} headline={
+      inlineRegistries ? (
+        <>
+          {links.map((l, i) => (
+            <Fragment key={l.href}>
+              {i > 0 && <span className="found__separator"> / </span>}
+              <a href={l.href} target="_blank" rel="noreferrer noopener" onClick={e => e.stopPropagation()}>{l.text}</a>
+            </Fragment>
+          ))}
+          <span className="found__registry-state">已有同名</span>
+        </>
+      ) : npm && links.length > 0 ? `${links.length} 个相近包名` : headline
+    }>
       {detail && <p className="found__why">{detail}</p>}
-      {links.length > 0 && (
-        <div className="found__links">
-          {links.map(l => (
-            <a
-              key={l.href}
-              href={l.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              onClick={e => e.stopPropagation()}
+      {links.length > 0 && !inlineRegistries && (
+        <div id={listId} className={npm ? 'found__packages' : 'found__links'}>
+          {shown.map((l, i) => (
+            <span
+              key={npm && i === shown.length - 1 ? 'tail' : l.href}
+              className={npm && i === shown.length - 1 ? 'found__package-tail' : 'found__link-wrap'}
             >
-              {l.text} ↗
-            </a>
+              <a
+                href={l.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={npm ? l.text : undefined}
+                onClick={e => e.stopPropagation()}
+              >
+                {npm ? (
+                  <span className="found__package-name">
+                    {l.text.startsWith('@') ? (
+                      <><span className="found__scope">{l.text.slice(0, l.text.indexOf('/') + 1)}</span>{l.text.slice(l.text.indexOf('/') + 1)}</>
+                    ) : l.text}
+                  </span>
+                ) : `${l.text} ↗`}
+              </a>
+              {npm && i === shown.length - 1 && links.length > 3 && (
+                <button
+                  className="found__more"
+                  aria-label={expanded ? '收起包列表' : `展开其余 ${links.length - 3} 个包`}
+                  aria-expanded={expanded}
+                  aria-controls={listId}
+                  onClick={e => { e.stopPropagation(); setExpanded(!expanded) }}
+                >
+                  {expanded ? '收起' : `+${links.length - 3}`}
+                </button>
+              )}
+            </span>
           ))}
         </div>
       )}
@@ -160,10 +199,11 @@ export function RecheckLine({
         </button>
       ) : (
         <>
-          <span>{waiting ? `${waiting} 还没查，▲ 之后自动开始。` : '还有几项慢的没查。'}</span>
-          <button className="btn btn--ghost btn--sm" onClick={onRecheck}>
-            现在查 →
-          </button>
+          <div className="recheck__copy">
+            <span>{waiting ? `${waiting} 还没查` : '还有几项慢的没查'}</span>
+            <span className="recheck__hint">标记 ▲ 后自动检查</span>
+          </div>
+          <button className="recheck__start" onClick={onRecheck}>现在查<span aria-hidden="true">→</span></button>
         </>
       )}
     </div>

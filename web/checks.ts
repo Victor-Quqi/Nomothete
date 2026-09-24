@@ -1,4 +1,5 @@
 import type { CheckResult } from './types.ts'
+import { npmNeighbourhood } from '../shared/npmNeighbourhood.ts'
 
 /**
  * The order checks are read in: what makes the name impossible, then what makes
@@ -29,9 +30,13 @@ export function byCheckOrder(a: CheckResult, b: CheckResult): number {
  * from the stored sentence. A rate-limited GitHub search is a passing state,
  * not a setup task, so it reads as one and carries no configuration advice.
  */
-export function presentCheck(c: CheckResult): { headline: string; detail?: string } {
-  if (c.checkId === 'github' && c.data?.rateLimited) return { headline: '暂时限流' }
-  return { headline: c.headline, detail: c.detail }
+export function presentCheck(c: CheckResult, name?: string): CheckResult {
+  if (c.checkId === 'github' && c.data?.rateLimited) return { ...c, headline: '暂时限流', detail: undefined }
+  if (c.checkId === 'neighbourhood' && c.data && name) {
+    const { status, headline } = npmNeighbourhood(c.data, name)
+    return { ...c, status, headline, detail: undefined }
+  }
+  return c
 }
 
 /**
@@ -49,8 +54,8 @@ export interface CheckGroups {
   failed: CheckResult[]
 }
 
-export function groupChecks(checks: CheckResult[]): CheckGroups {
-  const sorted = [...checks].sort(byCheckOrder)
+export function groupChecks(checks: CheckResult[], name?: string): CheckGroups {
+  const sorted = checks.map(c => presentCheck(c, name)).sort(byCheckOrder)
   return {
     findings: sorted.filter(c => c.status !== 'clear' && c.status !== 'error' && c.status !== 'pending'),
     quiet: sorted.filter(c => c.status === 'clear'),

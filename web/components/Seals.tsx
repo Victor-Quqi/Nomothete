@@ -22,9 +22,9 @@ const EASE = 'cubic-bezier(0.33, 0, 0.2, 1)'
 /** Sideways drift of a pill changing line; the same as the gap between pills. */
 const DRIFT = 6
 
-function tipFor(c: CheckResult): ReactNode {
-  const links = linksOf(c).length
-  const { detail } = presentCheck(c)
+function tipFor(c: CheckResult, name: string): ReactNode {
+  const links = linksOf(c, name).length
+  const { detail } = presentCheck(c, name)
   if (!detail && links === 0) return null
   // The headline is on the pill, an inch under the pointer. All the title line
   // can add is which check said it.
@@ -39,15 +39,17 @@ function tipFor(c: CheckResult): ReactNode {
 
 export function Seals({
   checks,
+  name,
   pending,
   onInspect,
 }: {
   checks: CheckResult[]
+  name: string
   /** Text for the one provisional seal, when something is still out. */
   pending?: string | null
   onInspect?: () => void
 }) {
-  const findings = checks.filter(c => c.status !== 'clear').sort(byCheckOrder)
+  const findings = checks.map(c => presentCheck(c, name)).filter(c => c.status !== 'clear').sort(byCheckOrder)
   const box = useRef<HTMLDivElement>(null)
   const before = useRef<{ height: number; at: Map<string, { x: number; y: number; opacity: number }> } | null>(null)
   const running = useRef(new Map<Element, Animation>())
@@ -198,7 +200,7 @@ export function Seals({
             // a wait and a glance and hands back the words already on screen.
             // So it opens only when the check found something the pill has no
             // room for, and it promises links only when there are links.
-            content={tipFor(c)}
+            content={tipFor(c, name)}
           >
             <i />
             <span>{c.headline}</span>
