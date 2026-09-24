@@ -1039,12 +1039,28 @@ kbd {
 .plate__note-btn:hover { color: var(--vellum-2); background: rgba(239, 231, 216, 0.05); }
 .plate__note-btn[data-has='true'] { color: var(--brass-soft); }
 
+/* The part of a plate that opens and closes. Its height is what animates, and
+   it has no margin, border or vertical padding of its own, so at height 0
+   nothing of the closed section is left taking space; removing it at the end
+   changes nothing on screen. It always clips, so closing never spills text.
+   The 6px gutter at each side, pulled back out of the plate's own padding, is
+   room for the focus ring (1px line plus 4px glow) of the field and buttons
+   inside; above and below, the sections carry their own room. */
+.plate__fold {
+  overflow: hidden;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
 .plate__note {
   margin-top: 10px;
   border-top: 1px solid var(--hair);
   padding-top: 10px;
+  /* Room below the field for its focus ring inside .plate__fold. */
+  padding-bottom: 4px;
 }
 .plate__note textarea {
+  /* Block, so no baseline gap sits under it and the room below is exact. */
+  display: block;
   width: 100%;
   background: rgba(8, 9, 12, 0.5);
   border: 1px solid var(--hair);
@@ -1055,7 +1071,6 @@ kbd {
   min-height: 62px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.plate__note-saved { font-size: 13px; color: var(--vellum-4); margin-top: 6px; }
 
 /* The second-look offer. Deliberately the quietest thing on the plate: the
    Verdict is already recorded, this only proposes. */
@@ -1066,6 +1081,8 @@ kbd {
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 10px;
+  /* Room below the buttons for their focus ring inside .plate__fold. */
+  padding-bottom: 4px;
   border-top: 1px solid var(--hair);
   font-size: 14px;
   color: var(--vellum-3);

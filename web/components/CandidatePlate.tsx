@@ -298,58 +298,63 @@ function PlateInner({
       <AnimatePresence initial={false}>
         {secondLook && (
           <motion.div
-            className="plate__second"
+            key="second"
+            className="plate__fold"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span>刚看到就否掉了。</span>
-            <button
-              className="btn btn--ghost btn--sm"
-              onClick={() => {
-                onVerdict(candidate.id, 0)
-                setSecondLook(false)
-              }}
-            >
-              改成未定
-            </button>
-            <button className="plate__second-no" onClick={() => setSecondLook(false)}>
-              保持
-            </button>
+            <div className="plate__second">
+              <span>刚看到就否掉了。</span>
+              <button
+                className="btn btn--ghost btn--sm"
+                onClick={() => {
+                  onVerdict(candidate.id, 0)
+                  setSecondLook(false)
+                }}
+              >
+                改成未定
+              </button>
+              <button className="plate__second-no" onClick={() => setSecondLook(false)}>
+                保持
+              </button>
+            </div>
           </motion.div>
         )}
 
         {noteOpen && (
           <motion.div
-            className="plate__note"
+            key="note"
+            className="plate__fold"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
           >
-            <textarea
-              autoFocus
-              value={draft}
-              placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
-              onChange={e => setDraft(e.target.value)}
-              onBlur={() => {
-                if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Escape') {
-                  e.stopPropagation()
-                  // The box leaves without a blur, so this is its save.
+            <div className="plate__note">
+              <textarea
+                autoFocus
+                value={draft}
+                placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
+                onChange={e => setDraft(e.target.value)}
+                onBlur={() => {
                   if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)
-                  setNoteOpen(false)
-                }
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  onNote(candidate.id, draft)
-                  setNoteOpen(false)
-                }
-              }}
-            />
-            <div className="plate__note-saved">自动保存</div>
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    e.stopPropagation()
+                    // The box leaves without a blur, so this is its save.
+                    if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)
+                    setNoteOpen(false)
+                  }
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    onNote(candidate.id, draft)
+                    setNoteOpen(false)
+                  }
+                }}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
