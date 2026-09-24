@@ -1504,7 +1504,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 0 7px 16px;
+  padding: 7px 8px 7px 16px;
   border-radius: 99px;
   border: 1px solid var(--hair-2);
   background: rgba(16, 18, 25, 0.92);
@@ -1524,34 +1524,32 @@ kbd {
 .dock__discards:hover { color: var(--vellum-3); }
 .dock__discards s { text-decoration-color: var(--vellum-4); font-family: var(--font-mono); }
 .dock__status { font-size: 13.5px; color: var(--vellum-3); white-space: nowrap; cursor: default; }
-/* A narrow dock gives way from the left: the count goes first, then the
-   discards, then the status; the button never shrinks. */
-/* The action is the dock's own right end, set off from the counts by one
-   hairline rather than a button box inside the bar. It never shrinks. */
+/* The dock's action is a button of its own, rounded to match the bar it
+   sits in: a faint warm wash and a hairline, no solid fill and no glow. It
+   never shrinks. 停止 keeps the hairline and drops the wash. */
 .dock__act {
   flex: none;
-  align-self: stretch;
-  margin: -7px 0 -7px 4px;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 0 18px 0 16px;
-  border: none;
-  border-left: 1px solid var(--hair);
-  border-radius: 0 99px 99px 0;
-  background: transparent;
+  gap: 8px;
+  padding: 7px 15px;
+  border: 1px solid rgba(239, 231, 216, 0.26);
+  border-radius: 99px;
+  background: rgba(239, 231, 216, 0.08);
   color: var(--vellum);
   font-size: 13.5px;
   font-weight: 500;
   white-space: nowrap;
-  transition: background-color 0.18s var(--ease-out), color 0.18s var(--ease-out);
+  transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), color 0.18s var(--ease-out);
 }
-.dock__act:hover { background: rgba(239, 231, 216, 0.06); }
-.dock__act:active { background: rgba(239, 231, 216, 0.03); }
-.dock__act:disabled { opacity: 0.4; cursor: not-allowed; background: transparent; }
-.dock__act--stop { color: var(--vellum-2); font-weight: 400; }
-.dock__act--stop:hover { color: var(--vellum); }
+.dock__act:hover { background: rgba(239, 231, 216, 0.12); border-color: rgba(239, 231, 216, 0.38); }
+.dock__act:active { background: rgba(239, 231, 216, 0.05); }
+.dock__act:disabled { opacity: 0.4; cursor: not-allowed; background: rgba(239, 231, 216, 0.08); border-color: rgba(239, 231, 216, 0.26); }
+.dock__act--stop { background: transparent; border-color: var(--hair); color: var(--vellum-2); font-weight: 400; }
+.dock__act--stop:hover { background: rgba(239, 231, 216, 0.05); border-color: var(--hair-2); color: var(--vellum); }
 .dock__act kbd { border: none; background: none; padding: 0; color: var(--vellum-4); }
+/* A narrow dock gives way from the left: the count goes first, then the
+   discards, then the status; the button never shrinks. */
 .dock__hint,
 .dock__discards,
 .dock__status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1560,7 +1558,7 @@ kbd {
 .dock__status { flex-shrink: 1; }
 @media (max-width: 520px) {
   .dock { gap: 6px; padding-left: 12px; bottom: 16px; max-width: calc(100% - 24px); }
-  .dock__act { padding: 0 14px 0 12px; }
+  .dock__act { padding: 6px 12px; }
   .dock__count { display: none; }
 }
 .dock__status b { font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--brass-soft); }
