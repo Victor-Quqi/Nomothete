@@ -100,7 +100,7 @@ export function Settings({
           onClick={() => onAutoVerify(!autoVerify)}
         />
       </div>
-      <p id="cfg-auto-verify-desc">打 ▲ 或手动检查后，经 Keenable 联网核对取义说明里的来源与词义。</p>
+      <p id="cfg-auto-verify-desc">打 ▲ 或手动检查后，联网核对取义说明里的来源与词义。</p>
     </div>
   )
 
@@ -209,7 +209,7 @@ export function Settings({
       </div>
 
       <div className="cfg__acts">
-        <button className="btn btn--primary btn--sm" disabled={locked || busy || !ready} onClick={save}>
+        <button className="act" disabled={locked || busy || !ready} onClick={save}>
           {busy ? '…' : '保存'}
         </button>
         <button className="btn btn--ghost btn--sm" disabled={busy || !cfg.provider.configured} onClick={test}>

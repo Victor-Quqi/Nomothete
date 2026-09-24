@@ -159,9 +159,21 @@ export function Opening({
           </AnimatePresence>
         </div>
 
-        <button className="btn btn--ghost btn--sm" onClick={() => setMore(m => !m)} style={{ marginBottom: 10 }}>
-          {more ? '收起' : '更多设置'} {more ? '▴' : '▾'}
-        </button>
+        {/* The two ways on from the brief, on the line right under it. The
+            settings open below this line, so neither the brief nor the start
+            moves when they do. */}
+        <div className="opening__actions">
+          <button className="btn btn--ghost btn--sm" aria-expanded={more} onClick={() => setMore(m => !m)}>
+            {more ? '收起' : '更多设置'} {more ? '▴' : '▾'}
+          </button>
+          <div className="opening__go">
+            <span className="opening__hint" aria-hidden="true">⌘↵</span>
+            <button className="act" disabled={!ready} onClick={submit}>
+              {busy ? '正在开始…' : '开始取名'}
+              <span className="act__arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
 
         <AnimatePresence initial={false}>
           {more && (
@@ -238,13 +250,6 @@ export function Opening({
             </motion.div>
           )}
         </AnimatePresence>
-
-        <div className="opening__go">
-          <button className="btn btn--primary" disabled={!ready} onClick={submit}>
-            {busy ? '正在开始…' : '开始取名'}
-            <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>⌘↵</kbd>
-          </button>
-        </div>
 
         {boot && !boot.provider.configured && (
           <div className="warnbox">

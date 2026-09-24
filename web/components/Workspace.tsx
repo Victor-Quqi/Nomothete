@@ -560,13 +560,13 @@ export function Workspace({
         {running ? (
           <>
             <GenerationStatus batches={liveBatches} strategyById={a.strategyById} />
-            <button className="btn btn--sm" onClick={() => a.cancel()}>
+            <button className="dock__act dock__act--stop" onClick={() => a.cancel()}>
               停止
             </button>
           </>
         ) : (
-          <button className="btn btn--primary btn--sm" onClick={() => a.generate()}>
-            再来一批 <kbd style={{ borderColor: 'rgba(26,19,5,0.25)', color: '#3a2c0c' }}>G</kbd>
+          <button className="dock__act" onClick={() => a.generate()}>
+            再来一批 <kbd>G</kbd>
           </button>
         )}
       </div>

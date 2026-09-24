@@ -93,8 +93,8 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
    Brass, because this is a warm room and a vellum edge at the weight focus has
    to carry goes cold and grey against the ink — the loudest thing on a screen,
    saying nothing about it. The brass places already carry one shape each: the
-   lamp under the primary button, the left bar on the open session. A hairline
-   round the edge is a third, and it is the only one that moves with the Tab key.
+   left bar on the open session, the thumb of a slider. A hairline round the
+   edge is another, and it is the only one that moves with the Tab key.
    Leaving each control's own border alone also leaves what that border means —
    a seal's colour, a session's brass — legible while it holds focus.
    The radius is a floor for elements with square corners; every component that
@@ -484,12 +484,21 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 }
 .examples .chip { padding: 4px 11px; font-size: 14px; }
 
-.opening__go {
+.opening__actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  margin-top: 26px;
-  flex-wrap: wrap;
+  margin: -4px 0 18px;
+}
+/* Pulled out by the padding, so the ghost's label and the action's arrow line
+   up with the edges of the box above. */
+.opening__actions > .btn--ghost { margin-left: -14px; }
+.opening__go { display: flex; align-items: center; gap: 12px; margin-right: -10px; }
+/* Beside the action, not inside it, and quieter than its label. */
+.opening__hint { font-family: var(--font-mono); font-size: 12.5px; color: var(--vellum-4); }
+@media (max-width: 520px) {
+  .opening__hint { display: none; }
 }
 
 .warnbox {
@@ -502,46 +511,62 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   line-height: 1.75;
 }
 
+/* The plain button carries a hairline, ghost only its text. Nothing moves
+   under the pointer, so a button never shifts the row it sits in. The main
+   action on a form is not a button box at all; see .act. */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 9px;
   padding: 12px 22px;
-  border-radius: 99px;
-  border: 1px solid var(--hair-2);
-  color: var(--vellum);
+  border-radius: var(--r-md);
+  border: 1px solid var(--hair);
+  background: transparent;
+  color: var(--vellum-2);
   font-size: 14.5px;
-  font-weight: 500;
-  transition: all 0.24s var(--ease-out);
+  font-weight: 400;
+  transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), color 0.18s var(--ease-out);
   white-space: nowrap;
 }
-.btn:hover { border-color: var(--hair-2); background: rgba(239, 231, 216, 0.05); transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-.btn--primary {
-  background: linear-gradient(180deg, #e9b44e, #c08f2f);
-  border-color: #e9b44e;
-  color: #1a1305;
-  font-weight: 600;
-  box-shadow: 0 10px 30px -14px rgba(217, 164, 65, 0.85);
-}
-.btn--primary:hover {
-  background: linear-gradient(180deg, #f2c05d, #cb9a36);
-  box-shadow: 0 16px 38px -14px rgba(217, 164, 65, 0.95);
-  transform: translateY(-1.5px);
-}
-/* Restated so focus composes with the lamp under the button rather than
-   replacing it — and with a ring of ink between button and hairline, since the
-   button is itself brass and the two would otherwise merge into one wider
-   button. The slider thumb gets the same gap for the same reason, from the
-   2px ink border it already wears. */
-.btn--primary:focus-visible {
-  box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--ring),
-    0 0 0 6px var(--ring-glow), 0 10px 30px -14px rgba(217, 164, 65, 0.85);
-}
+.btn:hover { color: var(--vellum); border-color: var(--hair-2); background: rgba(239, 231, 216, 0.04); }
+.btn:active { background: rgba(239, 231, 216, 0.02); }
 .btn--ghost { border-color: transparent; color: var(--vellum-3); padding: 10px 14px; }
-.btn--ghost:hover { color: var(--vellum); background: rgba(239, 231, 216, 0.05); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+.btn--ghost:hover { color: var(--vellum); border-color: transparent; background: rgba(239, 231, 216, 0.05); }
+.btn:disabled,
+.btn:disabled:hover,
+.btn:disabled:active { opacity: 0.4; cursor: not-allowed; color: var(--vellum-2); background: transparent; border-color: var(--hair); }
+.btn--ghost:disabled,
+.btn--ghost:disabled:hover { border-color: transparent; }
 .btn--sm { padding: 7px 14px; font-size: 13.5px; }
+
+/* The main action on a form: words, weight and, where it leads on, an arrow.
+   No fill and no frame, so it reads as the next step rather than a box. It
+   outranks the ghost buttons beside it by colour and weight. */
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--vellum);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 5px;
+  transition: color 0.18s var(--ease-out), text-decoration-color 0.18s var(--ease-out);
+}
+.act__arrow { color: var(--vellum-3); transition: transform 0.18s var(--ease-out), color 0.18s var(--ease-out); }
+.act:hover { text-decoration-color: var(--hair-2); }
+.act:hover .act__arrow { color: var(--vellum); transform: translateX(3px); }
+.act:active .act__arrow { transform: translateX(1px); }
+.act:disabled,
+.act:disabled:hover { color: var(--vellum-4); cursor: not-allowed; text-decoration-color: transparent; }
+.act:disabled .act__arrow { color: var(--vellum-4); transform: none; }
 
 kbd {
   font-family: var(--font-mono);
@@ -1479,7 +1504,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px 7px 16px;
+  padding: 7px 0 7px 16px;
   border-radius: 99px;
   border: 1px solid var(--hair-2);
   background: rgba(16, 18, 25, 0.92);
@@ -1501,7 +1526,32 @@ kbd {
 .dock__status { font-size: 13.5px; color: var(--vellum-3); white-space: nowrap; cursor: default; }
 /* A narrow dock gives way from the left: the count goes first, then the
    discards, then the status; the button never shrinks. */
-.dock > .btn { flex: none; }
+/* The action is the dock's own right end, set off from the counts by one
+   hairline rather than a button box inside the bar. It never shrinks. */
+.dock__act {
+  flex: none;
+  align-self: stretch;
+  margin: -7px 0 -7px 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px 0 16px;
+  border: none;
+  border-left: 1px solid var(--hair);
+  border-radius: 0 99px 99px 0;
+  background: transparent;
+  color: var(--vellum);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.18s var(--ease-out), color 0.18s var(--ease-out);
+}
+.dock__act:hover { background: rgba(239, 231, 216, 0.06); }
+.dock__act:active { background: rgba(239, 231, 216, 0.03); }
+.dock__act:disabled { opacity: 0.4; cursor: not-allowed; background: transparent; }
+.dock__act--stop { color: var(--vellum-2); font-weight: 400; }
+.dock__act--stop:hover { color: var(--vellum); }
+.dock__act kbd { border: none; background: none; padding: 0; color: var(--vellum-4); }
 .dock__hint,
 .dock__discards,
 .dock__status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1510,6 +1560,7 @@ kbd {
 .dock__status { flex-shrink: 1; }
 @media (max-width: 520px) {
   .dock { gap: 6px; padding-left: 12px; bottom: 16px; max-width: calc(100% - 24px); }
+  .dock__act { padding: 0 14px 0 12px; }
   .dock__count { display: none; }
 }
 .dock__status b { font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--brass-soft); }
@@ -1661,6 +1712,8 @@ input[type='range']:focus-visible::-moz-range-thumb {
 .cfg .field__box input { padding: 11px 14px; font-size: 14.5px; line-height: 1.5; }
 
 .cfg__acts { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+/* The save label lines up with the fields; its padding sits outside the column. */
+.cfg__acts > .act { margin-left: -10px; }
 
 .cfg__probe {
   display: flex;
