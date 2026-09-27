@@ -77,17 +77,14 @@
   --mark-edge: rgb(var(--brass-c) / 0.45);
   --mark-wash: rgb(var(--brass-c) / 0.1);
 
-  /* What you loved, and the house's letter. Here the brass again; by day the
-     gold stops being an ink and goes under the ink instead, as a wash
-     (--love-wash) or as leaf (--love-knob, --brand on --brand-tile). */
+  /* What you loved. Here the brass again; by day the gold stops being an ink
+     and goes under the ink instead, as a wash (--love-wash) or as leaf
+     (--love-knob). */
   --love-ink: var(--brass);
   --love-soft: var(--brass-soft);
   --love-wash: transparent;
   --love-knob: var(--knob);
   --like-knob: var(--knob);
-  --brand: var(--brass);
-  --brand-tile: transparent;
-  --brand-pad: 0;
 
   --v-up2: #e8b44f;
   --v-up1: #a98a4a;
@@ -207,7 +204,7 @@
    session carries its bar, the dock's one action is a slug of it. Gold is
    never written as an ink, because a yellow dark enough to read has gone to
    mud; it is laid under the ink instead, as foil where it is solid (the ▲▲
-   under the dial's knob, the house's letter) and as a highlighter's wash where
+   under the dial's knob) and as a highlighter's wash where
    it is light (a ▲, a loved count, the title's one word, a selection). Red
    says something stands in the way and burnt orange that it might; on a pill,
    where the two sit side by side, the caution keeps to its dot so the stop is
@@ -273,9 +270,6 @@
   --love-wash: var(--gilt-wash);
   --love-knob: var(--gilt);
   --like-knob: var(--gilt-wash);
-  --brand: var(--gilt);
-  --brand-tile: var(--text);
-  --brand-pad: 3px 7px 6px;
 
   --v-up2: var(--text);
   --v-up1: var(--text);
@@ -509,17 +503,6 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
   gap: 9px;
   cursor: pointer;
   user-select: none;
-}
-.rail__glyph {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--brand);
-  background: var(--brand-tile);
-  padding: var(--brand-pad);
-  border-radius: 7px;
-  line-height: 1;
-  font-variation-settings: 'SOFT' 40, 'WONK' 1;
 }
 .rail__name {
   font-family: var(--font-display);

@@ -56,7 +56,6 @@ export function SessionRail({
     <aside className="rail">
       <div className="rail__brand">
         <div className="rail__mark" onClick={onNew} title="回到起点">
-          <span className="rail__glyph">ν</span>
           <span className="rail__name">Nomothete</span>
         </div>
       </div>
