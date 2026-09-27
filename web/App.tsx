@@ -14,6 +14,7 @@ import { Toasts } from './components/Toasts.tsx'
 import { Workspace, type DrawerKind } from './components/Workspace.tsx'
 import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from './rarity.ts'
 import { useAtelier } from './store.ts'
+import { useTheme } from './theme.ts'
 
 interface DrawerState {
   kind: DrawerKind
@@ -49,6 +50,7 @@ const KEYS: [string, string][] = [
 
 export function App() {
   const a = useAtelier()
+  const [theme, setTheme] = useTheme()
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -87,6 +89,9 @@ export function App() {
       // there is anything to name.
       { id: 'settings', group: '设置', label: '换模型 / 换端点', run: () => openDrawer('settings') },
     ]
+    if (theme !== 'light') list.push({ id: 'theme-light', group: '外观', label: '改用浅色', run: () => setTheme('light') })
+    if (theme !== 'dark') list.push({ id: 'theme-dark', group: '外观', label: '改用深色', run: () => setTheme('dark') })
+    if (theme !== 'system') list.push({ id: 'theme-system', group: '外观', label: '跟随系统', run: () => setTheme('system') })
     if (a.sessionId) {
       list.push(
         { id: 'gen', group: '生成', label: '再来一批', hint: 'G', run: () => a.generate() },
@@ -138,7 +143,7 @@ export function App() {
       })
     }
     return list
-  }, [a, openDrawer])
+  }, [a, openDrawer, theme, setTheme])
 
   const start = async (input: Parameters<typeof a.createSession>[0]) => {
     setStarting(true)
@@ -179,6 +184,8 @@ export function App() {
           onOpen={id => a.open(id)}
           onNew={() => a.open(null)}
           onConfigure={() => openDrawer('settings')}
+          theme={theme}
+          onTheme={setTheme}
           pendingId={pinningId}
           onRename={s => setSessionAction({ kind: 'rename', id: s.id, title: s.title || s.brief })}
           onDelete={s => setSessionAction({ kind: 'delete', id: s.id, title: s.title || s.brief })}
@@ -284,7 +291,7 @@ export function App() {
               step={5}
               value={rarityPercent(a.session.threshold)}
               onChange={e => a.setThreshold(thresholdForRarity(Number(e.target.value)))}
-              style={{ width: '100%', accentColor: 'var(--brass)' }}
+              style={{ width: '100%', accentColor: 'var(--mark)' }}
             />
           </>
         )}
@@ -314,7 +321,7 @@ export function App() {
           KEYS.map(([k, v]) => (
             <div className="detail__form" key={k} style={{ background: 'transparent', padding: '9px 0' }}>
               <b style={{ width: 120, fontFamily: 'var(--font-mono)', textTransform: 'none', fontSize: 14 }}>{k}</b>
-              <span style={{ fontSize: 14, color: 'var(--vellum-2)' }}>{v}</span>
+              <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{v}</span>
             </div>
           ))}
       </Drawer>

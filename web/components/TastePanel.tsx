@@ -18,7 +18,7 @@ function Bar({ label, score, n, hue }: { label: string; score: number; n: number
           style={{
             left: pct >= 0 ? '50%' : undefined,
             right: pct < 0 ? '50%' : undefined,
-            background: pct >= 0 ? `hsl(${hue} 60% 55%)` : 'var(--rust)',
+            background: pct >= 0 ? `hsl(${hue} var(--bar-s) var(--dot-l))` : 'var(--rust)',
           }}
         />
       </span>

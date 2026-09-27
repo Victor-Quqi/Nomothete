@@ -100,7 +100,7 @@ export function Picker({ options, value, onPick, clearLabel, clearN, align = 'le
         aria-expanded={open}
       >
         {current?.hue !== undefined && (
-          <i className="picker__dot" style={{ background: `hsl(${current.hue} 55% 55%)` }} />
+          <i className="picker__dot" style={{ background: `hsl(${current.hue} var(--dot-s) var(--dot-l))` }} />
         )}
         {current?.label ?? clearLabel ?? ''}
         {current?.n !== undefined && <span className="chip__n">{current.n}</span>}
@@ -173,7 +173,7 @@ export function Picker({ options, value, onPick, clearLabel, clearN, align = 'le
                   {dotted && (
                     <i
                       className="picker__dot"
-                      style={o.hue !== undefined ? { background: `hsl(${o.hue} 55% 55%)` } : undefined}
+                      style={o.hue !== undefined ? { background: `hsl(${o.hue} var(--dot-s) var(--dot-l))` } : undefined}
                     />
                   )}
                   <span className="picker__label">{o.label}</span>

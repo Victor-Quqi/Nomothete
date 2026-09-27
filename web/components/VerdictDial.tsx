@@ -27,7 +27,7 @@ export function VerdictDial({
 }) {
   const index = STOPS.findIndex(s => s.v === verdict)
   return (
-    <div className="dial" role="radiogroup" aria-label="评价">
+    <div className="dial" data-v={verdict} role="radiogroup" aria-label="评价">
       <motion.div
         className="dial__knob"
         initial={false}

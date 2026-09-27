@@ -3,7 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      // Pick the light before the first paint. Same key and rule as web/theme.ts.
+      try {
+        var theme = localStorage.getItem('nomothete.theme')
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+        }
+        document.documentElement.dataset.theme = theme
+        document.querySelector('meta[name="color-scheme"]').content = theme
+      } catch (e) {}
+    </script>
     <title>Nomothete · 立名者</title>
     <meta name="description" content="自托管的软件项目命名工具。描述项目，得到候选名；每个名字带着取义，并已查过能不能注册、会不会搜不到。" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

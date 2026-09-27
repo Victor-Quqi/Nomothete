@@ -237,7 +237,7 @@ export function Opening({
                   step={5}
                   value={rarityPercent(threshold)}
                   onChange={e => setThreshold(thresholdForRarity(Number(e.target.value)))}
-                  style={{ width: '100%', accentColor: 'var(--brass)' }}
+                  style={{ width: '100%', accentColor: 'var(--mark)' }}
                 />
               </div>
 

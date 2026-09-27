@@ -1,6 +1,19 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { THEME_LABEL, type ThemeChoice } from '../theme.ts'
 import type { Bootstrap, SessionSummary } from '../types.ts'
 import { SessionIcon, SessionMenu } from './SessionMenu.tsx'
+
+const THEMES: ThemeChoice[] = ['system', 'light', 'dark']
+
+function ThemeIcon({ kind }: { kind: ThemeChoice }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === 'system' && <><circle cx="12" cy="12" r="8" /><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" /></>}
+      {kind === 'light' && <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></>}
+      {kind === 'dark' && <path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1Z" />}
+    </svg>
+  )
+}
 
 function when(ts: number): string {
   const d = Date.now() - ts
@@ -18,6 +31,8 @@ export function SessionRail({
   onOpen,
   onNew,
   onConfigure,
+  theme,
+  onTheme,
   onRename,
   onPin,
   onDelete,
@@ -30,6 +45,8 @@ export function SessionRail({
   onOpen: (id: string) => void
   onNew: () => void
   onConfigure: () => void
+  theme: ThemeChoice
+  onTheme: (theme: ThemeChoice) => void
   onRename: (session: SessionSummary) => void
   onPin: (session: SessionSummary) => void
   onDelete: (session: SessionSummary) => void
@@ -91,6 +108,16 @@ export function SessionRail({
           <span>模型</span>
           <b>{boot ? (boot.provider.configured ? boot.provider.model : '未配置') : '…'}</b>
         </button>
+        <div className="rail__stat">
+          <span id="rail-theme">外观</span>
+          <span className="theme-pick" role="group" aria-labelledby="rail-theme">
+            {THEMES.map(t => (
+              <button key={t} aria-pressed={theme === t} aria-label={THEME_LABEL[t]} title={THEME_LABEL[t]} onClick={() => onTheme(t)}>
+                <ThemeIcon kind={t} />
+              </button>
+            ))}
+          </span>
+        </div>
         {/* Silence means it is working. The row only appears when it is not. */}
         {activeId && !connected && (
           <div className="rail__stat rail__stat--warn">
