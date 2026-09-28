@@ -12,7 +12,7 @@
     "node": ">=24"
   },
   "bin": {
-    "nomothete": "./bin/nomothete.js"
+    "nomothete": "bin/nomothete.js"
   },
   "files": [
     "bin",
