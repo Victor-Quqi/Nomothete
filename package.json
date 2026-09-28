@@ -4,6 +4,10 @@
   "type": "module",
   "description": "Self-hosted naming tool for software projects",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Victor-Quqi/Nomothete.git"
+  },
   "engines": {
     "node": ">=24"
   },
