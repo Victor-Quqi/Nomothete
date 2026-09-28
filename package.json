@@ -1,17 +1,27 @@
 {
   "name": "nomothete",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Self-hosted naming tool for software projects",
+  "engines": {
+    "node": ">=24"
+  },
   "bin": {
     "nomothete": "./bin/nomothete.js"
   },
+  "files": [
+    "bin",
+    "server",
+    "shared",
+    "dist",
+    "!server/**/*.test.ts"
+  ],
   "scripts": {
     "dev": "concurrently -n server,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "tsx watch server/main.ts",
     "dev:web": "vite",
     "build": "vite build",
+    "prepack": "npm run build",
     "start": "node bin/nomothete.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
     "test": "node --test --experimental-strip-types server/**/*.test.ts"

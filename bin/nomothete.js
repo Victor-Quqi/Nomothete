@@ -2,22 +2,34 @@
 /**
  * `nomothete` — start the workshop.
  *
- * Everything this process needs lives next to it: the SQLite file is written to
- * the working directory, the key is read from `.env`, and the frontend is served
- * from `dist/` by the same server that answers `/api`. So the only jobs here are
- * to parse two flags, make sure `dist/` exists, and hand over to server/main.ts.
+ * Everything this process needs lives next to it: the SQLite file and `.env` sit
+ * in the server's working directory, and the frontend is served from `dist/` by
+ * the same server that answers `/api`. So the only jobs here are to pick that
+ * directory, parse two flags, make sure `dist/` exists, and hand over to
+ * server/main.ts.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-// Loaded here as well as in the server, so that a port set in `.env` is the port
-// `--open` opens. Nothing else in this file reads the file's contents.
-import 'dotenv/config'
+import dotenv from 'dotenv'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const argv = process.argv.slice(2)
+
+// The server keeps `.env`, nomothete.db and nomothete.config.json in its working
+// directory. A source checkout runs it where it was started, as it always has. An
+// installed copy — which is what `npx nomothete` is — gets one directory per user
+// instead: started from inside some other project, the working directory would
+// mean reading that project's `.env`, and writing a key into it.
+const installed = root.split(path.sep).includes('node_modules')
+const dataDir = installed ? path.join(os.homedir(), '.nomothete') : process.cwd()
+
+// Loaded here as well as in the server, so that a port set in `.env` is the port
+// `--open` opens. Nothing else in this file reads the file's contents.
+dotenv.config({ path: path.join(dataDir, '.env'), quiet: true })
 
 function flagValue(...names) {
   for (const name of names) {
@@ -45,26 +57,33 @@ if (argv.includes('-h') || argv.includes('--help')) {
 
   配置
     三个入口，写入同一个文件：首次启动时询问；启动后在界面左下角「模型」中修改；
-    或直接编辑工作目录的 .env：
+    或直接编辑 ${path.join(dataDir, '.env')}：
       NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
     未加前缀的同名变量同样生效，仅在不存在带前缀变量时采用。
+    数据库 nomothete.db 也在同一目录，删掉它就是全部重置。
     服务默认绑定 127.0.0.1，可用 NOMOTHETE_HOST 更改。
 `)
   process.exit(0)
 }
 
+// npx does not enforce `engines`, and on an older runtime the first thing to
+// fail would be the server's `node:sqlite` import, far from the actual cause.
+if (Number(process.versions.node.split('.')[0]) < 24) {
+  console.error(`[nomothete] 需要 Node 24 或更高版本，当前为 ${process.version}。`)
+  process.exit(1)
+}
+
 // Same precedence as server/env.ts: prefixed first, bare name only as a fallback.
 const port = flagValue('-p', '--port') ?? process.env.NOMOTHETE_PORT ?? process.env.PORT ?? '5179'
 
-// Node 24 strips types from .ts on its own; tsx is only a fallback for older
-// runtimes that still choke on the annotations.
-const major = Number(process.versions.node.split('.')[0])
+// Node strips types from .ts on its own, but refuses to for anything under
+// node_modules — which is exactly where `npx nomothete` puts this package. So the
+// server always runs through tsx, resolved from here so that it is our copy.
+const tsx = import.meta.resolve('tsx')
 
 /** Arguments for running one of the server's .ts files as a script. */
-function tsCommand(file, args) {
-  return major >= 23
-    ? [process.execPath, ['--experimental-strip-types', '--no-warnings', file, ...args]]
-    : ['npx', ['tsx', file, ...args]]
+function tsArgs(file, args) {
+  return ['--import', tsx, file, ...args]
 }
 
 // Ask before building rather than after: someone who has just cloned this should
@@ -72,12 +91,9 @@ function tsCommand(file, args) {
 // server/setup.ts returns 0 when it is satisfied, which includes the ordinary
 // case of there being nothing to ask.
 {
-  const [cmd, args] = tsCommand(path.join(root, 'server', 'setup.ts'), argv.includes('--setup') ? ['--force'] : [])
-  const setup = spawnSync(cmd, args, {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    shell: cmd === 'npx' && process.platform === 'win32',
-  })
+  mkdirSync(dataDir, { recursive: true })
+  const args = tsArgs(path.join(root, 'server', 'setup.ts'), argv.includes('--setup') ? ['--force'] : [])
+  const setup = spawnSync(process.execPath, args, { cwd: dataDir, stdio: 'inherit' })
   if (setup.status !== 0) process.exit(setup.status ?? 1)
 }
 
@@ -96,12 +112,10 @@ if (!existsSync(path.join(root, 'dist', 'index.html'))) {
 const env = { ...process.env, NOMOTHETE_PORT: String(port) }
 if (argv.includes('--verbose')) env.NOMOTHETE_VERBOSE = '1'
 
-const [cmd, args] = tsCommand(path.join(root, 'server', 'main.ts'), [])
-const child = spawn(cmd, args, {
-  cwd: process.cwd(),
+const child = spawn(process.execPath, tsArgs(path.join(root, 'server', 'main.ts'), []), {
+  cwd: dataDir,
   stdio: 'inherit',
   env,
-  shell: cmd === 'npx' && process.platform === 'win32',
 })
 
 if (argv.includes('--open')) {

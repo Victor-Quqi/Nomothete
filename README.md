@@ -18,22 +18,27 @@
 需要 **Node 24+**，自带一个 OpenAI 兼容端点的 key。
 
 ```bash
-npm install
-npm start                # 首次会问端点、模型、钥匙 → 构建 → http://localhost:5179
+npx nomothete --open     # 首次会问端点、模型、钥匙 → http://localhost:5179
 ```
 
 配置有三个入口 —— 启动时的三个问题、界面左下角的「模型」、直接写 `.env` ——
 写的都是同一个文件，随时可以换。详见 [docs/configuration.md](./docs/configuration.md)。
 
 ```bash
-node bin/nomothete.js --open
-node bin/nomothete.js --setup            # 重新问一遍
-node bin/nomothete.js --port 7000 --verbose
-npm run dev                              # 前后端分开跑
+npx nomothete --setup            # 重新问一遍
+npx nomothete --port 7000 --verbose
 ```
 
-数据落在工作目录的 `nomothete.db`。删掉它就是全部重置。
-服务默认只绑本机，钥匙不会到达浏览器。
+`.env` 和数据 `nomothete.db` 放在 `~/.nomothete/`（从源码运行时在当前目录）。
+删掉 `nomothete.db` 就是全部重置。服务默认只绑本机，钥匙不会到达浏览器。
+
+从源码跑：
+
+```bash
+npm install
+npm start                # 首次会先构建前端
+npm run dev              # 前后端分开跑
+```
 
 ---
 

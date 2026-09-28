@@ -42,7 +42,7 @@ web/
   styles.css           设计系统：token、氛围层、印章、刻度盘、抽屉
 scripts/
   build-index.ts       全量 dump → 本地索引
-bin/nomothete.js       CLI 入口：先问（setup.ts），缺 dist/ 就构建，再起 main.ts
+bin/nomothete.js       CLI 入口：定数据目录，先问（setup.ts），缺 dist/ 就构建，再起 main.ts
 ```
 
 加一项检查 = 往 `server/checks/index.ts` 的 `CHECKS` 里 push 一个对象。
