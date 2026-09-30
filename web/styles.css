@@ -705,7 +705,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 
 .rail__foot {
   border-top: 1px solid var(--hair);
-  padding: 12px 16px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -719,36 +719,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 }
 .rail__stat b { color: var(--text-3); font-weight: 400; }
 .rail__stat--warn b { color: var(--amber-text); }
-/* Which light the room is in: three marks in the well the verdict dial uses,
-   the one in force sitting on its knob. Pulled into the row's line height so
-   the column of statistics keeps its rhythm. */
-.theme-pick {
-  display: inline-flex;
-  gap: 1px;
-  margin: -3px -3px -3px 0;
-  padding: 2px;
-  border: 1px solid var(--well-edge);
-  border-radius: 99px;
-  background: var(--well);
-}
-.theme-pick button {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 19px;
-  border-radius: 99px;
-  color: var(--text-4);
-  transition: color 0.18s var(--ease-out), background-color 0.18s var(--ease-out);
-}
-.theme-pick button:hover { color: var(--text-2); }
-.theme-pick button[aria-pressed='true'] {
-  color: var(--text);
-  background: var(--knob);
-  box-shadow: var(--knob-shadow);
-}
-.theme-pick button[aria-pressed='true']:focus-visible {
-  box-shadow: var(--knob-shadow), 0 0 0 1px var(--ring), 0 0 0 4px var(--ring-glow);
-}
+.rail__foot > .rail__stat { padding: 2px 10px; }
 
 /* ── opening ─────────────────────────────────────────────────────────────── */
 .opening {
@@ -2081,34 +2052,88 @@ input[type='range']:focus-visible::-moz-range-thumb {
 
 /* ── settings ────────────────────────────────────────────────────────────── */
 
-/* The rail's model row is also the way in. It has to read as pressable without
-   turning into a button in a column of otherwise quiet statistics. */
-.rail__stat--act {
+.rail__settings {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   width: 100%;
-  margin: -3px -7px;
-  padding: 3px 7px;
-  border-radius: var(--r-sm);
-  transition: background 0.2s var(--ease-out);
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: left;
+  transition: background-color 0.18s var(--ease-out), color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
 }
-.rail__stat--act:hover { background: rgb(var(--fg) / 0.05); }
-.rail__stat--act:hover b { color: var(--text); }
+.rail__settings:hover,
+.rail__settings[aria-expanded='true'] { background: rgb(var(--fg) / 0.05); color: var(--text); border-color: var(--hair); }
+.rail__settings-arrow { margin-left: auto; color: var(--text-4); }
+
+.drawer--settings { width: min(460px, 100vw); }
+.drawer--settings .drawer__head { padding: 22px 26px 18px; }
+.drawer--settings .drawer__title { font-size: 22px; }
+.drawer--settings .drawer__body { padding: 24px 26px 32px; }
+.cfg__section + .cfg__section { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--hair); }
+.cfg__heading { margin: 0 0 16px; color: var(--text-2); font-size: 14px; font-weight: 500; line-height: 1.5; }
+.cfg__description { margin: 8px 0 0; color: var(--text-4); font-size: 12.5px; line-height: 1.7; }
+.cfg__verification { display: flex; align-items: flex-start; gap: 24px; }
+.cfg__verification > div { flex: 1; min-width: 0; }
+.cfg__verification .cfg__heading { margin-bottom: 0; }
+.cfg__verification .toggle { margin-top: 2px; }
+.cfg__verification .cfg__description { margin-top: 6px; }
+
+.theme-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.theme-pick button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 15px 6px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  color: var(--text-4);
+  font-size: 12px;
+  line-height: 1.4;
+  transition: color 0.18s var(--ease-out), background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+.theme-pick button:hover { background: rgb(var(--fg) / 0.035); color: var(--text-2); border-color: var(--hair-2); }
+.theme-pick button[aria-pressed='true'] { color: var(--mark-text); background: var(--mark-wash); border-color: var(--mark-edge); }
+
+.cfg .field { margin-bottom: 16px; }
+.cfg .field__label { margin-bottom: 7px; font-size: 12.5px; line-height: 1.5; }
+.cfg .field__value { font-size: 12px; }
+.cfg .field__box { border-radius: 8px; border-color: var(--hair); background: var(--well-faint); }
+.cfg .field__box input { padding: 10px 12px; font-size: 13.5px; line-height: 1.5; }
+.cfg .field__box input:disabled { color: var(--text-4); }
+.cfg .warnbox { margin-top: 16px; }
+.cfg__notice { margin: 0 0 18px; padding: 10px 12px; border-left: 2px solid var(--mark-edge); background: var(--mark-wash); color: var(--text-3); font-size: 12.5px; line-height: 1.7; }
+.cfg__advanced { margin-top: 2px; }
+.cfg__advanced > summary { display: flex; align-items: center; gap: 7px; width: fit-content; padding: 6px 0; border-radius: 4px; list-style: none; color: var(--text-4); font-size: 12.5px; cursor: pointer; }
+.cfg__advanced > summary::-webkit-details-marker { display: none; }
+.cfg__advanced > summary:hover { color: var(--text); }
+.cfg__advanced > summary svg { transition: transform 0.18s var(--ease-out); }
+.cfg__advanced[open] > summary svg { transform: rotate(90deg); }
+.cfg__advanced-body { margin-top: 12px; }
+.cfg__source { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 18px 0 0; color: var(--text-4); font-size: 12px; line-height: 1.6; }
+.cfg__source dd { margin: 0; color: var(--text-3); }
 
 .cfg__path {
-  margin: -6px 0 18px;
+  margin: 6px 0 0;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 11.5px;
+  line-height: 1.7;
   color: var(--text-4);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
-/* Tighter than the opening's boxes. That screen is the one the product opens
-   on and can afford the air; this is a form you pass through. */
-.cfg .field { margin-bottom: 14px; }
-.cfg .field__box input { padding: 11px 14px; font-size: 14.5px; line-height: 1.5; }
-
-.cfg__acts { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
-/* The save label lines up with the fields; its padding sits outside the column. */
-.cfg__acts > .act { margin-left: -10px; }
+.cfg__acts { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.cfg__acts .btn { border-radius: 7px; font-size: 12.5px; }
+.cfg__save { min-width: 72px; justify-content: center; background: var(--text-2); border-color: var(--text-2); color: var(--ground); }
+.cfg__save:hover { background: var(--text); border-color: var(--text); color: var(--ground); }
+:root:not([data-theme='light']) .cfg__save:enabled { background: var(--mark-wash); border-color: var(--mark-edge); color: var(--mark-text); }
+:root:not([data-theme='light']) .cfg__save:enabled:hover { background: rgb(var(--mark-c) / 0.17); border-color: var(--mark-soft); }
+:root:not([data-theme='light']) .cfg__save:enabled:active { background: rgb(var(--mark-c) / 0.08); }
 
 .cfg__probe {
   display: flex;
@@ -2117,7 +2142,7 @@ input[type='range']:focus-visible::-moz-range-thumb {
   padding: 11px 13px;
   border: 1px solid rgb(var(--verdigris-c) / 0.35);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 12.5px;
   line-height: 1.7;
   color: var(--text-2);
 }
@@ -2145,13 +2170,6 @@ input[type='range']:focus-visible::-moz-range-thumb {
 }
 
 /* ── rationale verification ──────────────────────────────────────────── */
-
-.cfg__switch {
-  margin-top: 26px;
-  padding-top: 16px;
-  border-top: 1px solid var(--hair);
-}
-.cfg__switch p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.7; color: var(--text-3); }
 
 /* Prose, not the registry rows: a claim and its evidence read top to bottom
    at the drawer's full width. */

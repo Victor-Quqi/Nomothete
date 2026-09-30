@@ -27,7 +27,7 @@ const DRAWER_TITLE: Record<DrawerKind, string> = {
   priors: '取名规则',
   brief: '项目简介',
   keys: '快捷键',
-  settings: '模型',
+  settings: '设置',
 }
 
 const KEYS: [string, string][] = [
@@ -85,9 +85,7 @@ export function App() {
   const commands = useMemo<Command[]>(() => {
     const list: Command[] = [
       { id: 'new', group: '会话', label: '新建命名会话', hint: 'N', run: () => a.open(null) },
-      // Outside the session guard on purpose: the endpoint matters most before
-      // there is anything to name.
-      { id: 'settings', group: '设置', label: '换模型 / 换端点', run: () => openDrawer('settings') },
+      { id: 'settings', group: '设置', label: '打开设置', run: () => openDrawer('settings') },
     ]
     if (theme !== 'light') list.push({ id: 'theme-light', group: '外观', label: '改用浅色', run: () => setTheme('light') })
     if (theme !== 'dark') list.push({ id: 'theme-dark', group: '外观', label: '改用深色', run: () => setTheme('dark') })
@@ -177,15 +175,13 @@ export function App() {
 
       <div className={`shell${drawer?.kind === 'detail' ? ' shell--pane' : ''}`}>
         <SessionRail
-          boot={a.boot}
           sessions={a.sessions}
           activeId={a.sessionId}
           connected={a.connected}
           onOpen={id => a.open(id)}
           onNew={() => a.open(null)}
           onConfigure={() => openDrawer('settings')}
-          theme={theme}
-          onTheme={setTheme}
+          settingsOpen={drawer?.kind === 'settings'}
           pendingId={pinningId}
           onRename={s => setSessionAction({ kind: 'rename', id: s.id, title: s.title || s.brief })}
           onDelete={s => setSessionAction({ kind: 'delete', id: s.id, title: s.title || s.brief })}
@@ -240,6 +236,7 @@ export function App() {
 
       <Drawer
         open={!!drawer}
+        variant={drawer?.kind === 'settings' ? 'settings' : undefined}
         onClose={closeDrawer}
         title={drawer ? DRAWER_TITLE[drawer.kind] : ''}
         // Reading a name is not a thing you have to finish. The wall stays lit
@@ -263,6 +260,8 @@ export function App() {
 
         {drawer?.kind === 'settings' && (
           <Settings
+            theme={theme}
+            onTheme={setTheme}
             onSaved={a.setProvider}
             autoVerify={a.boot?.settings.autoVerify ?? true}
             onAutoVerify={a.setAutoVerify}

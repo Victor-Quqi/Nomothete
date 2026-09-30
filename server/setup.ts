@@ -84,7 +84,7 @@ export async function runSetup(force = false): Promise<void> {
     // over it. Say where the three names go and let the browser finish the job.
     console.warn(
       '\n[nomothete] 尚未配置模型，当前环境无法交互询问。\n' +
-        '            启动后在界面左下角「模型」中填写，或\n' +
+        '            启动后在界面左下角「设置」中填写，或\n' +
         `            在 ${ENV_PATH} 写入 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。\n`,
     )
     return
@@ -132,7 +132,7 @@ export async function runSetup(force = false): Promise<void> {
   if (probe.modelListed === false && probe.sample?.length) {
     const more = (probe.count ?? 0) > probe.sample.length ? ' …' : ''
     console.log(`    端点列出：${probe.sample.join('、')}${more}`)
-    console.log('    如需更改：重跑 nomothete --setup，或启动后在界面左下角「模型」中修改。')
+    console.log('    如需更改：重跑 nomothete --setup，或启动后在界面左下角「设置」中修改。')
   }
   console.log('')
 }

@@ -22,6 +22,7 @@ import {
   loadProfiles,
   probeEndpoint,
   providerStatus,
+  resolveReasoningEffort,
   type ProviderKind,
 } from './llm.ts'
 import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
@@ -377,7 +378,7 @@ function configPayload() {
     baseURL: profile?.baseURL ?? '',
     model: profile?.model ?? '',
     kind: profile?.kind ?? null,
-    reasoningEffort: env('REASONING_EFFORT') ?? '',
+    reasoningEffort: profile ? resolveReasoningEffort(profile) ?? '' : '',
     keyHint: keyHint(),
   }
 }
@@ -429,7 +430,8 @@ api.put('/config', (req, res) => {
 
   if (reasoningEffort !== undefined) {
     const value = typeof reasoningEffort === 'string' ? reasoningEffort.trim() : ''
-    patch.NOMOTHETE_REASONING_EFFORT = value || null
+    // Preserve an explicit empty value; removing it restores the app default.
+    patch.NOMOTHETE_REASONING_EFFORT = value
   }
 
   if (providerKind !== undefined) {
@@ -517,7 +519,7 @@ app.listen(PORT, HOST, () => {
   console.log(
     status.configured
       ? `  模型       ·  ${status.model} @ ${status.host}（${status.kind}）`
-      : `  模型       ·  未配置 —— 打开上面的地址，左下角「模型」那一行可以填`,
+      : `  模型       ·  未配置，请在界面左下角的「设置」中填写`,
   )
   if (!LOOPBACK_BIND) {
     console.log(`  注意       ·  监听在 ${HOST}，同网段的人都能用这个端点花你的额度`)

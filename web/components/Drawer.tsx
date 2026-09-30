@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
 
-function DrawerPanel({ modal, children }: { modal: boolean; children: ReactNode }) {
+function DrawerPanel({ modal, children, variant }: { modal: boolean; children: ReactNode; variant?: 'settings' }) {
   const [present, remove] = usePresence()
   const reducedMotion = useReducedMotion()
   useEffect(() => {
@@ -11,7 +11,7 @@ function DrawerPanel({ modal, children }: { modal: boolean; children: ReactNode 
   }, [present, remove, reducedMotion])
   return (
     <aside
-      className="drawer"
+      className={`drawer${variant ? ` drawer--${variant}` : ''}`}
       data-open={present}
       onTransitionEnd={e => {
         if (!present && e.target === e.currentTarget && e.propertyName === 'transform') remove?.()
@@ -32,12 +32,14 @@ export function Drawer({
   children,
   actions,
   modal = true,
+  variant,
 }: {
   open: boolean
   title: ReactNode
   onClose: () => void
   children: ReactNode
   actions?: ReactNode
+  variant?: 'settings'
   /**
    * Dim the page behind and swallow clicks on it. Right for a form you have to
    * finish; wrong for reading one name off a wall of them, where the scrim is
@@ -76,7 +78,7 @@ export function Drawer({
               onClick={onClose}
             />
           )}
-          <DrawerPanel modal={modal}>
+          <DrawerPanel modal={modal} variant={variant}>
             <div className="drawer__head">
               <div className="drawer__title">{title}</div>
               {actions}

@@ -56,7 +56,7 @@ if (argv.includes('-h') || argv.includes('--help')) {
     -h, --help       显示本帮助
 
   配置
-    三个入口，写入同一个文件：首次启动时询问；启动后在界面左下角「模型」中修改；
+    三个入口，写入同一个文件：首次启动时询问；启动后在界面左下角「设置」中修改；
     或直接编辑 ${path.join(dataDir, '.env')}：
       NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
     未加前缀的同名变量同样生效，仅在不存在带前缀变量时采用。

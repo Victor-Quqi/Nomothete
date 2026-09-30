@@ -208,9 +208,14 @@ function wireFetch(onChunk: (() => void) | undefined, effort: string | null): ty
   }
 }
 
+export function resolveReasoningEffort(p: ProviderProfile): string | null {
+  if (p.kind !== 'openai-chat' && p.kind !== 'openai-responses') return null
+  return p.reasoningEffort === undefined ? DEFAULT_REASONING_EFFORT : p.reasoningEffort
+}
+
 export function resolveModel(p: ProviderProfile, onChunk?: () => void): LanguageModel {
   const apiKey = keyFor(p)
-  const effort = p.reasoningEffort === undefined ? DEFAULT_REASONING_EFFORT : p.reasoningEffort
+  const effort = resolveReasoningEffort(p)
   switch (p.kind) {
     case 'openai-chat': {
       const provider = createOpenAI({ baseURL: p.baseURL, apiKey, name: p.id, fetch: wireFetch(onChunk, effort) })

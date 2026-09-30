@@ -256,7 +256,7 @@ export function Opening({
             尚未配置模型：{boot.provider.problem}
             <div style={{ marginTop: 10 }}>
               <button className="btn btn--sm" onClick={onConfigure}>
-                前往配置
+                打开设置
               </button>
             </div>
           </div>

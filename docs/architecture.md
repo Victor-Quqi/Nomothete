@@ -38,7 +38,8 @@ web/
   api.ts  types.ts     线上契约的客户端镜像
   normalize.ts         归一化规则的客户端回声（详情面板里展示用）
   components/          Workspace / CandidatePlate / Drawer / CommandPalette / …
-    Settings.tsx       端点 / 模型 / 钥匙；钥匙那格只写不读
+    Settings.tsx       外观、联网核查与模型连接；密钥只写不读
+    ThemePicker.tsx    跟随系统 / 浅色 / 深色
   styles.css           设计系统：token、氛围层、印章、刻度盘、抽屉
 scripts/
   build-index.ts       全量 dump → 本地索引
