@@ -111,10 +111,12 @@ type Facet = 'lane' | 'origin' | 'batch' | 'checks'
 export function Workspace({
   a,
   openDrawer,
+  closeDetail,
   detailId,
 }: {
   a: Atelier
   openDrawer: (kind: DrawerKind, id?: string) => void
+  closeDetail: () => void
   /** The name the detail pane is showing, if it is open. */
   detailId?: string
 }) {
@@ -132,6 +134,8 @@ export function Workspace({
   const [kbd, setKbd] = useState<false | 'smooth' | 'instant'>(false)
   const findRef = useRef<HTMLInputElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+  /** Whether the card under the pointer was on the pane before this press. */
+  const shownBefore = useRef(false)
 
   // The focused plate owns its own name, note box and voice; the keyboard just
   // names the verb and lets it answer.
@@ -431,7 +435,9 @@ export function Workspace({
         case 'Enter':
           if (focusId) {
             e.preventDefault()
-            openDrawer('detail', focusId)
+            // The key that opens the pane puts it away, as a double-click does.
+            if (detailId === focusId) closeDetail()
+            else openDrawer('detail', focusId)
           }
           break
         case 'n':
@@ -492,7 +498,7 @@ export function Workspace({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [move, jumpUnjudged, focusId, detailId, a, openDrawer, running, session, setFocusId])
+  }, [move, jumpUnjudged, focusId, detailId, a, openDrawer, closeDetail, running, session, setFocusId])
 
   if (!session) return null
 
@@ -668,9 +674,34 @@ export function Workspace({
           className="plates"
           ref={gridRef}
           // With the pane open the wall is a list and the pane is its detail
-          // view, so a click on a card shows that card. One handler up here
-          // rather than a prop on 227 memoised plates, which would all
-          // re-render every time the pane opened or closed.
+          // view, so a click on a card shows that card. A double-click opens a
+          // card, and on the card the pane already shows, puts the pane away.
+          // Handlers up here rather than props on 227 memoised plates, which
+          // would all re-render every time the pane opened or closed.
+          onMouseDown={e => {
+            const el = e.target as HTMLElement
+            // The second press of a double-click selects a word and the third
+            // a paragraph; on a card both are asking for the pane. Dragging
+            // across the text still selects it, and the note box keeps all of
+            // its own.
+            if (e.detail > 1) {
+              if (!el.closest('textarea')) e.preventDefault()
+              return
+            }
+            // Read before the click that may put this card on the pane, or a
+            // double-click on another card would show it and then close it.
+            shownBefore.current = !!detailId && el.closest<HTMLElement>('.plate-slot')?.dataset.candidate === detailId
+          }}
+          onDoubleClick={e => {
+            const el = e.target as HTMLElement
+            // The name counts as card here: it is where most double-clicks
+            // land.
+            if (el.closest('button, a, textarea, input, [role="button"]')) return
+            const id = el.closest<HTMLElement>('.plate-slot')?.dataset.candidate
+            if (!id) return
+            if (shownBefore.current) closeDetail()
+            else openPlate(id)
+          }}
           onClick={e => {
             if (!detailId) return
             const el = e.target as HTMLElement

@@ -209,7 +209,6 @@ function PlateInner({
       onPointerMove={() => {
         if (!focused) onFocus(candidate.id)
       }}
-      onDoubleClick={open}
     >
       <AnimatePresence>
         {sweep > 0 && (
@@ -225,7 +224,12 @@ function PlateInner({
       </AnimatePresence>
 
       <div className="plate__head">
-        <h3 className={`plate__name${saying ? ' plate__name--speaking' : ''}`} onClick={speak}>
+        <h3
+          className={`plate__name${saying ? ' plate__name--speaking' : ''}`}
+          // The second click of a double-click is asking for the pane, not
+          // for the name to start over.
+          onClick={e => e.detail < 2 && speak()}
+        >
           <Marked text={candidate.name} mark={mark} />
         </h3>
         {canAsk && (

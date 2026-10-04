@@ -35,7 +35,7 @@ const KEYS: [string, string][] = [
   ['1 2 3 4 5', '从 ▼▼ 到 ▲▲ 评价，评完自动到下一个'],
   ['u', '撤销上一次评价'],
   ['⇧J', '跳到下一个还没评价的'],
-  ['↵', '打开详情'],
+  ['↵', '打开 / 收起详情'],
   ['n', '写备注'],
   ['s', '朗读名字'],
   ['c', '复制名字'],
@@ -211,6 +211,7 @@ export function App() {
               <Workspace
                 a={a}
                 openDrawer={openDrawer}
+                closeDetail={closeDrawer}
                 detailId={drawer?.kind === 'detail' ? drawer.id : undefined}
               />
             </motion.div>
