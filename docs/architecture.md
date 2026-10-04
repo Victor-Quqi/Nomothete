@@ -67,8 +67,9 @@ POST   /api/candidates/:id/note
 POST   /api/candidates/:id/recheck       限速档检查 + 重新核查取义说明
 GET    /api/sessions/:id/export?format=json|md
 GET    /api/config                       当前来源与去向；钥匙只回末四位
-PUT    /api/config                       {baseURL?, model, apiKey?, reasoningEffort?}
-                                         写 .env 并即时生效；apiKey 留空 = 不动原来那把
+PUT    /api/config                       {baseURL?, model?, apiKey?, reasoningEffort?}
+                                         写 .env 并即时生效；地址、模型留空 = 默认；
+                                         apiKey 留空 = 不动原来那把
 POST   /api/config/test                  向端点要一次 /models，确认钥匙与模型 id
 GET    /api/settings                     {autoVerify}
 PUT    /api/settings                     {autoVerify: boolean}；关掉时取消排队和进行中的核查

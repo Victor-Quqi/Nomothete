@@ -17,6 +17,8 @@ import { applyEnv, writeEnv } from './envfile.ts'
 import { channel, publish } from './events.ts'
 import {
   configSource,
+  configuredProfiles,
+  DEFAULTS,
   forgetEffortRefusal,
   keyHint,
   loadProfiles,
@@ -366,7 +368,8 @@ api.get('/sessions/:id/export', (req, res) => {
 
 function configPayload() {
   const source = configSource()
-  const profile = loadProfiles()[0]
+  // As written, so a field left empty shows empty over the default it stands for.
+  const profile = configuredProfiles()[0]
   return {
     provider: providerStatus(),
     source: source.source,
@@ -377,6 +380,7 @@ function configPayload() {
     writable: source.source !== 'config-file',
     baseURL: profile?.baseURL ?? '',
     model: profile?.model ?? '',
+    defaults: DEFAULTS,
     kind: profile?.kind ?? null,
     reasoningEffort: profile ? resolveReasoningEffort(profile) ?? '' : '',
     keyHint: keyHint(),
@@ -401,11 +405,9 @@ api.put('/config', (req, res) => {
   const patch: Record<string, string | null | undefined> = {}
 
   if (model !== undefined) {
-    if (typeof model !== 'string' || !model.trim()) {
-      res.status(400).json({ error: '模型 id 不能为空。' })
-      return
-    }
-    patch.NOMOTHETE_MODEL = model.trim()
+    const value = typeof model === 'string' ? model.trim() : ''
+    // Cleared means the default model.
+    patch.NOMOTHETE_MODEL = value || null
   }
 
   if (baseURL !== undefined) {
@@ -418,7 +420,7 @@ api.put('/config', (req, res) => {
         return
       }
     }
-    // Cleared on purpose means "use the line format's own endpoint".
+    // Cleared means the line format's default endpoint.
     patch.NOMOTHETE_BASE_URL = value || null
   }
 

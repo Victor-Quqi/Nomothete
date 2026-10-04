@@ -78,7 +78,7 @@ export function Settings({
   }
 
   const locked = !cfg?.writable
-  const ready = model.trim().length > 0 && (cfg?.provider.hasKey || apiKey.trim().length > 0)
+  const ready = cfg?.provider.hasKey || apiKey.trim().length > 0
   const dirty = !!cfg && (baseURL !== cfg.baseURL || model !== cfg.model || effort !== cfg.reasoningEffort || apiKey.length > 0)
 
   return (
@@ -124,14 +124,14 @@ export function Settings({
               <label className="field__label" htmlFor="cfg-endpoint">API 地址</label>
               <div className="field__box">
                 <input id="cfg-endpoint" value={baseURL} disabled={locked || !!busy}
-                  placeholder="https://api.openai.com/v1" onChange={e => setBaseURL(e.target.value)} spellCheck={false} />
+                  placeholder={cfg.defaults.baseURL} onChange={e => setBaseURL(e.target.value)} spellCheck={false} />
               </div>
             </div>
 
             <div className="field">
               <label className="field__label" htmlFor="cfg-model">模型</label>
               <div className="field__box">
-                <input id="cfg-model" value={model} disabled={locked || !!busy} placeholder="gpt-5"
+                <input id="cfg-model" value={model} disabled={locked || !!busy} placeholder={cfg.defaults.model}
                   onChange={e => setModel(e.target.value)} spellCheck={false} list="cfg-models" />
               </div>
               {!!probe?.sample?.length && (

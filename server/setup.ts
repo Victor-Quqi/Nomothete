@@ -15,17 +15,15 @@ import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { env } from './env.ts'
 import { applyEnv, ENV_PATH, writeEnv } from './envfile.ts'
-import { configSource, loadProfiles, probeEndpoint } from './llm.ts'
-
-const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
+import { configSource, DEFAULTS, loadProfiles, probeEndpoint } from './llm.ts'
 
 /** Ctrl-C and backspace, which raw mode hands to us instead of the terminal. */
 const ETX = String.fromCharCode(3)
 const DEL = String.fromCharCode(127)
 
-/** The two the workshop cannot start without. `BASE_URL` may legitimately be absent. */
+/** The one the workshop cannot start without. The base URL and model have defaults. */
 function configured(): boolean {
-  return Boolean(env('MODEL') && env('API_KEY'))
+  return Boolean(env('API_KEY'))
 }
 
 /**
@@ -96,15 +94,13 @@ export async function runSetup(force = false): Promise<void> {
   let baseURL: string
   let model: string
   try {
-    const currentBase = env('BASE_URL') ?? DEFAULT_BASE_URL
-    baseURL = (await rl.question(`  端点（OpenAI 兼容）[${currentBase}]：`)).trim() || currentBase
+    // Enter keeps what is there, and nothing there means the default — which is
+    // left unwritten, so it is the default that answers and not a copy of it.
+    const currentBase = env('BASE_URL') ?? ''
+    baseURL = (await rl.question(`  端点（OpenAI 兼容）[${currentBase || DEFAULTS.baseURL}]：`)).trim() || currentBase
 
     const currentModel = env('MODEL') ?? ''
-    do {
-      const suffix = currentModel ? ` [${currentModel}]` : ''
-      model = ((await rl.question(`  模型 id${suffix}：`)).trim() || currentModel).trim()
-      if (!model) console.log('  —— 模型 id 不能为空。')
-    } while (!model)
+    model = (await rl.question(`  模型 id [${currentModel || DEFAULTS.model}]：`)).trim() || currentModel
   } finally {
     rl.close()
   }
@@ -117,7 +113,7 @@ export async function runSetup(force = false): Promise<void> {
 
   const patch = {
     NOMOTHETE_BASE_URL: baseURL || null,
-    NOMOTHETE_MODEL: model,
+    NOMOTHETE_MODEL: model || null,
     NOMOTHETE_API_KEY: apiKey,
   }
   writeEnv(patch)

@@ -14,7 +14,7 @@ import path from 'node:path'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { LanguageModel } from 'ai'
+import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from 'ai'
 import { env } from './env.ts'
 import { ENV_PATH } from './envfile.ts'
 
@@ -27,8 +27,12 @@ export interface ProviderProfile {
   apiKeyEnv?: string
   apiKey?: string
   model: string
-  /** `json_schema` demands real constrained decoding; `auto` infers from id. */
-  structuredOutput?: 'json_schema' | 'auto'
+  /**
+   * `json_schema` demands real constrained decoding. `json_object`, OpenAI Chat
+   * line only, carries the schema in the prompt instead, for endpoints that
+   * refuse the first. `auto` picks by endpoint.
+   */
+  structuredOutput?: 'json_schema' | 'json_object' | 'auto'
   /** OpenAI-line only. `null` sends nothing and leaves the endpoint's default. */
   reasoningEffort?: string | null
   /** Google-only: third-party proxies often accept only one of the two. */
@@ -45,6 +49,20 @@ export interface ProviderProfile {
  * is the gap between docs/design.md's 3–10s and a workshop that looks hung.
  */
 const DEFAULT_REASONING_EFFORT = 'none'
+
+/**
+ * What an empty base URL and an empty model id stand for. Setup and the
+ * settings drawer read them from here.
+ */
+export const DEFAULTS = { baseURL: 'https://api.deepseek.com', model: 'deepseek-flash' }
+
+/** Where each line format answers when no `baseURL` was given. */
+const DEFAULT_BASE: Record<ProviderKind, string> = {
+  'openai-chat': DEFAULTS.baseURL,
+  'openai-responses': 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+}
 
 const CONFIG_PATH = path.resolve(process.cwd(), 'nomothete.config.json')
 
@@ -85,9 +103,11 @@ function profilesFromFile(): ProviderProfile[] {
 }
 
 function profilesFromEnv(): ProviderProfile[] {
-  const baseURL = env('BASE_URL')
-  const model = env('MODEL')
-  if (!model) return []
+  const baseURL = env('BASE_URL') || undefined
+  const model = env('MODEL') || ''
+  // Nothing written down is "not configured". Any one of the three is a start;
+  // the defaults fill in the rest, and a missing key says so where it is used.
+  if (!baseURL && !model && !env('API_KEY')) return []
   const effort = env('REASONING_EFFORT')
   return [
     {
@@ -104,9 +124,19 @@ function profilesFromEnv(): ProviderProfile[] {
   ]
 }
 
-export function loadProfiles(): ProviderProfile[] {
+/** The profiles as written, empty fields and all: what the settings drawer shows. */
+export function configuredProfiles(): ProviderProfile[] {
   const fromFile = profilesFromFile()
   return fromFile.length ? fromFile : profilesFromEnv()
+}
+
+/** The profiles as used: an empty base URL or model id means the default. */
+export function loadProfiles(): ProviderProfile[] {
+  return configuredProfiles().map(p => ({
+    ...p,
+    baseURL: p.baseURL || DEFAULT_BASE[p.kind],
+    model: p.model || DEFAULTS.model,
+  }))
 }
 
 export interface ConfigSource {
@@ -208,6 +238,46 @@ function wireFetch(onChunk: (() => void) | undefined, effort: string | null): ty
   }
 }
 
+function hostOf(url: string | undefined): string {
+  try {
+    return url ? new URL(url).host : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * How a request asks for structure. DeepSeek's own endpoint refuses
+ * `json_schema` outright — every such request is a 400, "This response_format
+ * type is unavailable now" — and takes `json_object`.
+ */
+function structuredMode(p: ProviderProfile): 'json_schema' | 'json_object' {
+  if (p.structuredOutput === 'json_schema' || p.structuredOutput === 'json_object') return p.structuredOutput
+  return p.kind === 'openai-chat' && hostOf(p.baseURL) === 'api.deepseek.com' ? 'json_object' : 'json_schema'
+}
+
+/**
+ * For an endpoint that takes `json_object` but not `json_schema`: the schema
+ * moves into the system message, and the request asks for JSON with no schema
+ * attached, which the OpenAI adapter sends as `json_object`. What comes back is
+ * still validated against the schema, so a reply that does not fit fails as it
+ * would have anyway.
+ */
+const schemaInPrompt: LanguageModelMiddleware = {
+  transformParams: async ({ params }) => {
+    const format = params.responseFormat
+    if (format?.type !== 'json' || !format.schema) return params
+    // DeepSeek will not enter JSON mode unless the prompt says "json".
+    const note = `Reply with json only: one object matching this JSON schema.\n${JSON.stringify(format.schema)}`
+    const [first, ...rest] = params.prompt
+    const prompt: typeof params.prompt =
+      first?.role === 'system'
+        ? [{ ...first, content: `${first.content}\n\n${note}` }, ...rest]
+        : [{ role: 'system', content: note }, ...params.prompt]
+    return { ...params, prompt, responseFormat: { type: 'json' } }
+  },
+}
+
 export function resolveReasoningEffort(p: ProviderProfile): string | null {
   if (p.kind !== 'openai-chat' && p.kind !== 'openai-responses') return null
   return p.reasoningEffort === undefined ? DEFAULT_REASONING_EFFORT : p.reasoningEffort
@@ -219,7 +289,8 @@ export function resolveModel(p: ProviderProfile, onChunk?: () => void): Language
   switch (p.kind) {
     case 'openai-chat': {
       const provider = createOpenAI({ baseURL: p.baseURL, apiKey, name: p.id, fetch: wireFetch(onChunk, effort) })
-      return provider.chat(p.model)
+      const model = provider.chat(p.model)
+      return structuredMode(p) === 'json_object' ? wrapLanguageModel({ model, middleware: schemaInPrompt }) : model
     }
     case 'openai-responses': {
       const provider = createOpenAI({ baseURL: p.baseURL, apiKey, name: p.id, fetch: wireFetch(onChunk, effort) })
@@ -261,8 +332,7 @@ export function providerStatus(): ProviderStatus {
     return {
       configured: false,
       hasKey: false,
-      problem:
-        '没有配置模型。在工作目录放一个 .env，写上 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL 三行即可。',
+      problem: '没有配置模型。在工作目录放一个 .env，写上 NOMOTHETE_API_KEY 即可。',
     }
   }
   const p = profiles[0]
@@ -273,7 +343,12 @@ export function providerStatus(): ProviderStatus {
   } catch {
     host = p.baseURL
   }
-  const mode = p.structuredOutput === 'json_schema' || supportsSchema(p.model) ? 'json_schema' : 'json_schema（未识别的 model id，仍按 schema 请求）'
+  const mode =
+    structuredMode(p) === 'json_object'
+      ? 'json_object（schema 写在提示里）'
+      : p.structuredOutput === 'json_schema' || supportsSchema(p.model)
+        ? 'json_schema'
+        : 'json_schema（未识别的 model id，仍按 schema 请求）'
   return {
     configured: Boolean(key),
     id: p.id,
@@ -303,18 +378,10 @@ export function keyHint(): string | null {
 export function activeProfile(): ProviderProfile {
   const profiles = loadProfiles()
   if (profiles.length === 0)
-    throw new Error('没有配置模型：请在工作目录的 .env 里设置 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。')
+    throw new Error('没有配置模型：请在工作目录的 .env 里设置 NOMOTHETE_API_KEY。')
   const p = profiles[0]
   if (!keyFor(p)) throw new Error(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`)
   return p
-}
-
-/** Where each line format answers when no `baseURL` was given. */
-const DEFAULT_BASE: Record<ProviderKind, string> = {
-  'openai-chat': 'https://api.openai.com/v1',
-  'openai-responses': 'https://api.openai.com/v1',
-  anthropic: 'https://api.anthropic.com/v1',
-  google: 'https://generativelanguage.googleapis.com/v1beta',
 }
 
 export interface ProbeResult {

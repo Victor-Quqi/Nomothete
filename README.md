@@ -12,7 +12,7 @@ Nomothete 一词取自柏拉图《克拉底鲁篇》中的 νομοθέτης，
 npx nomothete --open
 ```
 
-首次启动时填写 API 地址、模型和密钥。服务启动后会打开浏览器，默认地址为 [http://localhost:5179](http://localhost:5179)。之后可以在界面左下角的"设置"中修改，也可以重新执行设置：
+首次启动时填写 API 地址、模型和密钥，地址和模型可以留空，默认使用 DeepSeek。服务启动后会打开浏览器，默认地址为 [http://localhost:5179](http://localhost:5179)。之后可以在界面左下角的"设置"中修改，也可以重新执行设置：
 
 ```bash
 npx nomothete --setup

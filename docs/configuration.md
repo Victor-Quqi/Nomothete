@@ -22,11 +22,16 @@
 - 用 `npx` 或装成包之后运行：`~/.nomothete/`，在哪个目录敲命令都一样
 - 从源码运行（`npm start`、`npm run dev`）：当前工作目录，一般就是仓库根目录
 
-最少要有的三行：
+最少只要一行：
+
+```
+NOMOTHETE_API_KEY=sk-...
+```
+
+地址和模型不写时，连 DeepSeek 官方的 `deepseek-flash`。换别的端点时两行都写上：
 
 ```
 NOMOTHETE_BASE_URL=https://api.openai.com/v1   # 任何 OpenAI 兼容端点
-NOMOTHETE_API_KEY=sk-...
 NOMOTHETE_MODEL=gpt-5
 ```
 
@@ -34,9 +39,9 @@ NOMOTHETE_MODEL=gpt-5
 
 | 变量 | 默认 | |
 | --- | --- | --- |
-| `NOMOTHETE_BASE_URL` | OpenAI | 任何兼容端点 |
+| `NOMOTHETE_BASE_URL` | `https://api.deepseek.com` | 任何兼容端点 |
 | `NOMOTHETE_API_KEY` | — | 必填 |
-| `NOMOTHETE_MODEL` | — | 必填 |
+| `NOMOTHETE_MODEL` | `deepseek-flash` | 换了地址一起换 |
 | `NOMOTHETE_PROVIDER_KIND` | 从 base URL 推断 | `openai-chat` / `openai-responses` / `anthropic` / `google` |
 | `NOMOTHETE_REASONING_EFFORT` | OpenAI 线路发 `none` | 见下 |
 | `NOMOTHETE_PORT` | `5179` | `--port` 优先 |

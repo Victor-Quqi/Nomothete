@@ -170,6 +170,8 @@ export interface ProviderConfig {
   writable: boolean
   baseURL: string
   model: string
+  /** What an empty base URL and model stand for. */
+  defaults: { baseURL: string; model: string }
   kind: ProviderKind | null
   reasoningEffort: string
   keyHint: string | null

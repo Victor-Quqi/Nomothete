@@ -66,13 +66,15 @@ SQLite 单文件，和配置、本地索引一样写在数据目录，可导出�
 
 ### LLM 适配
 
-四种 API 形态：OpenAI `chat/completions`、OpenAI `responses`、Anthropic `messages`、Google `generateContent`。每种可自定义 base URL 和 key。使用结构化输出；上游不支持则失败。
+四种 API 形态：OpenAI `chat/completions`、OpenAI `responses`、Anthropic `messages`、Google `generateContent`。每种可自定义 base URL 和 key。使用结构化输出；上游不支持则失败。地址和模型留空时连 DeepSeek 官方的 `deepseek-flash`。
 
 起名不吃长上下文。中等模型足够。
 
 用 Vercel AI SDK，入口 `createOpenAI({baseURL, apiKey, name})`。`createOpenAICompatible` 默认关闭结构化输出，并把 json_schema 请求降成 `{type:'json_object'}`，与上面的失败策略冲突。Anthropic 与 Google 用对应官方包，传 `baseURL`。Google 鉴权方式（`x-goog-api-key` 头或 `?key=`）要可配，第三方代理往往只认一种。
 
 配置是具名 profile 列表：`id`、`kind`、`baseURL`、`apiKeyEnv`、`model`、`structuredOutput`。`kind` 四选一。能力检测：对 model id 做正则，附一张常见 id 的小静态表，`structuredOutput` 作手动覆盖。默认 `json_schema`。
+
+例外是 DeepSeek 官方端点：它拒收 `json_schema`，每个这样的请求都是 400，只收 `json_object`。所以对它把 schema 写进系统提示、请求 `json_object`，返回结果照样按 schema 校验，对不上照样失败。`structuredOutput` 写 `json_object` 可以把别的端点也这样处理，只对 OpenAI `chat/completions` 生效。
 
 候选用 `streamObject({output: 'array'})` 消费 `elementStream`，元素为上文的 `{name, probability, rationale}`。数量写在 prompt 里，流结束后校验条数。
 
