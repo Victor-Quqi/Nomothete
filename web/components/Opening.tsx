@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { Fold } from './Fold.tsx'
 import { PriorDossier } from './PriorDossier.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from '../rarity.ts'
@@ -134,13 +135,7 @@ export function Opening({
           </div>
           <AnimatePresence initial={false}>
             {brief.trim() === '' && (
-              <motion.div
-                className="examples"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-              >
+              <Fold className="examples">
                 <span>示例</span>
                 {EXAMPLES.map(e => (
                   <button
@@ -154,7 +149,7 @@ export function Opening({
                     {e.label}
                   </button>
                 ))}
-              </motion.div>
+              </Fold>
             )}
           </AnimatePresence>
         </div>
@@ -177,13 +172,7 @@ export function Opening({
 
         <AnimatePresence initial={false}>
           {more && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-              style={{ overflow: 'hidden' }}
-            >
+            <Fold duration={0.36}>
               <div className="field">
                 <div className="field__label">已想到的名字</div>
                 {seeds.map((s, i) => (
@@ -247,7 +236,7 @@ export function Opening({
                   <PriorDossier priors={boot.priors} enabled={priors} onChange={setPriors} />
                 </div>
               )}
-            </motion.div>
+            </Fold>
           )}
         </AnimatePresence>
 

@@ -11,9 +11,10 @@ export function transitionPane(grid: HTMLElement, anchor: PaneAnchor | null, ope
   const style = getComputedStyle(canvas)
   const shellStyle = getComputedStyle(shell)
   const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-  const targetWidth = shell.clientWidth - parseFloat(shellStyle.getPropertyValue('--rail-w')) -
-    (open ? parseFloat(shellStyle.getPropertyValue('--drawer-w')) : 0) -
-    padding - (canvas.offsetWidth - canvas.clientWidth)
+  const columnWidth = shell.clientWidth - parseFloat(shellStyle.getPropertyValue('--rail-w')) -
+    (open ? parseFloat(shellStyle.getPropertyValue('--drawer-w')) : 0)
+  const targetWidth = columnWidth - padding - (canvas.offsetWidth - canvas.clientWidth)
+  const filters = shell.querySelector<HTMLElement>('.filters')
   let interrupted = false
   let finished = false
   let frame = 0
@@ -24,18 +25,24 @@ export function transitionPane(grid: HTMLElement, anchor: PaneAnchor | null, ope
   canvas.dataset.paneTransition = ''
   canvas.scrollTo({ top: canvas.scrollTop, behavior: 'instant' })
   grid.style.width = `${Math.max(0, targetWidth)}px`
+  // The filters wrap at their own width. Left to follow the column, they gain
+  // or lose a line partway through the slide and the wall drops or rises with
+  // them.
+  filters?.style.setProperty('width', `${Math.max(0, columnWidth)}px`)
   resetPlateMeasurements(grid)
+
+  // Where layout puts the anchor, without the transform it is sliding home on.
+  const placed = (slot: HTMLElement) => grid.getBoundingClientRect().top + slot.offsetTop
 
   const align = () => {
     if (interrupted || !anchor || !anchor.slot.isConnected || anchor.slot.hidden) return
     preparePlate(anchor.slot)
     // A second pass resolves rows that entered the rendering margin after reflow.
     for (let pass = 0; pass < 2; pass++) {
-      const box = anchor.slot.getBoundingClientRect()
       const bounds = canvas.getBoundingClientRect()
       const bottom = Math.min(bounds.bottom, dock?.getBoundingClientRect().top ?? bounds.bottom)
-      const top = Math.max(24, Math.min(anchor.top - bounds.top, bottom - bounds.top - box.height - 24))
-      const delta = box.top - bounds.top - top
+      const top = Math.max(24, Math.min(anchor.top - bounds.top, bottom - bounds.top - anchor.slot.offsetHeight - 24))
+      const delta = placed(anchor.slot) - bounds.top - top
       if (Math.abs(delta) <= 0.5) break
       canvas.scrollTo({ top: canvas.scrollTop + delta, behavior: 'instant' })
       preparePlate(anchor.slot)
@@ -55,10 +62,13 @@ export function transitionPane(grid: HTMLElement, anchor: PaneAnchor | null, ope
         const scale = Math.min(1, available / box.width)
         const left = Math.max(0, Math.min(anchor.left, available - box.width * scale))
         const offset = left - slot.offsetLeft
+        // Near the top there is no scroll left to hold it in place with, so it
+        // moves down or up with the bars. It travels there from where it was.
+        const rise = anchor.top - placed(slot)
         slot.style.zIndex = '1'
         animations.push(slot.animate([
-          { transform: `translateX(${offset}px) scaleX(${scale})`, transformOrigin: 'top left' },
-          { transform: 'translateX(0) scaleX(1)', transformOrigin: 'top left' },
+          { transform: `translate(${offset}px, ${rise}px) scaleX(${scale})`, transformOrigin: 'top left' },
+          { transform: 'translate(0, 0) scaleX(1)', transformOrigin: 'top left' },
         ], { duration: 320, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }))
       } else {
         // Neighbours appear after the selected card has nearly reached its column.
@@ -84,6 +94,7 @@ export function transitionPane(grid: HTMLElement, anchor: PaneAnchor | null, ope
     cancelAnimationFrame(frame)
     const width = grid.clientWidth
     grid.style.removeProperty('width')
+    filters?.style.removeProperty('width')
     // Keep measured heights when the destination width already matches.
     if (grid.clientWidth !== width) resetPlateMeasurements(grid)
     align()

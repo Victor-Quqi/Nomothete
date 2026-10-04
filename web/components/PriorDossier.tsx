@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence } from 'motion/react'
+import { Fold } from './Fold.tsx'
 import type { Prior, Strength } from '../types.ts'
 
 const STRENGTH_LABEL: Record<Strength, string> = {
@@ -51,17 +52,11 @@ export function PriorDossier({
               </div>
               <AnimatePresence initial={false}>
                 {expanded && (
-                  <motion.div
-                    className="prior__evidence"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  >
+                  <Fold className="prior__evidence" duration={0.3}>
                     {p.evidence}
                     <h5>何时不适用</h5>
                     {p.overturnedBy}
-                  </motion.div>
+                  </Fold>
                 )}
               </AnimatePresence>
             </div>

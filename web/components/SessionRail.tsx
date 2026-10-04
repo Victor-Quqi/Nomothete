@@ -58,23 +58,26 @@ export function SessionRail({
               layout
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+              exit={{ opacity: 0, height: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-              className={`rail__item${s.id === activeId ? ' rail__item--on' : ''}`}
             >
-              <button className="rail__open" onClick={() => onOpen(s.id)} aria-current={s.id === activeId ? 'page' : undefined}>
-                <span className="rail__item-heading">
-                  {s.pinned && <span className="rail__pin" aria-label="已置顶"><SessionIcon kind="pin" /></span>}
-                  <span className="rail__item-title">{s.title || s.brief}</span>
-                </span>
-                <span className="rail__item-meta">
-                  <span>{s.candidateCount} 个候选</span>
-                  {s.lovedCount > 0 && <b>▲{s.lovedCount}</b>}
-                  <span style={{ marginLeft: 'auto' }}>{when(s.updatedAt)}</span>
-                </span>
-              </button>
-              <SessionMenu title={s.title || s.brief} pinned={s.pinned} disabled={pendingId === s.id}
-                onRename={() => onRename(s)} onPin={() => onPin(s)} onDelete={() => onDelete(s)} />
+              {/* The item's border is on the box inside: the height shrinking
+                  out here would stop at it, and the last 2px leave at once. */}
+              <div className={`rail__item${s.id === activeId ? ' rail__item--on' : ''}`}>
+                <button className="rail__open" onClick={() => onOpen(s.id)} aria-current={s.id === activeId ? 'page' : undefined}>
+                  <span className="rail__item-heading">
+                    {s.pinned && <span className="rail__pin" aria-label="已置顶"><SessionIcon kind="pin" /></span>}
+                    <span className="rail__item-title">{s.title || s.brief}</span>
+                  </span>
+                  <span className="rail__item-meta">
+                    <span>{s.candidateCount} 个候选</span>
+                    {s.lovedCount > 0 && <b>▲{s.lovedCount}</b>}
+                    <span style={{ marginLeft: 'auto' }}>{when(s.updatedAt)}</span>
+                  </span>
+                </button>
+                <SessionMenu title={s.title || s.brief} pinned={s.pinned} disabled={pendingId === s.id}
+                  onRename={() => onRename(s)} onPin={() => onPin(s)} onDelete={() => onDelete(s)} />
+              </div>
             </motion.div>
           ))}
         </AnimatePresence>
