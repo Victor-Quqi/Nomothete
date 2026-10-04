@@ -1,11 +1,12 @@
 import { useId, useState, type ReactNode } from 'react'
 import { browserQuery, browserSearchUrl, searchUrl, sourceHost } from '../verify.ts'
+import { tr } from '../i18n.ts'
 import type { Candidate, ClaimFinding } from '../types.ts'
 
 function SearchLink({ href }: { href: string }) {
   return (
     <a href={href} target="_blank" rel="noreferrer noopener">
-      浏览器搜索 ↗
+      {tr('浏览器搜索 ↗', 'Search in browser ↗')}
     </a>
   )
 }
@@ -51,12 +52,12 @@ function Discrepancy({ claim }: { claim: ClaimFinding }) {
   return (
     <div className="verify__item">
       <p className="verify__claim">
-        <b>说法</b>
+        <b>{tr('说法', 'Claim')}</b>
         {claim.text}
       </p>
       {claim.note && (
         <p className="verify__note">
-          <b>资料</b>
+          <b>{tr('资料', 'Source')}</b>
           {claim.note}
         </p>
       )}
@@ -110,13 +111,13 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
 
   const status =
     v?.state === 'pending'
-      ? '正在联网查找资料…'
+      ? tr('正在联网查找资料…', 'Searching sources…')
       : v?.state === 'failed'
-        ? '未能核查'
+        ? tr('未能核查', 'Unable to check')
         : v?.state === 'done' && claims.length === 0
-          ? '没有可查证的来源说法'
+          ? tr('没有可查证的来源说法', 'No source claims to check')
           : against.length
-            ? `${against.length} 处与资料不符`
+            ? tr(`${against.length} 处与资料不符`, `${against.length} mismatch${against.length === 1 ? '' : 'es'} with sources`)
             : null
 
   // Reasons can be long model prose, so they stay in the expanded claims. The
@@ -134,8 +135,8 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
   if (sourceCount > 0 && !status && open.length === 0) {
     return (
       <section className="verify">
-        <Disclosure compact label={<><span>取义核查</span><span className="verify__source-count">· {sourceCount} 个来源</span></>}>
-          {!autoVerify && <Meta parts={['自动联网核查已关闭，下面是之前的结果']} search={fallback} />}
+        <Disclosure compact label={<><span>{tr('取义核查', 'Source check')}</span><span className="verify__source-count">· {sourceCount} {tr('个来源', sourceCount === 1 ? 'source' : 'sources')}</span></>}>
+          {!autoVerify && <Meta parts={[tr('自动联网核查已关闭，下面是之前的结果', 'Automatic source checks are off; showing the previous result.')]} search={fallback} />}
           {sources}
         </Disclosure>
       </section>
@@ -145,13 +146,13 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
   return (
     <section className="verify" aria-busy={v?.state === 'pending'}>
       <div className="section-h">
-        取义核查
+        {tr('取义核查', 'Source check')}
         {status && <span className={against.length ? 'verify__status verify__status--against' : 'verify__status'}>{status}</span>}
       </div>
 
       {!autoVerify && (
         <Meta
-          parts={[v && v.state !== 'pending' ? '自动联网核查已关闭，下面是之前的结果' : '自动联网核查已关闭']}
+          parts={[v && v.state !== 'pending' ? tr('自动联网核查已关闭，下面是之前的结果', 'Automatic source checks are off; showing the previous result.') : tr('自动联网核查已关闭', 'Automatic source checks are off.')]}
           // The 待查证 line below carries its own search link.
           search={open.length ? undefined : fallback}
         />
@@ -165,10 +166,10 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
 
       {open.length > 0 && (
         <Disclosure
-          label={`待查证 ${open.length}`}
+          label={tr(`待查证 ${open.length}`, `Unconfirmed ${open.length}`)}
           aside={
             <>
-              {failedCount > 0 && <span>{failedCount === open.length ? '未能核查' : `${failedCount} 项未能核查`}</span>}
+              {failedCount > 0 && <span>{failedCount === open.length ? tr('未能核查', 'Unable to check') : tr(`${failedCount} 项未能核查`, `${failedCount} item${failedCount === 1 ? '' : 's'} could not be checked`)}</span>}
               <span>
                 <SearchLink href={openSearch} />
               </span>
@@ -182,7 +183,7 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
                 <p className="verify__claim">{claim.text}</p>
                 {/* The reason says what is still unestablished; an open claim is not a false one. */}
                 <p className="verify__note">
-                  <b>{claim.verdict === 'failed' ? '未能核查' : '未找到足够依据'}</b>
+                  <b>{claim.verdict === 'failed' ? tr('未能核查', 'Unable to check') : tr('未找到足够依据', 'Insufficient evidence')}</b>
                   {claim.reason}
                 </p>
                 {/* What was found for part of the claim, e.g. one meaning confirmed while another is not. */}
@@ -201,7 +202,7 @@ export function RationaleCheck({ candidate, autoVerify }: { candidate: Candidate
       )}
 
       {sourceCount > 0 && (
-        <Disclosure label={`查看来源 ${sourceCount}`}>
+        <Disclosure label={tr(`查看来源 ${sourceCount}`, `View ${sourceCount} source${sourceCount === 1 ? '' : 's'}`)}>
           {sources}
         </Disclosure>
       )}

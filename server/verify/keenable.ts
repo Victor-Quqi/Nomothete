@@ -6,6 +6,8 @@
  * stops asking while a 429's Retry-After runs. Docs: https://docs.keenable.ai
  */
 
+import { tr } from '../i18n.ts'
+
 const BASE = 'https://api.keenable.ai/v1'
 const HEADERS = { 'X-Keenable-Title': 'Nomothete' }
 
@@ -66,10 +68,10 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 async function slot(signal: AbortSignal) {
   const now = Date.now()
   if (blockedUntil > now) {
-    throw new KeenableError('rate-limited', `联网搜索已达频率上限，约 ${Math.ceil((blockedUntil - now) / 60_000)} 分钟后再试`)
+    throw new KeenableError('rate-limited', tr(`联网搜索已达频率上限，约 ${Math.ceil((blockedUntil - now) / 60_000)} 分钟后再试`, `Web search rate limit reached. Try again in about ${Math.ceil((blockedUntil - now) / 60_000)} ${Math.ceil((blockedUntil - now) / 60_000) === 1 ? 'minute' : 'minutes'}.`))
   }
   while (sent.length && now - sent[0] > 3_600_000) sent.shift()
-  if (sent.length >= HOURLY_CAP) throw new KeenableError('rate-limited', '联网搜索已达每小时上限，稍后再试')
+  if (sent.length >= HOURLY_CAP) throw new KeenableError('rate-limited', tr('联网搜索已达每小时上限，稍后再试', 'Web search hourly limit reached. Try again later.'))
   const at = Math.max(now, nextAt)
   nextAt = at + MIN_GAP_MS
   sent.push(at)
@@ -91,21 +93,21 @@ async function call(url: string, init: RequestInit, signal: AbortSignal): Promis
     res = await fetch(url, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) })
   } catch (err) {
     if (signal.aborted) throw err
-    throw new KeenableError('unavailable', '联网搜索没有响应')
+    throw new KeenableError('unavailable', tr('联网搜索没有响应', 'Web search did not respond.'))
   }
   if (res.status === 429) {
     blockedUntil = Date.now() + retryAfterMs(res.headers.get('retry-after'))
     await res.body?.cancel().catch(() => {})
-    throw new KeenableError('rate-limited', '联网搜索已达频率上限，稍后再试')
+    throw new KeenableError('rate-limited', tr('联网搜索已达频率上限，稍后再试', 'Web search rate limit reached. Try again later.'))
   }
   if (!res.ok) {
     await res.body?.cancel().catch(() => {})
-    throw new KeenableError('unavailable', `联网搜索返回 ${res.status}`)
+    throw new KeenableError('unavailable', tr(`联网搜索返回 ${res.status}`, `Web search returned status ${res.status}.`))
   }
   try {
     return await res.json()
   } catch {
-    throw new KeenableError('unavailable', '联网搜索返回的内容无法读取')
+    throw new KeenableError('unavailable', tr('联网搜索返回的内容无法读取', 'Could not read the web search response.'))
   }
 }
 
@@ -135,7 +137,7 @@ export async function search(
     { method: 'POST', headers: { ...HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
     signal,
   )) as { results?: unknown }
-  if (!Array.isArray(data?.results)) throw new KeenableError('unavailable', '联网搜索返回的内容无法读取')
+  if (!Array.isArray(data?.results)) throw new KeenableError('unavailable', tr('联网搜索返回的内容无法读取', 'Could not read the web search response.'))
   const out: SearchHit[] = []
   for (const r of data.results as Record<string, unknown>[]) {
     const url = httpUrl(str(r?.url))
@@ -151,10 +153,10 @@ export async function search(
  */
 export async function fetchPage(input: { url: string; maxChars: number }, signal: AbortSignal): Promise<Page> {
   const url = httpUrl(input.url)
-  if (!url) throw new KeenableError('unavailable', '资料链接不是网页地址')
+  if (!url) throw new KeenableError('unavailable', tr('资料链接不是网页地址', 'The reference link is not a web address.'))
   const q = new URLSearchParams({ url, max_chars: String(input.maxChars) })
   const data = (await call(`${BASE}/fetch/public?${q}`, { headers: HEADERS }, signal)) as Record<string, unknown>
   const content = str(data?.content)
-  if (!content) throw new KeenableError('unavailable', '页面没有可读内容')
+  if (!content) throw new KeenableError('unavailable', tr('页面没有可读内容', 'The page has no readable content.'))
   return { url: httpUrl(str(data.url)) ?? url, title: str(data.title), content }
 }

@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { Fragment, useId, useState, type ReactNode } from 'react'
 import { deepDone, presentCheck } from '../checks.ts'
 import { npmNeighbourhood } from '../../shared/npmNeighbourhood.ts'
@@ -17,7 +18,7 @@ export function linksOf(check: CheckResult, name?: string): { href: string; text
   const out: { href: string; text: string }[] = []
   const d = check.data
   if (check.checkId === 'neighbourhood' && d && name) {
-    for (const pkg of npmNeighbourhood(d, name).names) {
+    for (const pkg of npmNeighbourhood(d, name, tr).names) {
       out.push({ href: `https://www.npmjs.com/package/${encodeURIComponent(pkg)}`, text: pkg })
     }
   }
@@ -85,9 +86,9 @@ export function CheckFinding({ check, name }: { check: CheckResult; name?: strin
   const shown = npm && !expanded ? links.slice(0, 3) : links
   const action = name
     ? check.checkId === 'github'
-      ? { href: githubSearchUrl(name), text: '搜索仓库' }
+      ? { href: githubSearchUrl(name), text: tr('搜索仓库', 'Search repositories') }
       : check.checkId === 'neighbourhood'
-        ? { href: `https://www.npmjs.com/search?q=${encodeURIComponent(name)}`, text: '搜索 npm' }
+        ? { href: `https://www.npmjs.com/search?q=${encodeURIComponent(name)}`, text: tr('搜索 npm', 'Search npm') }
         : undefined
     : undefined
   return (
@@ -100,9 +101,9 @@ export function CheckFinding({ check, name }: { check: CheckResult; name?: strin
               <a href={l.href} target="_blank" rel="noreferrer noopener" onClick={e => e.stopPropagation()}>{l.text}</a>
             </Fragment>
           ))}
-          <span className="found__registry-state">已有同名</span>
+          <span className="found__registry-state">{tr('已有同名', 'Name taken')}</span>
         </>
-      ) : npm && links.length > 0 ? `${links.length} 个相近包名` : headline
+      ) : npm && links.length > 0 ? tr(`${links.length} 个相近包名`, `${links.length} similar package${links.length === 1 ? '' : 's'}`) : headline
     }>
       {detail && <p className="found__why">{detail}</p>}
       {links.length > 0 && !inlineRegistries && (
@@ -130,12 +131,12 @@ export function CheckFinding({ check, name }: { check: CheckResult; name?: strin
               {npm && i === shown.length - 1 && links.length > 3 && (
                 <button
                   className="found__more"
-                  aria-label={expanded ? '收起包列表' : `展开其余 ${links.length - 3} 个包`}
+                  aria-label={expanded ? tr('收起包列表', 'Collapse package list') : tr(`展开其余 ${links.length - 3} 个包`, `Show ${links.length - 3} more package${links.length === 4 ? '' : 's'}`)}
                   aria-expanded={expanded}
                   aria-controls={listId}
                   onClick={e => { e.stopPropagation(); setExpanded(!expanded) }}
                 >
-                  {expanded ? '收起' : `+${links.length - 3}`}
+                  {expanded ? tr('收起', 'Collapse') : `+${links.length - 3}`}
                 </button>
               )}
             </span>
@@ -157,7 +158,7 @@ export function waitingLabels(manifest?: Bootstrap['checks']): string {
   return (manifest ?? [])
     .filter(c => c.when === 'after-upvote')
     .map(c => c.label)
-    .join('、')
+    .join(tr('、', ', '))
 }
 
 /**
@@ -185,7 +186,7 @@ export function RecheckLine({
     return (
       <div className="recheck">
         <button className="btn btn--ghost btn--sm" disabled>
-          正在查…
+          {tr('正在查…', 'Checking…')}
         </button>
       </div>
     )
@@ -195,15 +196,15 @@ export function RecheckLine({
     <div className="recheck">
       {deepDone(checks) ? (
         <button className="btn btn--ghost btn--sm" onClick={onRecheck}>
-          重新检查 ↻
+          {tr('重新检查 ↻', 'Check again ↻')}
         </button>
       ) : (
         <>
           <div className="recheck__copy">
-            <span>{waiting ? `${waiting} 还没查` : '还有几项慢的没查'}</span>
-            <span className="recheck__hint">标记 ▲ 后自动检查</span>
+            <span>{waiting ? tr(`${waiting} 还没查`, `${waiting}: not checked yet`) : tr('还有几项慢的没查', 'Some slower checks are still pending')}</span>
+            <span className="recheck__hint">{tr('标记 ▲ 后自动检查', 'Checked automatically after you mark ▲')}</span>
           </div>
-          <button className="recheck__start" onClick={onRecheck}>现在查<span aria-hidden="true">→</span></button>
+          <button className="recheck__start" onClick={onRecheck}>{tr('现在查', 'Check now')}<span aria-hidden="true">→</span></button>
         </>
       )}
     </div>

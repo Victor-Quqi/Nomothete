@@ -18,6 +18,8 @@ import dotenv from 'dotenv'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const argv = process.argv.slice(2)
+const zh = /^zh/i.test(process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || Intl.DateTimeFormat().resolvedOptions().locale)
+const tr = (z, e) => (zh ? z : e)
 
 // The server keeps `.env`, nomothete.db and nomothete.config.json in its working
 // directory. A source checkout runs it where it was started, as it always has. An
@@ -42,7 +44,7 @@ function flagValue(...names) {
 }
 
 if (argv.includes('-h') || argv.includes('--help')) {
-  console.log(`
+  console.log(tr(`
   nomothete — 给软件项目取名字
 
   用法
@@ -62,14 +64,34 @@ if (argv.includes('-h') || argv.includes('--help')) {
     未加前缀的同名变量同样生效，仅在不存在带前缀变量时采用。
     数据库 nomothete.db 也在同一目录，删掉它就是全部重置。
     服务默认绑定 127.0.0.1，可用 NOMOTHETE_HOST 更改。
-`)
+`, `
+  nomothete — name your software project
+
+  Usage
+    nomothete [options]
+
+  Options
+    -p, --port <n>   Listen on this port (default 5179, or NOMOTHETE_PORT)
+        --open       Open the default browser after startup
+        --setup      Ask for the endpoint, model, and API key again, then rewrite their .env lines
+        --verbose    Print request methods and paths (without bodies or auth headers)
+    -h, --help       Show this help
+
+  Configuration
+    Three entry points write to the same file: answer the first-run questions; edit “Settings” at the lower left after startup;
+    or edit ${path.join(dataDir, '.env')} directly:
+      NOMOTHETE_BASE_URL / NOMOTHETE_API_KEY / NOMOTHETE_MODEL
+    Unprefixed variants also work when no prefixed variable exists.
+    The nomothete.db database is in the same directory; deleting it resets everything.
+    The server binds to 127.0.0.1 by default; set NOMOTHETE_HOST to change it.
+`))
   process.exit(0)
 }
 
 // npx does not enforce `engines`, and on an older runtime the first thing to
 // fail would be the server's `node:sqlite` import, far from the actual cause.
 if (Number(process.versions.node.split('.')[0]) < 24) {
-  console.error(`[nomothete] 需要 Node 24 或更高版本，当前为 ${process.version}。`)
+  console.error(tr(`[nomothete] 需要 Node 24 或更高版本，当前为 ${process.version}。`, `[nomothete] Node 24 or newer is required; found ${process.version}.`))
   process.exit(1)
 }
 
@@ -101,10 +123,10 @@ function tsArgs(file, args) {
 // when it is not. An API-only mode is not what anyone typing `nomothete` wants,
 // so build it once instead of letting them find a blank page.
 if (!existsSync(path.join(root, 'dist', 'index.html'))) {
-  console.log('[nomothete] 未找到 dist/，正在构建前端…')
+  console.log(tr('[nomothete] 未找到 dist/，正在构建前端…', '[nomothete] dist/ was not found; building the frontend…'))
   const build = spawnSync('npm', ['run', 'build'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' })
   if (build.status !== 0) {
-    console.error('[nomothete] 构建失败。请先执行 npm install，再执行 npm run build。')
+    console.error(tr('[nomothete] 构建失败。请先执行 npm install，再执行 npm run build。', '[nomothete] Build failed. Run npm install, then npm run build.'))
     process.exit(build.status ?? 1)
   }
 }

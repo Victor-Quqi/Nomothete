@@ -17,6 +17,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from 'ai'
 import { env } from './env.ts'
 import { ENV_PATH } from './envfile.ts'
+import { tr } from './i18n.ts'
 
 export type ProviderKind = 'openai-chat' | 'openai-responses' | 'anthropic' | 'google'
 
@@ -97,7 +98,7 @@ function profilesFromFile(): ProviderProfile[] {
     const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) as { providers?: ProviderProfile[] }
     return raw.providers?.length ? raw.providers : []
   } catch (err) {
-    console.error(`[nomothete] nomothete.config.json 解析失败，回落到环境变量：${(err as Error).message}`)
+    console.error(tr(`[nomothete] nomothete.config.json 解析失败，回落到环境变量：${(err as Error).message}`, `[nomothete] Could not parse nomothete.config.json; falling back to environment variables: ${(err as Error).message}`))
     return []
   }
 }
@@ -215,7 +216,7 @@ function wireFetch(onChunk: (() => void) | undefined, effort: string | null): ty
       const text = await res.text().catch(() => '')
       if (/reasoning|unsupported|unrecognized|unknown|invalid/i.test(text)) {
         effortRefused = true
-        console.warn('[nomothete] 端点不接受 reasoning_effort，之后不再发送。')
+        console.warn(tr('[nomothete] 端点不接受 reasoning_effort，之后不再发送。', '[nomothete] The endpoint does not accept reasoning_effort; it will no longer be sent.'))
         res = await fetch(url, init)
       } else {
         // A real 400. Hand the body back intact so the SDK can report it.
@@ -332,23 +333,23 @@ export function providerStatus(): ProviderStatus {
     return {
       configured: false,
       hasKey: false,
-      problem: '没有配置模型。在工作目录放一个 .env，写上 NOMOTHETE_API_KEY 即可。',
+      problem: tr('没有配置模型。在工作目录放一个 .env，写上 NOMOTHETE_API_KEY 即可。', 'No model configured. Add NOMOTHETE_API_KEY to a .env in the working directory.'),
     }
   }
   const p = profiles[0]
   const key = keyFor(p)
   let host: string | undefined
   try {
-    host = p.baseURL ? new URL(p.baseURL).host : `${p.kind} 默认端点`
+    host = p.baseURL ? new URL(p.baseURL).host : tr(`${p.kind} 默认端点`, `${p.kind} default endpoint`)
   } catch {
     host = p.baseURL
   }
   const mode =
     structuredMode(p) === 'json_object'
-      ? 'json_object（schema 写在提示里）'
+      ? tr('json_object（schema 写在提示里）', 'json_object (schema in prompt)')
       : p.structuredOutput === 'json_schema' || supportsSchema(p.model)
         ? 'json_schema'
-        : 'json_schema（未识别的 model id，仍按 schema 请求）'
+        : tr('json_schema（未识别的 model id，仍按 schema 请求）', 'json_schema (unknown model id; still requesting schema)')
   return {
     configured: Boolean(key),
     id: p.id,
@@ -357,7 +358,7 @@ export function providerStatus(): ProviderStatus {
     host,
     structuredOutput: mode,
     hasKey: Boolean(key),
-    problem: key ? undefined : `找不到 API key。设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`,
+    problem: key ? undefined : tr(`找不到 API key。设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`, `API key not found. Set the ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'} environment variable.`),
   }
 }
 
@@ -378,9 +379,9 @@ export function keyHint(): string | null {
 export function activeProfile(): ProviderProfile {
   const profiles = loadProfiles()
   if (profiles.length === 0)
-    throw new Error('没有配置模型：请在工作目录的 .env 里设置 NOMOTHETE_API_KEY。')
+    throw new Error(tr('没有配置模型：请在工作目录的 .env 里设置 NOMOTHETE_API_KEY。', 'No model configured. Set NOMOTHETE_API_KEY in a .env in the working directory.'))
   const p = profiles[0]
-  if (!keyFor(p)) throw new Error(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`)
+  if (!keyFor(p)) throw new Error(tr(`找不到 API key：请设置环境变量 ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'}。`, `API key not found. Set the ${p.apiKeyEnv ?? 'NOMOTHETE_API_KEY'} environment variable.`))
   return p
 }
 
@@ -407,14 +408,14 @@ export interface ProbeResult {
  */
 export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promise<ProbeResult> {
   const key = keyFor(p)
-  if (!key) return { ok: false, message: '没有 API key。' }
+  if (!key) return { ok: false, message: tr('没有 API key。', 'No API key.') }
 
   const base = (p.baseURL ?? DEFAULT_BASE[p.kind]).replace(/\/+$/, '')
   let url: URL
   try {
     url = new URL(`${base}/models`)
   } catch {
-    return { ok: false, message: `端点地址不合法：${base}` }
+    return { ok: false, message: tr(`端点地址不合法：${base}`, `Invalid endpoint address: ${base}`) }
   }
 
   const headers: Record<string, string> = {}
@@ -432,18 +433,18 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
   try {
     res = await fetch(url, { headers, signal: timer })
   } catch (err) {
-    const reason = timer.aborted ? `${timeoutMs / 1000} 秒内没有响应` : (err as Error).message
-    return { ok: false, message: `连不上 ${url.host}：${reason}` }
+    const reason = timer.aborted ? tr(`${timeoutMs / 1000} 秒内没有响应`, `No response within ${timeoutMs / 1000}s`) : (err as Error).message
+    return { ok: false, message: tr(`连不上 ${url.host}：${reason}`, `Could not connect to ${url.host}: ${reason}`) }
   }
 
   if (res.status === 401 || res.status === 403) {
-    return { ok: false, message: `${url.host} 拒绝了这个 API key（${res.status}）。` }
+    return { ok: false, message: tr(`${url.host} 拒绝了这个 API key（${res.status}）。`, `${url.host} rejected this API key (${res.status}).`) }
   }
   if (!res.ok) {
     // A 404 here usually means "this proxy only does chat completions", which is
     // a perfectly good proxy. Say so rather than crying wolf.
-    const aside = res.status === 404 ? '，部分端点不提供该列表' : ''
-    return { ok: false, message: `${url.host} 的 /models 返回 ${res.status}${aside}。` }
+    const aside = res.status === 404 ? tr('，部分端点不提供该列表', ', some endpoints do not provide this list') : ''
+    return { ok: false, message: tr(`${url.host} 的 /models 返回 ${res.status}${aside}。`, `${url.host} /models returned ${res.status}${aside}.`) }
   }
 
   let ids: string[] = []
@@ -452,10 +453,10 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
     const rows = (body.data ?? body.models ?? []) as { id?: string; name?: string }[]
     ids = rows.map(m => String(m.id ?? m.name ?? '').replace(/^models\//, '')).filter(Boolean)
   } catch {
-    return { ok: false, message: `${url.host} 返回的不是模型列表。` }
+    return { ok: false, message: tr(`${url.host} 返回的不是模型列表。`, `${url.host} did not return a model list.`) }
   }
 
-  if (!ids.length) return { ok: true, message: `${url.host} 连接成功，未列出任何模型。` }
+  if (!ids.length) return { ok: true, message: tr(`${url.host} 连接成功，未列出任何模型。`, `${url.host} connected successfully but listed no models.`) }
 
   const listed = ids.includes(p.model)
   return {
@@ -464,7 +465,7 @@ export async function probeEndpoint(p: ProviderProfile, timeoutMs = 8000): Promi
     count: ids.length,
     sample: ids.slice(0, 8),
     message: listed
-      ? `${url.host} 连接成功，列出 ${ids.length} 个模型，含 ${p.model}。`
-      : `${url.host} 连接成功，列出 ${ids.length} 个模型，其中没有 ${p.model}。`,
+      ? tr(`${url.host} 连接成功，列出 ${ids.length} 个模型，含 ${p.model}。`, `${url.host} connected successfully and listed ${ids.length} ${ids.length === 1 ? 'model' : 'models'}, including ${p.model}.`)
+      : tr(`${url.host} 连接成功，列出 ${ids.length} 个模型，其中没有 ${p.model}。`, `${url.host} connected successfully and listed ${ids.length} ${ids.length === 1 ? 'model' : 'models'}, but not ${p.model}.`),
   }
 }

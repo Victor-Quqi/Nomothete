@@ -8,6 +8,7 @@ import { useGridTransition } from './useGridTransition.ts'
 import { CHECK_CONDITIONS, NO_CHECKS, conditionsOf } from '../checks.ts'
 import type { Atelier } from '../store.ts'
 import type { Batch, Candidate, StrategyInfo, Verdict } from '../types.ts'
+import { lang, tr } from '../i18n.ts'
 
 export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys' | 'settings' | 'discards'
 
@@ -15,22 +16,22 @@ type Lane = 'all' | 'open' | 'up' | 'down'
 type Sort = 'arrival' | 'rare' | 'clean'
 
 const LANES: { id: Lane; label: string; test: (c: Candidate) => boolean }[] = [
-  { id: 'all', label: '全部', test: () => true },
-  { id: 'open', label: '待定', test: c => c.verdict === 0 },
-  { id: 'up', label: '心动', test: c => c.verdict > 0 },
-  { id: 'down', label: '已弃', test: c => c.verdict < 0 },
+  { id: 'all', label: tr('全部', 'All'), test: () => true },
+  { id: 'open', label: tr('待定', 'Undecided'), test: c => c.verdict === 0 },
+  { id: 'up', label: tr('心动', 'Liked'), test: c => c.verdict > 0 },
+  { id: 'down', label: tr('已弃', 'Rejected'), test: c => c.verdict < 0 },
 ]
 
 const SORTS: { id: Sort; label: string }[] = [
-  { id: 'arrival', label: '最新在前' },
-  { id: 'rare', label: '越罕见越前' },
-  { id: 'clean', label: '越干净越前' },
+  { id: 'arrival', label: tr('最新在前', 'Newest first') },
+  { id: 'rare', label: tr('越罕见越前', 'Rarest first') },
+  { id: 'clean', label: tr('越干净越前', 'Fewest findings first') },
 ]
 
 const PHASE_NOTE: Record<string, string> = {
-  waiting: '已发出请求',
-  thinking: '正在推理',
-  writing: '正在写',
+  waiting: tr('已发出请求', 'Request sent'),
+  thinking: tr('正在推理', 'Thinking'),
+  writing: tr('正在写', 'Writing'),
 }
 
 /**
@@ -61,7 +62,7 @@ function GenerationStatus({ batches, strategyById }: { batches: Batch[]; strateg
   const phases = running.map(b => b.phase ?? 'waiting')
   const phase =
     batches.length > 0 && running.length === 0
-      ? '正在收尾'
+      ? tr('正在收尾', 'Finishing')
       : PHASE_NOTE[phases.includes('writing') ? 'writing' : phases.includes('thinking') ? 'thinking' : 'waiting']
   return (
     <Tip
@@ -78,7 +79,7 @@ function GenerationStatus({ batches, strategyById }: { batches: Batch[]; strateg
         ) : null
       }
     >
-      {running.length > 1 && <span className="dock__count">{running.length} 批 · </span>}
+      {running.length > 1 && <span className="dock__count">{tr(`${running.length} 批 · `, `${running.length} batches · `)}</span>}
       {phase} <b>{elapsed}s</b>
     </Tip>
   )
@@ -101,10 +102,12 @@ function matches(c: Candidate, needle: string): boolean {
  * it looked (第 2 批「语言」里) and what it looked for (心动、npm 查无记录).
  */
 function emptyLine(scope: (string | false | null)[], wants: (string | false | null)[]): string {
-  const where = scope.filter(Boolean).join('')
+  const where = scope.filter(Boolean)
   const what = wants.filter(Boolean)
+  // English reads the filters back as the chips they are; Chinese folds them into one sentence.
+  if (lang === 'en') return where.length + what.length ? `No names match ${[...where, ...what].join(' · ')}.` : 'No names.'
   const kinds = what.length > 1 ? `${what.slice(0, -1).join('、')}且${what.at(-1)}` : what.join('')
-  return `${where ? `${where}里` : ''}没有${kinds}${kinds ? '的' : ''}名字。`
+  return `${where.length ? `${where.join('')}里` : ''}没有${kinds}${kinds ? '的' : ''}名字。`
 }
 
 type Facet = 'lane' | 'origin' | 'batch' | 'checks'
@@ -292,12 +295,14 @@ export function Workspace({
     for (const b of batches) {
       if (asked.has(b.generation)) continue
       const parent = b.parentId ? candidates.find(c => c.id === b.parentId)?.name : undefined
-      const said = parent ? `照 ${parent}` : b.direction
+      const said = parent ? tr(`照 ${parent}`, `From ${parent}`) : b.direction
       if (said) asked.set(b.generation, said.length > 16 ? `${said.slice(0, 15)}…` : said)
     }
     return present.generations.map(g => ({
       id: String(g),
-      label: asked.has(g) ? `第 ${g} 批 · ${asked.get(g)}` : `第 ${g} 批`,
+      label: asked.has(g)
+        ? tr(`第 ${g} 批 · ${asked.get(g)}`, `Batch ${g} · ${asked.get(g)}`)
+        : tr(`第 ${g} 批`, `Batch ${g}`),
       n: counts.tally.get(`g:${g}`) ?? 0,
     }))
   }, [present, counts, batches, candidates])
@@ -535,28 +540,28 @@ export function Workspace({
         {/* Two lines only when there are two things to say. A session nobody
             named has one sentence, and it goes on the top line. */}
         <div className="topbar__title">
-          <button className="topbar__h" onClick={() => openDrawer('brief')} title="看完整简介">
+          <button className="topbar__h" onClick={() => openDrawer('brief')} title={tr('看完整简介', 'View full brief')}>
             {session.title || session.brief}
           </button>
           {session.title && (
-            <button className="topbar__brief" onClick={() => openDrawer('brief')} title="看完整简介">
+            <button className="topbar__brief" onClick={() => openDrawer('brief')} title={tr('看完整简介', 'View full brief')}>
               {session.brief}
             </button>
           )}
         </div>
         <div className="topbar__acts">
           <button className="btn btn--ghost btn--sm" onClick={() => openDrawer('taste')}>
-            口味 <kbd>T</kbd>
+            {tr('口味', 'Taste')} <kbd>T</kbd>
           </button>
           <button className="btn btn--ghost btn--sm" onClick={() => openDrawer('priors')}>
-            规则 <kbd>P</kbd>
+            {tr('规则', 'Leanings')} <kbd>P</kbd>
           </button>
           <a
             className="btn btn--ghost btn--sm"
             href={`/api/sessions/${session.id}/export?format=md`}
             style={{ textDecoration: 'none' }}
           >
-            导出
+            {tr('导出', 'Export')}
           </a>
         </div>
       </div>
@@ -592,10 +597,10 @@ export function Workspace({
               captureGrid()
               setOrigin(id)
             }}
-            label="词族"
-            clearLabel="不限"
+            label={tr('词族', 'Family')}
+            clearLabel={tr('不限', 'Any')}
             clearN={counts.anyOrigin}
-            title="按词族筛选"
+            title={tr('按词族筛选', 'Filter by family')}
           />
         )}
         {batchOptions.length > 1 && (
@@ -608,10 +613,10 @@ export function Workspace({
               captureGrid()
               setBatch(g)
             }}
-            label="批次"
-            clearLabel="不限"
+            label={tr('批次', 'Batch')}
+            clearLabel={tr('不限', 'Any')}
             clearN={counts.anyBatch}
-            title="按批次筛选"
+            title={tr('按批次筛选', 'Filter by batch')}
           />
         )}
         {checkOptions.length > 0 && (
@@ -623,10 +628,10 @@ export function Workspace({
               captureGrid()
               setConditions(cs => (id === null ? [] : cs.includes(id) ? cs.filter(x => x !== id) : [...cs, id]))
             }}
-            label="查重"
-            clearLabel="不限"
+            label={tr('查重', 'Checks')}
+            clearLabel={tr('不限', 'Any')}
             clearN={counts.anyCheck}
-            title="按查重结果筛选"
+            title={tr('按查重结果筛选', 'Filter by check result')}
           />
         )}
 
@@ -642,7 +647,7 @@ export function Workspace({
               ref={findRef}
               className="filters__find"
               value={find}
-              placeholder="搜索 /"
+              placeholder={tr('搜索 /', 'Search /')}
               onChange={e => {
                 captureGrid()
                 setFind(e.target.value)
@@ -666,7 +671,7 @@ export function Workspace({
             {find && (
               <button
                 className="filters__clear"
-                aria-label="清空搜索"
+                aria-label={tr('清空搜索', 'Clear search')}
                 onClick={() => {
                   captureGrid()
                   setFind('')
@@ -691,7 +696,7 @@ export function Workspace({
               }
             }}
             align="right"
-            title="排序"
+            title={tr('排序', 'Sort')}
           />
         </span>
       </div>
@@ -771,23 +776,23 @@ export function Workspace({
             {candidates.length === 0 ? <div className="empty__g empty__g--mark">N</div> : <div className="empty__g">∅</div>}
             <p>
               {candidates.length === 0
-                ? '第一批正在生成。'
+                ? tr('第一批正在生成。', 'The first batch is generating.')
                 : emptyLine(
                     [
-                      batch !== null && `第 ${batch} 批`,
+                      batch !== null && tr(`第 ${batch} 批`, `Batch ${batch}`),
                       origin && originOptions.some(o => o.id === origin) &&
-                        `「${originOptions.find(o => o.id === origin)!.label}」`,
+                        tr(`「${originOptions.find(o => o.id === origin)!.label}」`, `“${originOptions.find(o => o.id === origin)!.label}”`),
                     ],
                     [
                       lane !== 'all' && LANES.find(l => l.id === lane)!.label,
                       ...CHECK_CONDITIONS.filter(k => conditions.includes(k.id)).map(k => k.phrase ?? k.label),
-                      find.trim() && `含“${find.trim()}”`,
+                      find.trim() && tr(`含“${find.trim()}”`, `contains “${find.trim()}”`),
                     ],
                   )}
             </p>
             {candidates.length > 0 && (
               <button className="btn btn--ghost btn--sm empty__act" onClick={clearFilters}>
-                清除筛选
+                {tr('清除筛选', 'Clear filters')}
               </button>
             )}
           </div>
@@ -796,31 +801,31 @@ export function Workspace({
 
       <div className="dock" ref={dockRef}>
         <span className="dock__hint">
-          {candidates.length} 个候选 · <b>{candidates.filter(c => c.verdict > 0).length}</b> 个心动
+          {tr(`${candidates.length} 个候选 · ${candidates.filter(c => c.verdict > 0).length} 个心动`, `${candidates.length} ${candidates.length === 1 ? 'name' : 'names'} · ${candidates.filter(c => c.verdict > 0).length} liked`)}
         </span>
         {/* What the threshold ate is a footnote to the count, not a filter, so
             it sits with the count rather than in a row of its own. */}
         {a.discards.length > 0 && (
           <button className="dock__discards" onClick={() => openDrawer('discards')}>
-            · 丢掉 <s>{a.discards.length}</s> 个
+            {tr(`· 丢掉 ${a.discards.length} 个`, `· ${a.discards.length} dropped`)}
           </button>
         )}
         {running ? (
           <>
             <GenerationStatus batches={liveBatches} strategyById={a.strategyById} />
             <button className="dock__act dock__act--stop" onClick={() => a.cancel()}>
-              停止
+              {tr('停止', 'Stop')}
             </button>
           </>
         ) : (
           <span className="dock__split">
             <button className="dock__act" onClick={() => a.generate()}>
-              再来一批 <kbd>G</kbd>
+              {tr('再来一批', 'Another batch')} <kbd>G</kbd>
             </button>
             <button
               className="dock__act dock__more"
-              aria-label="指定方向或方法再来一批"
-              title="指定方向或方法 ⇧G"
+              aria-label={tr('指定方向或方法再来一批', 'Another batch with a direction or method')}
+              title={tr('指定方向或方法 ⇧G', 'Set a direction or method ⇧G')}
               aria-expanded={composing}
               onClick={() => setComposing(c => !c)}
             >

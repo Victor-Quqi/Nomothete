@@ -1,3 +1,4 @@
+import { tr } from './i18n.ts'
 import type { CheckResult } from './types.ts'
 import { REGISTRIES } from './normalize.ts'
 import { npmNeighbourhood } from '../shared/npmNeighbourhood.ts'
@@ -32,9 +33,9 @@ export function byCheckOrder(a: CheckResult, b: CheckResult): number {
  * not a setup task, so it reads as one and carries no configuration advice.
  */
 export function presentCheck(c: CheckResult, name?: string): CheckResult {
-  if (c.checkId === 'github' && c.data?.rateLimited) return { ...c, headline: '暂时限流', detail: undefined }
+  if (c.checkId === 'github' && c.data?.rateLimited) return { ...c, headline: tr('暂时限流', 'Temporarily rate limited'), detail: undefined }
   if (c.checkId === 'neighbourhood' && c.data && name) {
-    const { status, headline } = npmNeighbourhood(c.data, name)
+    const { status, headline } = npmNeighbourhood(c.data, name, tr)
     return { ...c, status, headline, detail: undefined }
   }
   return c
@@ -75,9 +76,9 @@ export function deepDone(checks: CheckResult[]): boolean {
  * place the same fact is stated.
  */
 export const CHECK_CONDITIONS: { id: string; label: string; /** Inside 没有…的名字, where the label does not read. */ phrase?: string }[] = [
-  { id: 'quiet', label: '没有发现', phrase: '查重没有发现' },
-  ...REGISTRIES.map(r => ({ id: r.id, label: `${r.label} 查无记录` })),
-  { id: 'com', label: '.com 查无注册记录' },
+  { id: 'quiet', label: tr('没有发现', 'No findings'), phrase: tr('查重没有发现', 'No findings') },
+  ...REGISTRIES.map(r => ({ id: r.id, label: tr(`${r.label} 查无记录`, `${r.label}: no record`) })),
+  { id: 'com', label: tr('.com 查无注册记录', '.com: no record') },
 ]
 
 /**

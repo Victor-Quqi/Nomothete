@@ -3,8 +3,12 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setLang } from '../i18n.ts'
 import { npmNeighbourhood } from '../../shared/npmNeighbourhood.ts'
 import { groupChecks, presentCheck } from '../../web/checks.ts'
+import { tr } from '../../web/i18n.ts'
+
+const zh = (text: string) => text
 
 test('npm package matches exclude owner-only hits in both current and legacy data', () => {
   const names = [
@@ -13,7 +17,7 @@ test('npm package matches exclude owner-only hits in both current and legacy dat
     'kentico-cloud-delivery-sdk-symbio',
   ]
   for (const data of [{ total: 7, names }, { total: 7, nearMisses: names, exactNorm: [] }]) {
-    const result = npmNeighbourhood(data, 'Symbio')
+    const result = npmNeighbourhood(data, 'Symbio', zh)
     assert.deepEqual(result.names, ['create-symbio-app', 'kentico-cloud-delivery-sdk-symbio'])
     assert.equal(result.headline, 'npm 结果中有 2 个相近包名')
     const stale = {
@@ -23,16 +27,18 @@ test('npm package matches exclude owner-only hits in both current and legacy dat
     assert.equal(presentCheck(stale, 'Symbio').detail, undefined)
     const groups = groupChecks([stale], 'Symbio')
     assert.equal(groups.findings.length, 0)
-    assert.equal(groups.quiet[0].headline, result.headline)
+    // The page words it in its own language, from the same facts.
+    assert.equal(groups.quiet[0].headline, npmNeighbourhood(data, 'Symbio', tr).headline)
   }
-  assert.deepEqual(npmNeighbourhood({ names: ['@owner/symbio', 'symbio', 'symbio'] }, 'Symbio').names,
+  assert.deepEqual(npmNeighbourhood({ names: ['@owner/symbio', 'symbio', 'symbio'] }, 'Symbio', zh).names,
     ['@owner/symbio', 'symbio'])
-  assert.deepEqual(npmNeighbourhood({ total: 500, names: ['@symbio/headless'] }, 'Symbio'), {
+  assert.deepEqual(npmNeighbourhood({ total: 500, names: ['@symbio/headless'] }, 'Symbio', zh), {
     names: [], status: 'clear', headline: 'npm 返回结果中无相近包名',
   })
 })
 
 test('npm search retains all returned packages through storage, including non-name matches', async t => {
+  setLang('zh')
   const dir = mkdtempSync(join(tmpdir(), 'nomothete-neighbourhood-'))
   process.env.NOMOTHETE_DB = join(dir, 'test.db')
   const { closeDb } = await import('../db.ts')

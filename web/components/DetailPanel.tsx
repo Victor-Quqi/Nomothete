@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { useEffect, useMemo, useState } from 'react'
 import { NO_CHECKS, groupChecks } from '../checks.ts'
 import { REGISTRIES, registryForm } from '../normalize.ts'
@@ -65,7 +66,7 @@ export function DetailPanel({
       if (form === candidate.name) continue
       groups.set(form, [...(groups.get(form) ?? []), r.label])
     }
-    return [...groups].map(([form, labels]) => ({ form, who: labels.join('、') }))
+    return [...groups].map(([form, labels]) => ({ form, who: labels.join(tr('、', ', ')) }))
   }, [candidate.name])
 
   const checks = candidate.checks ?? NO_CHECKS
@@ -93,7 +94,7 @@ export function DetailPanel({
       {forms.length > 0 && (
         <div className="detail__forms">
           {forms.map(f => (
-            <button className="detail__form" key={f.form} aria-label={`复制 ${f.who} 上的写法 ${f.form}`} title="复制" onClick={() => copy(f.form)}>
+            <button className="detail__form" key={f.form} aria-label={tr(`复制 ${f.who} 上的写法 ${f.form}`, `Copy ${f.form}, the spelling used on ${f.who}`)} title={tr('复制', 'Copy')} onClick={() => copy(f.form)}>
               <b>{f.who}</b>
               <code>{f.form}</code>
               <span className="detail__form-copy">{copied === f.form ? '✓' : '⧉'}</span>
@@ -109,7 +110,7 @@ export function DetailPanel({
       <div className="detail__verdict">
         <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
         <button className="btn btn--ghost btn--sm" disabled={!onFollow} onClick={onFollow}>
-          照这个名字再来一批 <kbd>F</kbd>
+          {tr('照这个名字再来一批', 'Another batch from this name')} <kbd>F</kbd>
         </button>
       </div>
 
@@ -127,12 +128,12 @@ export function DetailPanel({
         />
       </div>
 
-      <label className="detail__note-label" htmlFor="candidate-note">备注</label>
+      <label className="detail__note-label" htmlFor="candidate-note">{tr('备注', 'Note')}</label>
       <textarea
         id="candidate-note"
         className="detail__note"
         value={draft}
-        placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
+        placeholder={tr('为什么喜欢 / 不喜欢。下一批会参考这句话。', 'Why you like or dislike it. The next batch will use this note.')}
         onChange={e => setDraft(e.target.value)}
         onBlur={() => draft !== (candidate.note ?? '') && onNote(draft)}
       />

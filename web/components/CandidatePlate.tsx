@@ -9,6 +9,7 @@ import { isMute, speakName } from '../speak.ts'
 import { SayButton } from './SayButton.tsx'
 import { scrollToPlate } from './scrollToPlate.ts'
 import { discrepancyLine } from '../verify.ts'
+import { tr } from '../i18n.ts'
 import type { Bootstrap, Candidate, Family, StrategyInfo, Verdict } from '../types.ts'
 
 const VERDICT_CLASS: Record<number, string> = {
@@ -150,7 +151,7 @@ function PlateInner({
   const checks = candidate.checks ?? NO_CHECKS
   // The slow tier starts on its own after a ▲, and the drawer's button is the
   // other way in. Either way the plate says so while it runs.
-  const pending = checks.length === 0 ? '正在检查…' : checking ? '正在查注册表和 GitHub…' : null
+  const pending = checks.length === 0 ? tr('正在检查…', 'Checking…') : checking ? tr('正在查注册表和 GitHub…', 'Checking registries and GitHub…') : null
   // Liking a name is not the price of checking it, so the offer stays on the
   // card — in the head, with the card's other quiet verbs, out of sight until
   // the plate has focus. It is a verb, not a finding, and never sat well
@@ -237,7 +238,7 @@ function PlateInner({
             onClick={() => onRecheck(candidate.id)}
             // An unlabelled glyph needs one thing said: what pressing it does.
             // That a ▲ starts the same run is the drawer's line, and it says it.
-            content={<b>查{waitingLabels(manifest) || '剩下几项慢的'}</b>}
+            content={<b>{tr('查', 'Check ')}{waitingLabels(manifest) || tr('剩下几项慢的', 'the slow ones')}</b>}
           >
             <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
               <circle cx="6.9" cy="6.9" r="4.1" stroke="currentColor" strokeWidth="1.3" fill="none" />
@@ -256,7 +257,7 @@ function PlateInner({
           onClick={speak}
           className="plate__say"
         />
-        <button className="plate__copy" onClick={copy} title="复制名字" aria-label="复制名字">
+        <button className="plate__copy" onClick={copy} title={tr('复制名字', 'Copy name')} aria-label={tr('复制名字', 'Copy name')}>
           {copied ? '✓' : '⧉'}
         </button>
       </div>
@@ -271,7 +272,7 @@ function PlateInner({
             content={
               <>
                 <p>{strategy.brief}</p>
-                <em>按这个思路再来一批</em>
+                <em>{tr('按这个思路再来一批', 'Another batch from this method')}</em>
               </>
             }
           >
@@ -284,8 +285,8 @@ function PlateInner({
           className="rarity"
           content={
             <>
-              <b>罕见度</b>
-              <p>另一个助手拿到同一份简介，想出同一个名字的可能性越低，这里越满。</p>
+              <b>{tr('罕见度', 'Rarity')}</b>
+              <p>{tr('另一个助手拿到同一份简介，想出同一个名字的可能性越低，这里越满。', 'The less likely another assistant is to come up with the same name from the same brief, the fuller this is.')}</p>
             </>
           }
         >
@@ -311,14 +312,14 @@ function PlateInner({
       <div className="plate__foot">
         <VerdictDial verdict={candidate.verdict} onChange={v => onVerdict(candidate.id, v)} />
         <button className="btn btn--ghost btn--sm" onClick={open}>
-          详情
+          {tr('详情', 'Details')}
         </button>
         <button
           className="plate__note-btn"
           data-has={!!candidate.note}
           onClick={() => setNoteOpen(o => !o)}
         >
-          {candidate.note ? '备注 ✎' : '写备注'}
+          {candidate.note ? tr('备注 ✎', 'Note ✎') : tr('写备注', 'Add note')}
         </button>
       </div>
 
@@ -333,7 +334,7 @@ function PlateInner({
             transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="plate__second">
-              <span>刚看到就否掉了。</span>
+              <span>{tr('刚看到就否掉了。', 'Rejected on first look.')}</span>
               <button
                 className="btn btn--ghost btn--sm"
                 onClick={() => {
@@ -341,10 +342,10 @@ function PlateInner({
                   setSecondLook(false)
                 }}
               >
-                改成未定
+                {tr('改成未定', 'Mark undecided')}
               </button>
               <button className="plate__second-no" onClick={() => setSecondLook(false)}>
-                保持
+                {tr('保持', 'Keep')}
               </button>
             </div>
           </motion.div>
@@ -363,7 +364,7 @@ function PlateInner({
               <textarea
                 autoFocus
                 value={draft}
-                placeholder="为什么喜欢 / 不喜欢。下一批会参考这句话。"
+                placeholder={tr('为什么喜欢 / 不喜欢。下一批会参考这句话。', 'Why you like or dislike it. The next batch will use this note.')}
                 onChange={e => setDraft(e.target.value)}
                 onBlur={() => {
                   if (draft !== (candidate.note ?? '')) onNote(candidate.id, draft)

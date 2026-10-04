@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
+import { lang, rememberLang, tr, type Lang } from './i18n.ts'
 import type {
   AppSettings,
   Batch,
@@ -35,6 +36,14 @@ export interface Toast {
 
 /** Same glyphs the dial uses, so an undo toast names what you will see. */
 const VERDICT_GLYPH: Record<number, string> = { 2: '▲▲', 1: '▲', 0: '·', [-1]: '▼', [-2]: '▼▼' }
+
+/**
+ * Start over in another language. Without storage the reload would land on the
+ * browser's language again, so it stays put.
+ */
+function switchLang(next: Lang) {
+  if (rememberLang(next) && next !== lang) location.reload()
+}
 
 function hashSessionId(): string | null {
   const m = /^#\/s\/([A-Za-z0-9_-]+)/.exec(window.location.hash)
@@ -87,6 +96,10 @@ export function useAtelier() {
     api
       .bootstrap()
       .then(b => {
+        // The server's language wins: the payload's labels are already in it,
+        // and the system it runs on is a better guess than the browser's list
+        // of languages for websites.
+        if (b.settings.language !== lang) switchLang(b.settings.language)
         setBoot(b)
         setSessions(b.sessions)
       })
@@ -217,7 +230,7 @@ export function useAtelier() {
 
         case 'batch:failed':
           setBatches(bs => bs.map(b => (b.id === event.batchId ? { ...b, state: 'failed', error: event.error } : b)))
-          if (event.error !== '已取消') toast(`一批失败了：${event.error}`, 'error')
+          if (event.error !== tr('已取消', 'Cancelled')) toast(tr(`一批失败了：${event.error}`, `Batch failed: ${event.error}`), 'error')
           break
 
         case 'candidate':
@@ -462,12 +475,18 @@ export function useAtelier() {
   const undo = useCallback(async () => {
     const last = undoStack.current.pop()
     if (!last) {
-      toast('没有可以撤回的评价', 'plain')
+      toast(tr('没有可以撤回的评价', 'Nothing to undo'), 'plain')
       return
     }
     const now = candidatesRef.current.find(c => c.id === last.candidateId)
     if (!now) return
-    toast(last.from === 0 ? `${last.name} 退回未定` : `${last.name} 改回 ${VERDICT_GLYPH[last.from]}`, 'plain')
+    toast(
+      tr(
+        last.from === 0 ? `${last.name} 退回未定` : `${last.name} 改回 ${VERDICT_GLYPH[last.from]}`,
+        last.from === 0 ? `${last.name} returned to Undecided` : `${last.name} changed back to ${VERDICT_GLYPH[last.from]}`,
+      ),
+      'plain',
+    )
     await pushVerdict(last.candidateId, last.from, now.verdict)
   }, [pushVerdict, toast])
 
@@ -543,7 +562,7 @@ export function useAtelier() {
       await api.deleteSession(id)
       setSessions(ss => ss.filter(s => s.id !== id))
       if (id === hashSessionId()) open(null)
-      toast('会话已删除', 'plain')
+      toast(tr('会话已删除', 'Session deleted'), 'plain')
     },
     [open, toast],
   )
@@ -593,6 +612,18 @@ export function useAtelier() {
     [toast],
   )
 
+  const setLanguage = useCallback(
+    async (language: Lang) => {
+      try {
+        await api.saveSettings({ language })
+        switchLang(language)
+      } catch (err) {
+        toast((err as Error).message, 'error')
+      }
+    },
+    [toast],
+  )
+
   /** Keeps the rail honest after the settings drawer changes the endpoint. */
   const setProvider = useCallback((provider: ProviderStatus) => {
     setBoot(b => (b ? { ...b, provider } : b))
@@ -636,6 +667,7 @@ export function useAtelier() {
     removeSession,
     setProvider,
     setAutoVerify,
+    setLanguage,
     savingSettings,
     toast,
   }

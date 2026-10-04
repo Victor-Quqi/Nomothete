@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { tr } from '../i18n.ts'
 
 export interface Command {
   id: string
@@ -68,7 +69,7 @@ export function CommandPalette({
             <input
               ref={input}
               value={q}
-              placeholder="做点什么…"
+              placeholder={tr('做点什么…', 'What do you want to do…')}
               onChange={e => {
                 followKeyboard.current = true
                 setQ(e.target.value)
@@ -96,7 +97,7 @@ export function CommandPalette({
               }}
             />
             <div ref={list} className="palette__list">
-              {hits.length === 0 && <div className="palette__empty">没有匹配的命令</div>}
+              {hits.length === 0 && <div className="palette__empty">{tr('没有匹配的命令', 'No matching commands')}</div>}
               {hits.map((c, idx) => (
                 <button
                   key={c.id}

@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -73,7 +74,7 @@ export function SessionMenu({ title, pinned, disabled, onRename, onPin, onDelete
       <button
         ref={trigger}
         className="rail__more"
-        aria-label={`会话「${title}」的操作`}
+        aria-label={tr(`会话「${title}」的操作`, `Session “${title}” actions`)}
         aria-haspopup="menu"
         aria-expanded={!!box}
         aria-controls={box ? id : undefined}
@@ -97,7 +98,7 @@ export function SessionMenu({ title, pinned, disabled, onRename, onPin, onDelete
           role="menu"
           tabIndex={-1}
           data-input={input}
-          aria-label="会话操作"
+          aria-label={tr('会话操作', 'Session actions')}
           style={box}
           onPointerMove={e => {
             setInput('pointer')
@@ -128,9 +129,9 @@ export function SessionMenu({ title, pinned, disabled, onRename, onPin, onDelete
             }
           }}
         >
-          <button role="menuitem" tabIndex={-1} onClick={() => choose(onRename)}><SessionIcon kind="rename" />重命名</button>
-          <button role="menuitem" tabIndex={-1} onClick={() => choose(onPin)}><SessionIcon kind={pinned ? 'unpin' : 'pin'} />{pinned ? '取消置顶' : '置顶'}</button>
-          <button role="menuitem" tabIndex={-1} className="session-menu__delete" onClick={() => choose(onDelete)}><SessionIcon kind="delete" />删除</button>
+          <button role="menuitem" tabIndex={-1} onClick={() => choose(onRename)}><SessionIcon kind="rename" />{tr('重命名', 'Rename')}</button>
+          <button role="menuitem" tabIndex={-1} onClick={() => choose(onPin)}><SessionIcon kind={pinned ? 'unpin' : 'pin'} />{pinned ? tr('取消置顶', 'Unpin') : tr('置顶', 'Pin')}</button>
+          <button role="menuitem" tabIndex={-1} className="session-menu__delete" onClick={() => choose(onDelete)}><SessionIcon kind="delete" />{tr('删除', 'Delete')}</button>
         </div>,
         document.body,
       )}

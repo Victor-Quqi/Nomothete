@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
-import { CHECK_MANIFEST, TIER_LABEL, fillMissingChecks, runChecks } from './checks/index.ts'
+import { checkManifest, fillMissingChecks, runChecks, tierLabel } from './checks/index.ts'
 import { DB_PATH, getDb } from './db.ts'
 import { env } from './env.ts'
 import { applyEnv, writeEnv } from './envfile.ts'
@@ -31,7 +31,8 @@ import { cancel, deepRunning, isRunning, startDeepChecks, startGeneration } from
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
 import { nameSession } from './naming/title.ts'
-import { getSettings, setAutoVerify } from './settings.ts'
+import { getSettings, loadLanguage, setAutoVerify, setLanguage } from './settings.ts'
+import { isLang, tr } from './i18n.ts'
 import { buildProfile, profileForPrompt } from './naming/taste.ts'
 import {
   createSession,
@@ -81,7 +82,7 @@ if (LOOPBACK_BIND) {
   api.use((req, res, next) => {
     const host = (req.headers.host ?? '').replace(/:\d+$/, '')
     if (host && !LOOPBACK_HOST.test(host)) {
-      res.status(403).json({ error: '只接受来自本机的请求。' })
+      res.status(403).json({ error: tr('只接受来自本机的请求。', 'Local requests only.') })
       return
     }
     next()
@@ -90,10 +91,15 @@ if (LOOPBACK_BIND) {
 
 api.get('/bootstrap', (_req, res) => {
   res.json({
-    strategies: STRATEGIES.map(s => ({ id: s.id, label: s.label, family: s.family, brief: s.brief })),
-    families: FAMILIES,
-    priors: PRIORS,
-    checks: CHECK_MANIFEST.map(c => ({ ...c, tierLabel: TIER_LABEL[c.tier] })),
+    strategies: STRATEGIES.map(s => ({ id: s.id, label: tr(s.label, s.labelEn), family: s.family, brief: tr(s.brief, s.briefEn) })),
+    families: FAMILIES.map(f => ({ id: f.id, label: tr(f.label, f.labelEn), hue: f.hue })),
+    priors: PRIORS.map(({ statementEn, evidenceEn, overturnedByEn, ...p }) => ({
+      ...p,
+      statement: tr(p.statement, statementEn),
+      evidence: tr(p.evidence, evidenceEn),
+      overturnedBy: tr(p.overturnedBy, overturnedByEn),
+    })),
+    checks: checkManifest().map(c => ({ ...c, tierLabel: tierLabel(c.tier) })),
     provider: providerStatus(),
     settings: getSettings(),
     sessions: listSessions(),
@@ -108,7 +114,7 @@ api.get('/sessions', (_req, res) => {
 api.post('/sessions', (req, res) => {
   const { brief, title, seeds, priors, threshold, autostart = true } = req.body ?? {}
   if (typeof brief !== 'string' || brief.trim().length < 4) {
-    res.status(400).json({ error: '先写一句项目描述。' })
+    res.status(400).json({ error: tr('先写一句项目描述。', 'Write a project brief first.') })
     return
   }
   const session = createSession({ brief: brief.trim(), title, seeds, priors, threshold })
@@ -160,7 +166,7 @@ function sessionPayload(id: string) {
 api.get('/sessions/:id', (req, res) => {
   const payload = sessionPayload(req.params.id)
   if (!payload) {
-    res.status(404).json({ error: '会话不存在' })
+    res.status(404).json({ error: tr('会话不存在', 'Session not found') })
     return
   }
   // Sessions made before there was a label, and sessions whose label was asked
@@ -194,16 +200,16 @@ async function backfillChecks(sessionId: string, candidates: Candidate[]) {
 api.patch('/sessions/:id', (req, res) => {
   const { title, priors, threshold, brief, pinned } = req.body ?? {}
   if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
-    res.status(400).json({ error: '请填写会话名' })
+    res.status(400).json({ error: tr('请填写会话名', 'Enter a session name.') })
     return
   }
   if (pinned !== undefined && typeof pinned !== 'boolean') {
-    res.status(400).json({ error: '置顶状态无效' })
+    res.status(400).json({ error: tr('置顶状态无效', 'Invalid pinned state') })
     return
   }
   const session = updateSession(req.params.id, { title: title?.trim(), priors, threshold, brief, pinned })
   if (!session) {
-    res.status(404).json({ error: '会话不存在' })
+    res.status(404).json({ error: tr('会话不存在', 'Session not found') })
     return
   }
   res.json({ session })
@@ -239,7 +245,7 @@ api.post('/sessions/:id/cancel', (req, res) => {
 api.get('/sessions/:id/taste', (req, res) => {
   const session = getSession(req.params.id)
   if (!session) {
-    res.status(404).json({ error: '会话不存在' })
+    res.status(404).json({ error: tr('会话不存在', 'Session not found') })
     return
   }
   res.json({ profile: profilePayload(listCandidates(session.id), session.seeds) })
@@ -282,13 +288,13 @@ api.get('/sessions/:id/stream', (req, res) => {
 api.post('/candidates/:id/verdict', (req, res) => {
   const raw = Number(req.body?.verdict)
   if (![-2, -1, 0, 1, 2].includes(raw)) {
-    res.status(400).json({ error: 'verdict 只能是 -2、-1、0、1、2' })
+    res.status(400).json({ error: tr('verdict 只能是 -2、-1、0、1、2', 'The mark must be -2, -1, 0, 1, or 2.') })
     return
   }
   const note = typeof req.body?.note === 'string' ? req.body.note : undefined
   const before = getCandidate(req.params.id)
   if (!before) {
-    res.status(404).json({ error: '候选不存在' })
+    res.status(404).json({ error: tr('候选不存在', 'Name not found') })
     return
   }
   const candidate = setVerdict(req.params.id, raw as Verdict, note)!
@@ -307,7 +313,7 @@ api.post('/candidates/:id/note', (req, res) => {
   const note = typeof req.body?.note === 'string' ? req.body.note : ''
   const candidate = setNote(req.params.id, note)
   if (!candidate) {
-    res.status(404).json({ error: '候选不存在' })
+    res.status(404).json({ error: tr('候选不存在', 'Name not found') })
     return
   }
   res.json({ candidate })
@@ -316,7 +322,7 @@ api.post('/candidates/:id/note', (req, res) => {
 api.post('/candidates/:id/recheck', (req, res) => {
   const candidate = getCandidate(req.params.id)
   if (!candidate) {
-    res.status(404).json({ error: '候选不存在' })
+    res.status(404).json({ error: tr('候选不存在', 'Name not found') })
     return
   }
   startDeepChecks(candidate.sessionId, candidate.id, candidate.name, true)
@@ -329,7 +335,7 @@ api.post('/candidates/:id/recheck', (req, res) => {
 api.post('/discards/:id/keep', (req, res) => {
   const candidate = keepDiscard(req.params.id)
   if (!candidate) {
-    res.status(404).json({ error: '找不到这个名字' })
+    res.status(404).json({ error: tr('找不到这个名字', 'Name not found') })
     return
   }
   publish(candidate.sessionId, { type: 'candidate', candidate })
@@ -361,7 +367,7 @@ api.get('/sessions/:id/export', (req, res) => {
     '',
     // An unnamed session's heading is already the brief; do not print it twice.
     ...(session.title ? [session.brief, ''] : []),
-    `共 ${candidates.length} 个候选，${candidates.filter(c => c.verdict > 0).length} 个心动。`,
+    tr(`共 ${candidates.length} 个候选，${candidates.filter(c => c.verdict > 0).length} 个心动。`, `${candidates.length} ${candidates.length === 1 ? 'name' : 'names'}, ${candidates.filter(c => c.verdict > 0).length} liked.`),
     '',
   ]
   for (const group of [2, 1, 0, -1, -2]) {
@@ -372,7 +378,7 @@ api.get('/sessions/:id/export', (req, res) => {
       lines.push(`### ${c.name}`)
       lines.push('', c.rationale, '')
       const checks = (c.checks ?? []).filter(k => k.status !== 'clear' || k.tier !== 'local')
-      if (checks.length) lines.push(checks.map(k => `- ${k.label}：${k.headline}`).join('\n'), '')
+      if (checks.length) lines.push(checks.map(k => tr(`- ${k.label}：${k.headline}`, `- ${k.label}: ${k.headline}`)).join('\n'), '')
       const verified = verificationLines(c.verification)
       if (verified.length) lines.push(verified.join('\n'), '')
       if (c.note) lines.push(`> ${c.note}`, '')
@@ -381,9 +387,9 @@ api.get('/sessions/:id/export', (req, res) => {
   // The drawer can afford to leave the traits as rows and the names as bars; a
   // file that leaves the session behind cannot, so spell them out here.
   if (profile.observations > 0) {
-    lines.push('## 你的口味', '', profile.statement, '')
-    if (profile.loved.length) lines.push(`- 喜欢：${profile.loved.map(l => l.name).join('、')}`)
-    if (profile.rejected.length) lines.push(`- 不喜欢：${profile.rejected.map(l => l.name).join('、')}`)
+    lines.push(tr('## 你的口味', '## Your taste'), '', profile.statement, '')
+    if (profile.loved.length) lines.push(tr(`- 喜欢：${profile.loved.map(l => l.name).join('、')}`, `- Liked: ${profile.loved.map(l => l.name).join(', ')}`))
+    if (profile.rejected.length) lines.push(tr(`- 不喜欢：${profile.rejected.map(l => l.name).join('、')}`, `- Rejected: ${profile.rejected.map(l => l.name).join(', ')}`))
     for (const t of profile.traits) lines.push(`- ${t.statement}`)
     lines.push('')
   }
@@ -430,7 +436,7 @@ const KINDS: ProviderKind[] = ['openai-chat', 'openai-responses', 'anthropic', '
 api.put('/config', (req, res) => {
   if (configSource().source === 'config-file') {
     res.status(409).json({
-      error: '当前配置来自 nomothete.config.json，它优先于 .env。改那个文件，或者把它移开。',
+      error: tr('当前配置来自 nomothete.config.json，它优先于 .env。改那个文件，或者把它移开。', 'Current configuration comes from nomothete.config.json, which takes precedence over .env. Edit that file or move it away.'),
     })
     return
   }
@@ -450,7 +456,7 @@ api.put('/config', (req, res) => {
       try {
         new URL(value)
       } catch {
-        res.status(400).json({ error: `不是一个合法地址：${value}` })
+        res.status(400).json({ error: tr(`不是一个合法地址：${value}`, `Invalid address: ${value}`) })
         return
       }
     }
@@ -473,7 +479,7 @@ api.put('/config', (req, res) => {
   if (providerKind !== undefined) {
     const value = typeof providerKind === 'string' ? providerKind.trim() : ''
     if (value && !KINDS.includes(value as ProviderKind)) {
-      res.status(400).json({ error: `未知的 provider kind：${value}` })
+      res.status(400).json({ error: tr(`未知的 provider kind：${value}`, `Unknown provider kind: ${value}`) })
       return
     }
     patch.NOMOTHETE_PROVIDER_KIND = value || null
@@ -482,7 +488,7 @@ api.put('/config', (req, res) => {
   try {
     writeEnv(patch)
   } catch (err) {
-    res.status(500).json({ error: `写不了 .env：${(err as Error).message}` })
+    res.status(500).json({ error: tr(`写不了 .env：${(err as Error).message}`, `Could not write .env: ${(err as Error).message}`) })
     return
   }
   // `loadProfiles` reads the environment on every call, so the next generation
@@ -499,20 +505,23 @@ api.get('/settings', (_req, res) => {
 })
 
 api.put('/settings', (req, res) => {
-  const { autoVerify } = req.body ?? {}
-  if (typeof autoVerify !== 'boolean') {
-    res.status(400).json({ error: 'autoVerify 只能是 true 或 false' })
+  const { autoVerify, language } = req.body ?? {}
+  if ((autoVerify !== undefined && typeof autoVerify !== 'boolean') || (language !== undefined && !isLang(language))) {
+    res.status(400).json({ error: 'autoVerify: boolean, language: "zh" | "en"' })
     return
   }
-  setAutoVerify(autoVerify)
-  if (!autoVerify) cancelAllVerifications()
+  if (language !== undefined) setLanguage(language)
+  if (autoVerify !== undefined) {
+    setAutoVerify(autoVerify)
+    if (!autoVerify) cancelAllVerifications()
+  }
   res.json(getSettings())
 })
 
 api.post('/config/test', async (_req, res) => {
   const profile = loadProfiles()[0]
   if (!profile) {
-    res.status(400).json({ error: '还没有配置模型。' })
+    res.status(400).json({ error: tr('还没有配置模型。', 'No model configured.') })
     return
   }
   res.json(await probeEndpoint(profile))
@@ -534,31 +543,32 @@ if (DIST) {
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[nomothete]', err instanceof Error ? err.message : err)
-  res.status(500).json({ error: '服务端出错' })
+  res.status(500).json({ error: tr('服务端出错', 'Server error') })
 })
 
 // A stray rejection — an aborted fetch, a provider that hangs up mid-stream —
 // must not take the whole workshop down with a session half finished.
 process.on('unhandledRejection', reason => {
-  console.error('[nomothete] 未处理的异步错误：', reason instanceof Error ? reason.message : reason)
+  console.error(tr('[nomothete] 未处理的异步错误：', '[nomothete] Unhandled async error: '), reason instanceof Error ? reason.message : reason)
 })
 
 const PORT = Number(env('PORT') ?? 5179)
 
 getDb()
+loadLanguage()
 reconcileBatches()
 
 app.listen(PORT, HOST, () => {
   const status = providerStatus()
   console.log(`\n  nomothete  ·  http://localhost:${PORT}`)
-  console.log(`  数据       ·  ${DB_PATH}`)
+  console.log(tr(`  数据       ·  ${DB_PATH}`, `  Data       ·  ${DB_PATH}`))
   console.log(
     status.configured
-      ? `  模型       ·  ${status.model} @ ${status.host}（${status.kind}）`
-      : `  模型       ·  未配置，请在界面左下角的「设置」中填写`,
+      ? tr(`  模型       ·  ${status.model} @ ${status.host}（${status.kind}）`, `  Model      ·  ${status.model} @ ${status.host} (${status.kind})`)
+      : tr(`  模型       ·  未配置，请在界面左下角的「设置」中填写`, `  Model      ·  Not configured. Enter it in “Settings” at the lower left of the interface.`),
   )
   if (!LOOPBACK_BIND) {
-    console.log(`  注意       ·  监听在 ${HOST}，同网段的人都能用这个端点花你的额度`)
+    console.log(tr(`  注意       ·  监听在 ${HOST}，同网段的人都能用这个端点花你的额度`, `  Warning    ·  Listening on ${HOST}. Anyone on your local network can use this endpoint and spend your quota.`))
   }
   console.log('')
 })

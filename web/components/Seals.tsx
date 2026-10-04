@@ -3,6 +3,7 @@ import { BeforeCommit } from './BeforeCommit.tsx'
 import { byCheckOrder, presentCheck } from '../checks.ts'
 import { linksOf } from './CheckList.tsx'
 import { Tip } from './Tip.tsx'
+import { tr } from '../i18n.ts'
 import type { CheckResult } from '../types.ts'
 
 /**
@@ -32,7 +33,7 @@ function tipFor(c: CheckResult, name: string): ReactNode {
     <>
       <b>{c.label}</b>
       {detail && <p>{detail}</p>}
-      {links > 0 && <em>点开看 {links} 条链接</em>}
+      {links > 0 && <em>{tr('点开看', 'View')} {links} {tr('条链接', links === 1 ? 'link' : 'links')}</em>}
     </>
   )
 }

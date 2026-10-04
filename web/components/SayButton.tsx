@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 export type SayState = 'idle' | 'on' | 'mute'
 
 /**
@@ -18,8 +19,8 @@ export function SayButton({
     <button
       className={`say${state === 'idle' ? '' : ` say--${state}`}${className ? ` ${className}` : ''}`}
       onClick={onClick}
-      title={state === 'mute' ? '这台机器上没有能读英语的语音' : '朗读'}
-      aria-label="朗读"
+      title={state === 'mute' ? tr('这台机器上没有能读英语的语音', 'No English voice is installed on this machine.') : tr('朗读', 'Say it')}
+      aria-label={tr('朗读', 'Say it')}
     >
       <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
         <path d="M2 6.2h2.6L7.8 3.4v9.2L4.6 9.8H2z" fill="currentColor" />

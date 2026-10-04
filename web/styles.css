@@ -1674,6 +1674,9 @@ kbd {
 .bars { margin-top: 6px; }
 .bar { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
 .bar__label { width: 104px; flex: none; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* English method names run three times the width of the Chinese ones: give them the whole line. */
+:lang(en) .bar { flex-wrap: wrap; row-gap: 4px; }
+:lang(en) .bar__label { width: 100%; }
 .bar__track { flex: 1; height: 5px; border-radius: 99px; background: rgb(var(--fg) / 0.06); position: relative; overflow: hidden; }
 .bar__mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--hair-2); }
 .bar__fill { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
@@ -1730,6 +1733,7 @@ kbd {
 
 /* Source, finding and supporting links have separate reading levels. */
 .found { display: grid; grid-template-columns: 62px minmax(0, 1fr) 18px; column-gap: 10px; row-gap: 6px; padding: 10px 0; align-items: baseline; }
+:lang(en) .found { grid-template-columns: 72px minmax(0, 1fr) 18px; }
 .found__head { display: contents; }
 .found__source { grid-column: 1; grid-row: 1; color: var(--text-4); font-size: 12px; line-height: 1.8; }
 .found[data-status='taken'] .found__source, .found[data-status='blocked'] .found__source { color: var(--rust); }
@@ -1976,8 +1980,9 @@ kbd {
   color: var(--text);
 }
 .composer__direction::placeholder { color: var(--text-4); }
-.composer__families { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; }
-.composer__family { display: grid; grid-template-columns: 46px 1fr; align-items: start; }
+/* One grid for every row, so the strategy chips line up after the longest family label. */
+.composer__families { display: grid; grid-template-columns: max-content 1fr; gap: 7px 10px; align-items: start; max-height: 46vh; overflow-y: auto; }
+.composer__family { display: contents; }
 .composer__family-label {
   display: inline-flex;
   align-items: center;
@@ -2212,6 +2217,8 @@ input[type='range']:focus-visible::-moz-range-thumb {
   line-height: 1.4;
   transition: color 0.18s var(--ease-out), background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
 }
+.lang-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lang-pick button { padding: 11px 6px; }
 .theme-pick button:hover { background: rgb(var(--fg) / 0.035); color: var(--text-2); border-color: var(--hair-2); }
 .theme-pick button[aria-pressed='true'] { color: var(--mark-text); background: var(--mark-wash); border-color: var(--mark-edge); }
 

@@ -2,6 +2,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { activeProfile, resolveModel } from '../llm.ts'
+import { tr } from '../i18n.ts'
 import type { ClaimFinding, ClaimVerdict, SourceRef } from './store.ts'
 
 export interface Claim { text: string; query: string }
@@ -59,14 +60,14 @@ export function bindFindings(claims: Claim[], judgements: Judgement[], evidence:
   return claims.map((claim, i) => {
     const j = judgements.find(item => item.claim === i + 1)
     const base = { text: claim.text, query: claim.query }
-    if (!j) return { ...base, verdict: 'failed', reason: '模型未返回这条说法的核查结果', sources: [] }
+    if (!j) return { ...base, verdict: 'failed', reason: tr('模型未返回这条说法的核查结果', 'The model returned no source check result for this claim.'), sources: [] }
     const sources: SourceRef[] = []
     for (const citation of j.citations) {
       const e = byId.get(citation.source)
       if (e) sources.push({ url: e.url, title: e.title, excerpt: citation.quote })
     }
     if ((j.verdict === 'supported' || j.verdict === 'contradicted') && !sources.length) {
-      return { ...base, verdict: 'failed', reason: '模型未关联到已读取的来源', sources: [] }
+      return { ...base, verdict: 'failed', reason: tr('模型未关联到已读取的来源', 'The model did not link this claim to a source that was read.'), sources: [] }
     }
     return { ...base, verdict: j.verdict, sources,
       ...(j.verdict === 'failed' || j.verdict === 'insufficient' ? { reason: j.note } : { note: j.note }),

@@ -16,6 +16,7 @@ import { Workspace, type DrawerKind } from './components/Workspace.tsx'
 import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from './rarity.ts'
 import { useAtelier } from './store.ts'
 import { useTheme } from './theme.ts'
+import { tr } from './i18n.ts'
 
 interface DrawerState {
   kind: DrawerKind
@@ -23,33 +24,33 @@ interface DrawerState {
 }
 
 const DRAWER_TITLE: Record<DrawerKind, string> = {
-  detail: '候选',
-  taste: '你的口味',
-  priors: '取名规则',
-  brief: '项目简介',
-  keys: '快捷键',
-  settings: '设置',
-  discards: '丢掉的名字',
+  detail: tr('候选', 'Name'),
+  taste: tr('你的口味', 'Your taste'),
+  priors: tr('取名规则', 'Leanings'),
+  brief: tr('项目简介', 'Project brief'),
+  keys: tr('快捷键', 'Shortcuts'),
+  settings: tr('设置', 'Settings'),
+  discards: tr('丢掉的名字', 'Dropped names'),
 }
 
 const KEYS: [string, string][] = [
-  ['j / k　↑ / ↓', '上一个 / 下一个'],
-  ['1 2 3 4 5', '从 ▼▼ 到 ▲▲ 评价，评完自动到下一个'],
-  ['u', '撤销上一次评价'],
-  ['⇧J', '跳到下一个还没评价的'],
-  ['↵', '打开 / 收起详情'],
-  ['n', '写备注'],
-  ['s', '朗读名字'],
-  ['c', '复制名字'],
-  ['g', '再来一批'],
-  ['⇧G', '写方向、挑方法，再来一批'],
-  ['f', '照这个名字再来一批'],
-  ['e', '导出 Markdown'],
-  ['/', '搜索。↵ 跳到第一个结果，Esc 清空'],
-  ['t', '你的口味'],
-  ['p', '取名规则'],
-  ['⌘K / Ctrl+K', '命令面板'],
-  ['Esc', '取消选中 / 关掉面板'],
+  ['j / k　↑ / ↓', tr('上一个 / 下一个', 'Previous / next')],
+  ['1 2 3 4 5', tr('从 ▼▼ 到 ▲▲ 评价，评完自动到下一个', 'Mark from ▼▼ to ▲▲, then move to the next')],
+  ['u', tr('撤销上一次评价', 'Undo the last mark')],
+  ['⇧J', tr('跳到下一个还没评价的', 'Jump to the next unmarked name')],
+  ['↵', tr('打开 / 收起详情', 'Open / close details')],
+  ['n', tr('写备注', 'Add a note')],
+  ['s', tr('朗读名字', 'Say the name')],
+  ['c', tr('复制名字', 'Copy the name')],
+  ['g', tr('再来一批', 'Another batch')],
+  ['⇧G', tr('写方向、挑方法，再来一批', 'Set a direction, choose methods, and make another batch')],
+  ['f', tr('照这个名字再来一批', 'Another batch from this name')],
+  ['e', tr('导出 Markdown', 'Export Markdown')],
+  ['/', tr('搜索。↵ 跳到第一个结果，Esc 清空', 'Search. ↵ jumps to the first result; Esc clears it')],
+  ['t', tr('你的口味', 'Your taste')],
+  ['p', tr('取名规则', 'Leanings')],
+  ['⌘K / Ctrl+K', tr('命令面板', 'Command palette')],
+  ['Esc', tr('取消选中 / 关掉面板', 'Clear selection / close panel')],
 ]
 
 export function App() {
@@ -88,37 +89,37 @@ export function App() {
 
   const commands = useMemo<Command[]>(() => {
     const list: Command[] = [
-      { id: 'new', group: '会话', label: '新建命名会话', hint: 'N', run: () => a.open(null) },
-      { id: 'settings', group: '设置', label: '打开设置', run: () => openDrawer('settings') },
+      { id: 'new', group: tr('会话', 'Session'), label: tr('新建命名会话', 'New naming session'), hint: 'N', run: () => a.open(null) },
+      { id: 'settings', group: tr('设置', 'Settings'), label: tr('打开设置', 'Open settings'), run: () => openDrawer('settings') },
     ]
-    if (theme !== 'light') list.push({ id: 'theme-light', group: '外观', label: '改用浅色', run: () => setTheme('light') })
-    if (theme !== 'dark') list.push({ id: 'theme-dark', group: '外观', label: '改用深色', run: () => setTheme('dark') })
-    if (theme !== 'system') list.push({ id: 'theme-system', group: '外观', label: '跟随系统', run: () => setTheme('system') })
+    if (theme !== 'light') list.push({ id: 'theme-light', group: tr('外观', 'Appearance'), label: tr('改用浅色', 'Use light theme'), run: () => setTheme('light') })
+    if (theme !== 'dark') list.push({ id: 'theme-dark', group: tr('外观', 'Appearance'), label: tr('改用深色', 'Use dark theme'), run: () => setTheme('dark') })
+    if (theme !== 'system') list.push({ id: 'theme-system', group: tr('外观', 'Appearance'), label: tr('跟随系统', 'Follow system'), run: () => setTheme('system') })
     if (a.sessionId) {
       list.push(
-        { id: 'gen', group: '生成', label: '再来一批', hint: 'G', run: () => a.generate() },
-        { id: 'gen8', group: '生成', label: '生成一大批', run: () => a.generate({ width: 8 }) },
-        { id: 'stop', group: '生成', label: '停止', run: () => a.cancel() },
-        { id: 'taste', group: '查看', label: '你的口味', hint: 'T', run: () => openDrawer('taste') },
-        { id: 'priors', group: '查看', label: '取名规则', hint: 'P', run: () => openDrawer('priors') },
-        { id: 'brief', group: '查看', label: '项目简介', run: () => openDrawer('brief') },
-        { id: 'keys', group: '查看', label: '快捷键', hint: '?', run: () => openDrawer('keys') },
+        { id: 'gen', group: tr('生成', 'Generate'), label: tr('再来一批', 'Another batch'), hint: 'G', run: () => a.generate() },
+        { id: 'gen8', group: tr('生成', 'Generate'), label: tr('生成一大批', 'Generate a large batch'), run: () => a.generate({ width: 8 }) },
+        { id: 'stop', group: tr('生成', 'Generate'), label: tr('停止', 'Stop'), run: () => a.cancel() },
+        { id: 'taste', group: tr('查看', 'View'), label: tr('你的口味', 'Your taste'), hint: 'T', run: () => openDrawer('taste') },
+        { id: 'priors', group: tr('查看', 'View'), label: tr('取名规则', 'Leanings'), hint: 'P', run: () => openDrawer('priors') },
+        { id: 'brief', group: tr('查看', 'View'), label: tr('项目简介', 'Project brief'), run: () => openDrawer('brief') },
+        { id: 'keys', group: tr('查看', 'View'), label: tr('快捷键', 'Shortcuts'), hint: '?', run: () => openDrawer('keys') },
         {
           id: 'md',
-          group: '导出',
-          label: '导出 Markdown',
+          group: tr('导出', 'Export'),
+          label: tr('导出 Markdown', 'Export Markdown'),
           run: () => window.open(`/api/sessions/${a.sessionId}/export?format=md`, '_blank'),
         },
         {
           id: 'json',
-          group: '导出',
-          label: '导出 JSON',
+          group: tr('导出', 'Export'),
+          label: tr('导出 JSON', 'Export JSON'),
           run: () => window.open(`/api/sessions/${a.sessionId}/export?format=json`, '_blank'),
         },
         {
           id: 'del',
-          group: '会话',
-          label: '删除这个会话',
+          group: tr('会话', 'Session'),
+          label: tr('删除这个会话', 'Delete this session'),
           run: () => {
             if (a.session) setSessionAction({ kind: 'delete', id: a.session.id, title: a.session.title || a.session.brief })
           },
@@ -127,8 +128,8 @@ export function App() {
       for (const s of a.boot?.strategies ?? []) {
         list.push({
           id: `s-${s.id}`,
-          group: '换个思路',
-          label: `只用「${s.label}」生成一批`,
+          group: tr('换个思路', 'Try another method'),
+          label: tr(`只用「${s.label}」生成一批`, `Generate one batch using “${s.label}”`),
           hint: s.brief,
           run: () => a.generate({ strategyIds: [s.id] }),
         })
@@ -138,9 +139,9 @@ export function App() {
       if (s.id === a.sessionId) continue
       list.push({
         id: `open-${s.id}`,
-        group: '打开',
+        group: tr('打开', 'Open'),
         label: s.title || s.brief,
-        hint: `${s.candidateCount} 个候选`,
+        hint: tr(`${s.candidateCount} 个候选`, `${s.candidateCount} ${s.candidateCount === 1 ? 'name' : 'names'}`),
         run: () => a.open(s.id),
       })
     }
@@ -162,11 +163,11 @@ export function App() {
     return (
       <div className="opening">
         <div className="opening__inner">
-          <h1 className="opening__title">连不上服务</h1>
+          <h1 className="opening__title">{tr('连不上服务', "Can't connect to the service")}</h1>
           <div className="warnbox">
             {a.bootError}
             <br />
-            确认 <code>npm run dev</code> 或 <code>npm start</code> 仍在运行，默认端口 5179。
+            {tr('确认 ', 'Make sure ')}<code>npm run dev</code>{tr(' 或 ', ' or ')}<code>npm start</code>{tr(' 仍在运行，默认端口 5179。', ' is still running. Default port: 5179.')}
           </div>
         </div>
       </div>
@@ -276,6 +277,7 @@ export function App() {
             autoVerify={a.boot?.settings.autoVerify ?? true}
             onAutoVerify={a.setAutoVerify}
             savingAutoVerify={a.savingSettings}
+            onLanguage={a.setLanguage}
           />
         )}
 
@@ -285,10 +287,10 @@ export function App() {
 
         {drawer?.kind === 'priors' && a.boot && a.session && (
           <>
-            <p className="drawer__lead">关掉哪条，下一批就不再遵守它。</p>
+            <p className="drawer__lead">{tr('关掉哪条，下一批就不再遵守它。', 'Turn off a leaning to stop using it in the next batch.')}</p>
             <PriorDossier priors={a.boot.priors} enabled={a.session.priors} onChange={a.setPriors} />
             <div className="section-h">
-              名字的罕见程度
+              {tr('名字的罕见程度', 'Name rarity')}
               <span>
                 {rarityWord(rarityPercent(a.session.threshold))} · {rarityPercent(a.session.threshold)}%
               </span>
@@ -312,7 +314,7 @@ export function App() {
             </p>
             {a.session.seeds.length > 0 && (
               <>
-                <div className="section-h">你填的名字</div>
+                <div className="section-h">{tr('你填的名字', 'Names you entered')}</div>
                 {a.session.seeds.map(s => (
                   <div className="trait" key={s.text}>
                     <span className="trait__arrow" data-dir={s.verdict > 0 ? 'toward' : 'away'}>

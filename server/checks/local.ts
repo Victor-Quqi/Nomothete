@@ -2,6 +2,7 @@
  * The 0 ms tier: everything answerable without leaving the machine.
  */
 import { getDb } from '../db.ts'
+import { tr } from '../i18n.ts'
 import { NORMALIZERS, REGISTRIES, registryForm, validateForRegistry } from './normalize.ts'
 import type { Check } from './types.ts'
 
@@ -12,7 +13,7 @@ import type { Check } from './types.ts'
  */
 export const localIndexCheck: Check = {
   id: 'local-index',
-  label: '重名',
+  get label() { return tr('重名', 'Seen before') },
   tier: 'local',
   when: 'always',
 
@@ -36,10 +37,12 @@ export const localIndexCheck: Check = {
     if (!hits?.length) return null
     return {
       status: 'blocked',
-      headline: `归一化后与 ${hits[0].actual} 同名`,
+      headline: tr(`按注册表规则与 ${hits[0].actual} 同名`, `Same name as ${hits[0].actual} after registry rules`),
       detail:
-        `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已存在；` +
-        `注册表不区分连字符、下划线与大小写。`,
+        tr(
+          `${hits.map(h => `${h.actual}（${h.registry}）`).join('、')} 已存在；注册表不区分连字符、下划线与大小写。`,
+          `${hits.map(h => `${h.actual} (${h.registry})`).join(', ')} already exist; registries ignore hyphens, underscores, and case.`,
+        ),
     }
   },
 }
@@ -62,7 +65,7 @@ export function rememberName(registry: string, actual: string) {
  */
 export const validityCheck: Check = {
   id: 'validity',
-  label: '名字合法性',
+  get label() { return tr('名字合法性', 'Valid name') },
   tier: 'local',
   when: 'always',
 
@@ -90,8 +93,11 @@ export const validityCheck: Check = {
       f.label ?? REGISTRIES.find(r => r.id === f.registry)?.label ?? f.registry
     return {
       status: 'invalid',
-      headline: `${failures.map(who).join('、')} 不接受`,
-      detail: failures.map(f => `${who(f)}：${f.reason}`).join('；') + '。',
+      headline: tr(`${failures.map(who).join('、')} 不接受`, `${failures.map(who).join(', ')}: rejected`),
+      detail: tr(
+        failures.map(f => `${who(f)}：${f.reason}`).join('；') + '。',
+        failures.map(f => `${who(f)}: ${f.reason}`).join('; ') + '.',
+      ),
     }
   },
 }

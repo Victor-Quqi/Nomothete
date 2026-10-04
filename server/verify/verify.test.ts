@@ -7,6 +7,8 @@ import { join } from 'node:path'
 const dir = mkdtempSync(join(tmpdir(), 'nomothete-verify-'))
 process.env.NOMOTHETE_DB = join(dir, 'test.db')
 
+const { setLang } = await import('../i18n.ts')
+
 const { closeDb } = await import('../db.ts')
 const store = await import('../store.ts')
 const settings = await import('../settings.ts')
@@ -104,6 +106,7 @@ function candidate(name = `name${++seq}`) {
 const lastFor = (id: string) => [...events].reverse().find(e => e.event.type === 'verification' && e.event.candidateId === id)?.event.verification
 
 test('binding preserves model wording and verdicts, and uses retrieved source URLs', () => {
+  setLang('zh')
   const evidence = [{ id: 'E1', url: 'https://dictionary.example/deixis', title: 'deixis', text: 'From *Greek* meaning “pointing”.' }]
   const bound = bindFindings([CLAIM], [{ claim: 1, verdict: 'supported', citations: [{ source: 'E1', quote: 'From Greek meaning "pointing".' }], note: 'Translation confirmed' }], evidence)
   assert.equal(bound[0].verdict, 'supported')
@@ -216,6 +219,7 @@ test('a stale job from before a disable and re-enable cannot overwrite the new o
 })
 
 test('no support found is insufficient; service and model failures are failed', async () => {
+  setLang('zh')
   baseline()
   verify.configureVerifier({
     judge: async () => { calls.judge++; return [{ claim: 1, verdict: 'insufficient', citations: [], note: 'No reference evidence found' }] },
@@ -377,6 +381,7 @@ test('language context reaches extraction, research and judgement, and traces fo
 })
 
 test('a full queue says so on the card and in a notice instead of dropping the request', async () => {
+  setLang('zh')
   baseline()
   const gate = deferred<Claim[]>()
   verify.configureVerifier({ extract: () => gate.promise })
@@ -401,6 +406,7 @@ test('a full queue says so on the card and in a notice instead of dropping the r
 })
 
 test('markdown export lines carry findings and source links', () => {
+  setLang('zh')
   const lines = verificationLines({
     state: 'done',
     checkedAt: 0,

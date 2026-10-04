@@ -25,6 +25,7 @@ import { z } from 'zod'
 import { runChecks } from '../checks/index.ts'
 import { publish } from '../events.ts'
 import { activeProfile, resolveModel } from '../llm.ts'
+import { lang, tr } from '../i18n.ts'
 import {
   createBatch,
   exclusionsFor,
@@ -245,8 +246,8 @@ async function runBatch(
     publish(session.id, { type: 'batch:phase', batchId: batch.id, strategyId: strategy.id, phase: next })
   }
 
-  const stalledReason = `停住了 —— ${STALL_MS / 1000}s 内没有收到任何数据`
-  const ceilingReason = `太久了 —— ${CEILING_MS / 60_000} 分钟还没写完`
+  const stalledReason = tr(`停住了 —— ${STALL_MS / 1000}s 内没有收到任何数据`, `Stalled. No data received within ${STALL_MS / 1000}s.`)
+  const ceilingReason = tr(`太久了 —— ${CEILING_MS / 60_000} 分钟还没写完`, `Timed out. Still unfinished after ${CEILING_MS / 60_000} minutes.`)
 
   let kept = 0
   let discarded = 0
@@ -263,7 +264,7 @@ async function runBatch(
       }),
       output: 'array',
       schema: CandidateSchema,
-      system: systemPrompt(hasCJK(session.brief) || session.brief.trim() === ''),
+      system: systemPrompt(session.brief.trim() ? hasCJK(session.brief) : lang() === 'zh'),
       prompt: userPrompt(session, strategy, taste, exclusions, ask),
       temperature: 1,
       abortSignal: signal,
@@ -272,7 +273,7 @@ async function runBatch(
       // so all that is wanted here is one line, and nothing at all on abort.
       onError: ({ error }) => {
         if (signal.aborted) return
-        console.error(`[nomothete] ${strategy.id} 生成出错：`, error instanceof Error ? error.message : error)
+        console.error(tr(`[nomothete] ${strategy.id} 生成出错：`, `[nomothete] ${strategy.id} generation failed: `), error instanceof Error ? error.message : error)
       },
     })
 
@@ -345,13 +346,13 @@ async function runBatch(
     }
 
     const cut = sessionSignal.aborted
-      ? '已取消'
+      ? tr('已取消', 'Cancelled')
       : stalled
         ? stalledReason
         : ceiling.aborted
           ? ceilingReason
           : seen === 0
-            ? `${MAX_ATTEMPTS} 次都只回来一个空数组 —— 是模型端的问题，不是这条策略`
+            ? tr(`${MAX_ATTEMPTS} 次都只回来一个空数组 —— 是模型端的问题，不是这条策略`, `The model returned an empty array ${MAX_ATTEMPTS} times. The problem is with the model.`)
             : null
     if (cut) {
       // Whatever arrived before the cut is kept; the thread just says why it stopped.
@@ -364,7 +365,7 @@ async function runBatch(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const reason = sessionSignal.aborted
-      ? '已取消'
+      ? tr('已取消', 'Cancelled')
       : stalled
         ? stalledReason
         : ceiling.aborted
@@ -395,11 +396,11 @@ export interface GenerateOptions {
  */
 export function startGeneration(sessionId: string, opts: GenerateOptions = {}): { generation: number; strategies: string[] } {
   const session = getSession(sessionId)
-  if (!session) throw new Error('会话不存在')
-  if (running.has(sessionId)) throw new Error('这个会话已经有一批在跑了')
+  if (!session) throw new Error(tr('会话不存在', 'Session not found'))
+  if (running.has(sessionId)) throw new Error(tr('这个会话已经有一批在跑了', 'A batch is already running for this session.'))
 
   const parent = opts.parentId ? getCandidate(opts.parentId) : null
-  if (opts.parentId && parent?.sessionId !== sessionId) throw new Error('候选不存在')
+  if (opts.parentId && parent?.sessionId !== sessionId) throw new Error(tr('候选不存在', 'Name not found'))
   const direction = opts.direction?.trim().slice(0, 200) || null
 
   const candidates = listCandidates(sessionId)
@@ -417,7 +418,7 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
         : profile.observations === 0 && candidates.length === 0
           ? seedStrategies(width)
           : pickStrategies(profile, width, recentlyUsed)
-  if (strategyIds.length === 0) throw new Error('没有可用的取名方法')
+  if (strategyIds.length === 0) throw new Error(tr('没有可用的取名方法', 'No naming methods available'))
 
   const generation = bumpGeneration(sessionId)
   const fresh = getSession(sessionId)!
@@ -450,7 +451,7 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
         publish(sessionId, {
           type: 'notice',
           level: 'error',
-          message: '这一代一个名字都没回来。多半是模型端的问题 —— 再来一批通常就好了。',
+          message: tr('这一代一个名字都没回来。多半是模型端的问题 —— 再来一批通常就好了。', 'This batch returned no names. This is likely a model problem. Another batch usually helps.'),
         })
       }
       publish(sessionId, { type: 'generation:done', generation })

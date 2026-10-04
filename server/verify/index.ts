@@ -13,6 +13,7 @@
  * result is reused until someone asks for a recheck.
  */
 import { publish as publishEvent } from '../events.ts'
+import { tr } from '../i18n.ts'
 import { autoVerifyEnabled } from '../settings.ts'
 import { STRATEGIES } from '../naming/strategies.ts'
 import {
@@ -84,7 +85,7 @@ export function requestVerification(
   if (queue.length >= MAX_QUEUED) {
     // Say so rather than drop the request. A card with a stored result keeps
     // it; one without shows the refusal, which carries the browser search link.
-    const reason = '核查排队已满，稍后重新检查'
+    const reason = tr('核查排队已满，稍后重新检查', 'The source check queue is full. Check again later.')
     if (!loadOutcome(candidate.id)) {
       markBusy(candidate.id, reason)
       deps.publish(candidate.sessionId, {
@@ -96,7 +97,7 @@ export function requestVerification(
     deps.publish(candidate.sessionId, {
       type: 'notice',
       level: 'error',
-      message: `${candidate.name}：联网核查排队已满，这次没有核查。稍后重新检查，或在详情里用浏览器搜索。`,
+      message: tr(`${candidate.name}：联网核查排队已满，这次没有核查。稍后重新检查，或在详情里用浏览器搜索。`, `${candidate.name}: The source check queue is full, so this name was not checked. Check again later or search with your browser from Details.`),
     })
     return 'busy'
   }
@@ -176,7 +177,7 @@ async function execute(job: Job) {
   } catch (err) {
     outcome = job.controller.signal.aborted
       ? null
-      : failed(timeout.aborted ? '核查超时' : err instanceof Failure || err instanceof KeenableError ? err.message : '核查出错')
+      : failed(timeout.aborted ? tr('核查超时', 'Source check timed out.') : err instanceof Failure || err instanceof KeenableError ? err.message : tr('核查出错', 'Source check failed.'))
   }
   settle(job, outcome)
 }
@@ -210,9 +211,9 @@ function failed(reason: string): Outcome {
 
 function modelFailure(err: unknown): Failure {
   const message = err instanceof Error ? err.message : ''
-  if (message.startsWith('没有配置模型')) return new Failure('没有配置模型')
-  if (message.startsWith('找不到 API key')) return new Failure('模型缺少 API key')
-  return new Failure('模型没有给出可用的结果')
+  if (message.startsWith(tr('没有配置模型', 'No model configured'))) return new Failure(tr('没有配置模型', 'No model configured'))
+  if (message.startsWith(tr('找不到 API key', 'API key not found'))) return new Failure(tr('模型缺少 API key', 'The model is missing an API key.'))
+  return new Failure(tr('模型没有给出可用的结果', 'The model returned no usable result.'))
 }
 
 async function viaModel<T>(fn: () => Promise<T>, signal: AbortSignal): Promise<T> {

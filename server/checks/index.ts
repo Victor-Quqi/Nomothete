@@ -6,6 +6,7 @@
  * whatever badges come back.
  */
 import { getDb, nowMs } from '../db.ts'
+import { tr } from '../i18n.ts'
 import { localIndexCheck, validityCheck } from './local.ts'
 import { availabilityCheck, publishabilityCheck } from './registry.ts'
 import { domainCheck, githubCheck, npmNeighbourhoodCheck } from './reach.ts'
@@ -21,12 +22,10 @@ export const CHECKS: Check[] = [
   domainCheck,
 ]
 
-export const CHECK_MANIFEST = CHECKS.map(c => ({
-  id: c.id,
-  label: c.label,
-  tier: c.tier,
-  when: c.when,
-}))
+/** What the browser is told about each check. A function: the labels follow the interface language. */
+export function checkManifest() {
+  return CHECKS.map(c => ({ id: c.id, label: c.label, tier: c.tier, when: c.when }))
+}
 
 export function persistCheck(candidateId: string, r: CheckResult) {
   getDb()
@@ -198,7 +197,7 @@ async function run(
           label: check.label,
           tier: check.tier,
           status: 'error',
-          headline: '检查失败',
+          headline: tr('检查失败', 'Check failed'),
           detail: err instanceof Error ? err.message : String(err),
         }
         persistCheck(candidateId, r)
@@ -211,4 +210,4 @@ async function run(
 }
 
 export type { Check, CheckResult, CheckStatus, CheckTier } from './types.ts'
-export { TIER_LABEL } from './types.ts'
+export { tierLabel } from './types.ts'

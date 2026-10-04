@@ -1,12 +1,13 @@
+import { tr } from '../i18n.ts'
 import { motion } from 'motion/react'
 import type { Verdict } from '../types.ts'
 
 const STOPS: { v: Verdict; glyph: string; label: string }[] = [
-  { v: -2, glyph: '▼▼', label: '不行（1）' },
-  { v: -1, glyph: '▼', label: '偏弱（2）' },
-  { v: 0, glyph: '·', label: '未定（3）' },
-  { v: 1, glyph: '▲', label: '有点意思（4）' },
-  { v: 2, glyph: '▲▲', label: '就它了（5）' },
+  { v: -2, glyph: '▼▼', label: tr('不行（1）', 'No (1)') },
+  { v: -1, glyph: '▼', label: tr('偏弱（2）', 'Not quite (2)') },
+  { v: 0, glyph: '·', label: tr('未定（3）', 'Undecided (3)') },
+  { v: 1, glyph: '▲', label: tr('有点意思（4）', 'Interested (4)') },
+  { v: 2, glyph: '▲▲', label: tr('就它了（5）', 'This one (5)') },
 ]
 
 const STEP = 33 // button width 32 + 1px gap
@@ -27,7 +28,7 @@ export function VerdictDial({
 }) {
   const index = STOPS.findIndex(s => s.v === verdict)
   return (
-    <div className="dial" data-v={verdict} role="radiogroup" aria-label="评价">
+    <div className="dial" data-v={verdict} role="radiogroup" aria-label={tr('评价', 'Mark')}>
       <motion.div
         className="dial__knob"
         initial={false}

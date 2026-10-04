@@ -11,6 +11,7 @@
  *                    requests, so it waits for a positive Verdict.
  */
 import { probe, probeAll } from './http.ts'
+import { tr } from '../i18n.ts'
 import { collisionCandidates, registryForm, validateForRegistry, type RegistryId } from './normalize.ts'
 import { rememberName } from './local.ts'
 import type { Check, CheckContext } from './types.ts'
@@ -69,7 +70,7 @@ interface RegistryAnswer {
 /** Availability across the three registries, in one badge. */
 export const availabilityCheck: Check = {
   id: 'availability',
-  label: '注册表',
+  get label() { return tr('注册表', 'Registries') },
   tier: 'free',
   when: 'always',
 
@@ -109,10 +110,16 @@ export const availabilityCheck: Check = {
 
     const headline =
       taken.length > 0
-        ? `${taken.map(t => t.label).join('、')} 已有同名`
+        ? tr(
+            `${taken.map(t => t.label).join('、')} 已有同名`,
+            `${taken.map(t => t.label).join(', ')}: name taken`,
+          )
         : failed.length === all.length
-          ? '注册表未答复'
-          : `${clear.map(c => c.label).join('、')} 查无记录`
+          ? tr('注册表未答复', 'Registries did not reply')
+          : tr(
+              `${clear.map(c => c.label).join('、')} 查无记录`,
+              `${clear.map(c => c.label).join(', ')}: no record`,
+            )
 
     // Case alone is not a different string worth reporting: every name here has
     // a capital and npm's id for it is simply the lowercase one, so `（作 …）`
@@ -126,23 +133,23 @@ export const availabilityCheck: Check = {
       (taken.length > 0 ? taken : failed.length === all.length ? all : clear).map(r => r.id),
     )
     const unsaid = all.filter(r => !named.has(r.id) || restated(r))
+    const details = unsaid.map(r => {
+      const as = restated(r) ? `（作 ${r.form}）` : ''
+      const asEn = restated(r) ? ` (as ${r.form})` : ''
+      switch (r.state) {
+        case 'taken': return { zh: `${r.label}${as}：已有同名`, en: `${r.label}${asEn}: name taken` }
+        case 'clear': return { zh: `${r.label}${as}：查无记录`, en: `${r.label}${asEn}: no record` }
+        case 'invalid': return { zh: `${r.label}：名字不合法`, en: `${r.label}: invalid name` }
+        default: return { zh: `${r.label}：查询失败`, en: `${r.label}: check failed` }
+      }
+    })
 
     return {
       status: taken.length > 0 ? 'taken' : clear.length > 0 ? 'clear' : 'error',
       headline,
       detail:
-        unsaid.length > 0
-          ? unsaid
-              .map(r => {
-                const as = restated(r) ? `（作 ${r.form}）` : ''
-                switch (r.state) {
-                  case 'taken': return `${r.label}${as}：已有同名`
-                  case 'clear': return `${r.label}${as}：查无记录`
-                  case 'invalid': return `${r.label}：名字不合法`
-                  default: return `${r.label}：查询失败`
-                }
-              })
-              .join('　')
+        details.length > 0
+          ? tr(details.map(d => d.zh).join('　'), details.map(d => d.en).join(' '))
           : undefined,
     }
   },
@@ -160,7 +167,7 @@ export const availabilityCheck: Check = {
  */
 export const publishabilityCheck: Check = {
   id: 'publishability',
-  label: '可注册性',
+  get label() { return tr('可注册性', 'Lookalikes') },
   tier: 'ratelimited',
   when: 'after-upvote',
 
@@ -202,20 +209,28 @@ export const publishabilityCheck: Check = {
         // check is only ever about the other writings. Without that word a name
         // whose exact form is taken shows 「已有同名」 and 「N 种写法均查无记录」
         // side by side and reads as a contradiction.
-        headline: `另外 ${probedTotal} 种写法也查无记录`,
+        headline: tr(
+          `另外 ${probedTotal} 种写法也查无记录`,
+          `${probedTotal} other spellings: no record either`,
+        ),
         // What "写法" means, in the two examples that make it obvious. The
         // headline cannot carry it, and without it the pill is a number about
         // nothing.
-        detail: 'npm 把 react-native 和 reactnative、PyPI 把 lion 和 l10n 当成同一个名字。',
+        detail: tr(
+          'npm 把 react-native 和 reactnative、PyPI 把 lion 和 l10n 当成同一个名字。',
+          'npm treats react-native and reactnative, and PyPI treats lion and l10n, as the same name.',
+        ),
       }
     }
 
+    const details = blocked.map(b => ({
+      zh: `${who(b)} 上已存在 ${b.collisions.slice(0, 4).join('、')}，注册表视为同一个名字。`,
+      en: `${who(b)}: ${b.collisions.slice(0, 4).join(', ')} already exist and map to the same name.`,
+    }))
     return {
       status: 'blocked',
-      headline: `${who(blocked[0])} 上无法注册`,
-      detail: blocked
-        .map(b => `${who(b)} 上已存在 ${b.collisions.slice(0, 4).join('、')}，归一化后是同一个名字。`)
-        .join(''),
+      headline: tr(`${who(blocked[0])} 上无法注册`, `Blocked on ${who(blocked[0])}`),
+      detail: tr(details.map(d => d.zh).join(''), details.map(d => d.en).join(' ')),
     }
   },
 }

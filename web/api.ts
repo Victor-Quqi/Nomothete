@@ -10,6 +10,7 @@ import type {
   SessionSummary,
   Verdict,
 } from './types.ts'
+import { tr } from './i18n.ts'
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -23,7 +24,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     payload = null
   }
-  if (!res.ok) throw new Error(payload?.error ?? `请求失败（${res.status}）`)
+  if (!res.ok) throw new Error(payload?.error ?? tr(`请求失败（${res.status}）`, `Request failed (${res.status})`))
   return payload as T
 }
 

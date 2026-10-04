@@ -1,3 +1,5 @@
+import { tr } from './i18n.ts'
+
 /**
  * The session stores a threshold: the highest self-reported "someone else would
  * think of this too" probability a name may have and still be kept. What the
@@ -16,7 +18,7 @@ export const RARITY_MIN = 10
 export const RARITY_MAX = 85
 
 export function rarityWord(percent: number): string {
-  if (percent >= 70) return '尽量冷僻'
-  if (percent >= 40) return '中等'
-  return '不挑'
+  if (percent >= 70) return tr('尽量冷僻', 'Very rare')
+  if (percent >= 40) return tr('中等', 'Medium')
+  return tr('不挑', 'Any')
 }

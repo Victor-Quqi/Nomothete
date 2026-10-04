@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { THEME_LABEL, type ThemeChoice } from '../theme.ts'
 
 const THEMES: ThemeChoice[] = ['system', 'light', 'dark']
@@ -7,7 +8,7 @@ export function ThemePicker({ value, onChange }: {
   onChange: (theme: ThemeChoice) => void
 }) {
   return (
-    <div className="theme-pick" role="group" aria-label="外观">
+    <div className="theme-pick" role="group" aria-label={tr('外观', 'Appearance')}>
       {THEMES.map(theme => (
         <button key={theme} type="button" aria-pressed={value === theme} onClick={() => onChange(theme)}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

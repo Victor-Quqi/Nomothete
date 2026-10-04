@@ -13,24 +13,27 @@ export type FamilyId = 'root' | 'craft' | 'nature' | 'instrument' | 'formation' 
 export interface Family {
   id: FamilyId
   label: string
+  labelEn: string
   hue: number
 }
 
 export const FAMILIES: Family[] = [
-  { id: 'root', label: '词根', hue: 38 },
-  { id: 'craft', label: '手艺', hue: 18 },
-  { id: 'nature', label: '自然', hue: 150 },
-  { id: 'instrument', label: '器械', hue: 205 },
-  { id: 'formation', label: '构词', hue: 280 },
-  { id: 'tongue', label: '语言', hue: 330 },
+  { id: 'root', label: '词根', labelEn: 'Roots', hue: 38 },
+  { id: 'craft', label: '手艺', labelEn: 'Crafts', hue: 18 },
+  { id: 'nature', label: '自然', labelEn: 'Nature', hue: 150 },
+  { id: 'instrument', label: '器械', labelEn: 'Instruments', hue: 205 },
+  { id: 'formation', label: '构词', labelEn: 'Word-building', hue: 280 },
+  { id: 'tongue', label: '语言', labelEn: 'Languages', hue: 330 },
 ]
 
 export interface Strategy {
   id: string
   label: string
+  labelEn: string
   family: FamilyId
   /** One line shown to the user next to every candidate born from it. */
   brief: string
+  briefEn: string
   /** The word-formation device, stated to the model as a positive constraint. */
   device: string
   /** Glossed seed lexemes. A random subset is handed to the model each call. */
@@ -42,8 +45,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'greek-root',
     label: '希腊词根复合',
+    labelEn: 'Greek root compounds',
     family: 'root',
     brief: '拿两个希腊词根拼成一个新词',
+    briefEn: 'Combine two Greek roots into a new word.',
     device:
       'Compound two Ancient Greek roots into a single new word. Transliterate to Latin script the way English scientific vocabulary does (kh→ch, ou→u). The compound must be pronounceable by an English speaker on first sight.',
     lexicon: [
@@ -61,8 +66,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'latin-root',
     label: '拉丁词根复合',
+    labelEn: 'Latin root compounds',
     family: 'root',
     brief: '拿两个拉丁词根拼成一个新词',
+    briefEn: 'Combine two Latin roots into a new word.',
     device:
       'Compound two Latin roots into a single new word, joining them with the classical -i- or -o- linking vowel where it sounds right. Aim for the register of Terraform or Aperture, not of pharmaceutical brands.',
     lexicon: [
@@ -81,8 +88,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'metallurgy',
     label: '冶金术语挪用',
+    labelEn: 'Borrowed metallurgy terms',
     family: 'craft',
     brief: '从炼金属的工序里取词',
+    briefEn: 'Draw words from metalworking processes.',
     device:
       'Take a real term of art from metallurgy and smithing and use it, unchanged or lightly clipped, as the name. Pick terms a metallurgist would recognise and a web developer would not.',
     lexicon: [
@@ -99,8 +108,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'typography',
     label: '活字印刷术语',
+    labelEn: 'Letterpress terms',
     family: 'craft',
     brief: '从铅字与排版工序里取词',
+    briefEn: 'Draw words from metal type and typesetting.',
     device:
       'Take a term from hand typesetting, letterpress, or punchcutting and use it as the name. Favour the physical vocabulary of the composing room over modern digital typography words.',
     lexicon: [
@@ -117,8 +128,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'bookbinding',
     label: '装帧与纸工',
+    labelEn: 'Bookbinding and papermaking',
     family: 'craft',
     brief: '从装订、造纸、修书的工序里取词',
+    briefEn: 'Draw words from bookbinding, papermaking, and book repair.',
     device:
       'Take a term from bookbinding, papermaking, or manuscript conservation and use it as the name. These words are old and concrete.',
     lexicon: [
@@ -135,8 +148,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'masonry',
     label: '石作与营造',
+    labelEn: 'Masonry and construction',
     family: 'craft',
     brief: '从砌石、架桥、起拱的工序里取词',
+    briefEn: 'Draw words from stonework, bridge building, and arch construction.',
     device:
       'Take a term from stonemasonry, vaulting, or timber framing and use it as the name. Prefer words for the load-bearing pieces and the joints.',
     lexicon: [
@@ -153,8 +168,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'weaving',
     label: '织造与绳结',
+    labelEn: 'Weaving and knots',
     family: 'craft',
     brief: '从织机、纺纱、打结里取词',
+    briefEn: 'Draw words from looms, spinning, and knotting.',
     device:
       'Take a term from weaving, ropework, or knotting and use it as the name. Note: nautical words are heavily used in container tooling — prefer the loom over the ship.',
     lexicon: [
@@ -171,8 +188,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'glasswork',
     label: '玻璃与窑火',
+    labelEn: 'Glasswork and kilns',
     family: 'craft',
     brief: '从吹制、退火、窑炉里取词',
+    briefEn: 'Draw words from glassblowing, annealing, and kilns.',
     device:
       'Take a term from glassblowing, kilnwork, or ceramics and use it as the name. The vocabulary of heat, cooling and fragility is rich.',
     lexicon: [
@@ -191,8 +210,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'mycology',
     label: '真菌与地衣',
+    labelEn: 'Fungi and lichens',
     family: 'nature',
     brief: '从菌丝、孢子、共生结构里取词',
+    briefEn: 'Draw words from fungal filaments, spores, and symbiotic structures.',
     device:
       'Take a term from mycology or lichenology and use it as the name. Mycelial vocabulary maps unusually well onto distributed systems.',
     lexicon: [
@@ -208,8 +229,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'mineralogy',
     label: '矿物与晶体',
+    labelEn: 'Minerals and crystals',
     family: 'nature',
     brief: '从晶体结构、矿物名里取词',
+    briefEn: 'Draw words from crystal structures and mineral names.',
     device:
       'Take a term from mineralogy or crystallography and use it as the name, or coin a plausible new mineral name with the -ite / -ine ending that mineralogy actually uses.',
     lexicon: [
@@ -226,8 +249,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'hydrology',
     label: '水文与河道',
+    labelEn: 'Hydrology and rivers',
     family: 'nature',
     brief: '从河流、含水层、潮汐里取词',
+    briefEn: 'Draw words from rivers, aquifers, and tides.',
     device:
       'Take a term from hydrology, fluvial geomorphology, or groundwater science and use it as the name. Avoid the obvious three — stream, flow, river.',
     lexicon: [
@@ -244,8 +269,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'entomology',
     label: '昆虫与变态',
+    labelEn: 'Insects and metamorphosis',
     family: 'nature',
     brief: '从虫态、蜂群、蜕变里取词',
+    briefEn: 'Draw words from insect life stages, bee colonies, and metamorphosis.',
     device:
       'Take a term from entomology — especially the vocabulary of metamorphosis and of social insects — and use it as the name.',
     lexicon: [
@@ -262,8 +289,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'seismology',
     label: '地震与波传播',
+    labelEn: 'Earthquakes and wave propagation',
     family: 'nature',
     brief: '从震源、波相、台网里取词',
+    briefEn: 'Draw words from earthquake sources, wave phases, and seismic networks.',
     device:
       'Take a term from seismology, volcanology, or wave propagation and use it as the name. These words carry a sense of something detected from far away.',
     lexicon: [
@@ -281,8 +310,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'horology',
     label: '钟表机械',
+    labelEn: 'Clockwork',
     family: 'instrument',
     brief: '从擒纵、游丝、走时里取词',
+    briefEn: 'Draw words from escapements, hairsprings, and timekeeping.',
     device:
       'Take a term from horology — the mechanics of clocks and watches — and use it as the name. The escapement vocabulary in particular is precise and physical.',
     lexicon: [
@@ -299,8 +330,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'surveying',
     label: '测绘与制图',
+    labelEn: 'Surveying and mapping',
     family: 'instrument',
     brief: '从三角测量、基准面、图例里取词',
+    briefEn: 'Draw words from triangulation, reference surfaces, and map legends.',
     device:
       'Take a term from land surveying, geodesy, or cartography and use it as the name. Favour the words for reference points and for the act of fixing a position.',
     lexicon: [
@@ -317,8 +350,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'optics',
     label: '光学与成像',
+    labelEn: 'Optics and imaging',
     family: 'instrument',
     brief: '从透镜、焦面、干涉里取词',
+    briefEn: 'Draw words from lenses, focal planes, and interference.',
     device:
       'Take a term from optics, microscopy, or photographic process and use it as the name. Words for what happens at a focal plane are especially good.',
     lexicon: [
@@ -335,8 +370,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'cryptography-old',
     label: '古典密码与信使',
+    labelEn: 'Classical ciphers and messengers',
     family: 'instrument',
     brief: '从换位、密表、驿传里取词',
+    briefEn: 'Draw words from transposition ciphers, codebooks, and postal relays.',
     device:
       'Take a term from pre-computer cryptography, signalling, or courier systems and use it as the name. Avoid modern crypto vocabulary — hash, cipher, key are exhausted.',
     lexicon: [
@@ -354,8 +391,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'foundry-tools',
     label: '木工与量具',
+    labelEn: 'Woodworking and measuring tools',
     family: 'instrument',
     brief: '从刨、规、卡尺、夹具里取词',
+    briefEn: 'Draw words from planes, compasses, calipers, and clamps.',
     device:
       'Take the name of a hand tool or measuring instrument from woodworking or the machine shop and use it as the name. Concrete objects that sit in a hand.',
     lexicon: [
@@ -374,8 +413,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'blend',
     label: '混成词',
+    labelEn: 'Blended words',
     family: 'formation',
     brief: '把两个词咬合成一个',
+    briefEn: 'Join overlapping parts of two words into one.',
     device:
       'Make a portmanteau: overlap two words at a shared sound so the seam disappears. Instagram (instant + telegram) and Heroku (heroic + haiku) are the register. The overlap must be real — do not simply concatenate.',
     lexicon: [
@@ -390,8 +431,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'respell',
     label: '刻意错拼',
+    labelEn: 'Deliberate respelling',
     family: 'formation',
     brief: '把一个真词故意拼错，读音不变',
+    briefEn: 'Respell a real word while keeping its pronunciation.',
     device:
       'Take a real word and respell it deliberately so it becomes a distinct name while still reading aloud as the original. Google (googol), Clojure (closure), Disqus (discuss), Flickr (flicker). The misspelling should feel intentional, not like a typo.',
     lexicon: [
@@ -406,8 +449,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'clipping',
     label: '截断',
+    labelEn: 'Clipping',
     family: 'formation',
     brief: '砍掉一个长词的大半，留下能立住的部分',
+    briefEn: 'Cut away most of a long word, keeping a part that stands on its own.',
     device:
       'Clip a longer word or phrase down to a short standalone name. Prolog (programmation en logique), Decap (decapitated), ClickHouse (clickstream data warehouse). The clipped remainder must be pronounceable and must not read as an abbreviation.',
     lexicon: [
@@ -422,8 +467,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'affixation',
     label: '缀化',
+    labelEn: 'Affixation',
     family: 'formation',
     brief: '给一个词根挂上一个后缀',
+    briefEn: 'Attach a suffix to a root.',
     device:
       'Attach a derivational affix to a base. Use whatever affix fits — agentive -er, -ist, -ary, -arium, -ery, -ance, -ade, or the productive startup affixes -ify / -ly / -r. The corpus finds no evidence that developers dislike any of these; pick by sound.',
     lexicon: [
@@ -442,8 +489,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'compound-collide',
     label: '异域复合',
+    labelEn: 'Cross-domain compounds',
     family: 'formation',
     brief: '把两个互不相干领域的词直接撞在一起',
+    briefEn: 'Combine words from two unrelated fields.',
     device:
       'Compound two ordinary English words drawn from two unrelated domains, so the pair is concrete but the combination is unexpected. Heartbleed, Great Firewall, quick-scope. The collision should be vivid and instantly picturable.',
     lexicon: [
@@ -458,8 +507,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'acronym-word',
     label: '首字母成词',
+    labelEn: 'Backronyms',
     family: 'formation',
     brief: '先想出一个词，再倒推它的展开式',
+    briefEn: 'Choose a word first, then work out what its letters stand for.',
     device:
       'Invent a short pronounceable word first, then reverse-engineer an expansion whose initials spell it and which actually describes the project. Bash, GIMP, grep. The word must be sayable as a word, never spelled out letter by letter.',
     lexicon: [
@@ -475,8 +526,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'loanword',
     label: '冷门语言借词',
+    labelEn: 'Loanwords from smaller languages',
     family: 'tongue',
     brief: '从使用者较少的语言里借一个词',
+    briefEn: 'Borrow a word from a language with fewer speakers.',
     device:
       'Borrow a real word from a language that is under-represented in software naming, and pick one whose meaning connects to the project. Give the source language and the literal meaning in the rationale. The word must be spellable in plain ASCII and guessable to read aloud.',
     lexicon: [
@@ -489,8 +542,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'obsolete-english',
     label: '废弃英语词',
+    labelEn: 'Obsolete English words',
     family: 'tongue',
     brief: '从已经死掉的英语词里捡一个回来',
+    briefEn: 'Bring back an English word that has fallen out of use.',
     device:
       'Revive an obsolete or dialectal English word. It must be a real word with a citable historical sense.',
     lexicon: [
@@ -508,8 +563,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'literary',
     label: '文学典故',
+    labelEn: 'Literary references',
     family: 'tongue',
     brief: '从一部具体作品里取一个专名',
+    briefEn: 'Take a proper name from a specific work of literature.',
     device:
       'Borrow a proper name from a specific literary work, myth, or philosophical text — a minor character, a place, an object. Polonius, Moby, Kafka. Name the source in the rationale. Avoid the exhausted layer: Prometheus, Odyssey, Atlas, Phoenix, Hermes, Janus, Argo.',
     lexicon: [
@@ -524,8 +581,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'jargon-borrow',
     label: '行业黑话挪用',
+    labelEn: 'Borrowed trade jargon',
     family: 'tongue',
     brief: '从一个和软件无关的行当里偷一句行话',
+    briefEn: 'Borrow a term from a trade unrelated to software.',
     device:
       'Steal a piece of workplace slang from a trade that has nothing to do with software — kitchens, theatre, aviation, fishing, railways, print, medicine, tailoring — and use it as the name. It must be genuine in-group vocabulary, not the public-facing word.',
     lexicon: [
@@ -542,8 +601,10 @@ export const STRATEGIES: Strategy[] = [
   {
     id: 'mathematics',
     label: '数学冷僻术语',
+    labelEn: 'Uncommon mathematical terms',
     family: 'tongue',
     brief: '从数学与逻辑的边角术语里取词',
+    briefEn: 'Draw words from lesser-known terms in mathematics and logic.',
     device:
       'Take a term from mathematics or logic that is real but not famous, and use it as the name. Avoid the exhausted ones: vector, matrix, tensor, lambda, sigma, delta, graph, tree.',
     lexicon: [

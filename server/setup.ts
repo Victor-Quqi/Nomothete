@@ -16,6 +16,7 @@ import { pathToFileURL } from 'node:url'
 import { env } from './env.ts'
 import { applyEnv, ENV_PATH, writeEnv } from './envfile.ts'
 import { configSource, DEFAULTS, loadProfiles, probeEndpoint } from './llm.ts'
+import { tr } from './i18n.ts'
 
 /** Ctrl-C and backspace, which raw mode hands to us instead of the terminal. */
 const ETX = String.fromCharCode(3)
@@ -50,7 +51,7 @@ function askSecret(prompt: string): Promise<string> {
     const onData = (chunk: Buffer) => {
       for (const ch of chunk.toString('utf8')) {
         if (ch === '\r' || ch === '\n') return finish()
-        if (ch === ETX) return finish(new Error('已取消'))
+        if (ch === ETX) return finish(new Error(tr('已取消', 'Cancelled')))
         if (ch === DEL || ch === '\b') {
           if (buf) {
             buf = buf.slice(0, -1)
@@ -81,14 +82,14 @@ export async function runSetup(force = false): Promise<void> {
     // Nobody to ask — and, since the settings drawer exists, no reason to refuse
     // over it. Say where the three names go and let the browser finish the job.
     console.warn(
-      '\n[nomothete] 尚未配置模型，当前环境无法交互询问。\n' +
-        '            启动后在界面左下角「设置」中填写，或\n' +
-        `            在 ${ENV_PATH} 写入 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。\n`,
+      tr('\n[nomothete] 尚未配置模型，当前环境无法交互询问。\n', '\n[nomothete] No model configured. Interactive setup is unavailable in this environment.\n') +
+        tr('            启动后在界面左下角「设置」中填写，或\n', '            Enter it in “Settings” at the lower left after startup, or\n') +
+        tr(`            在 ${ENV_PATH} 写入 NOMOTHETE_BASE_URL、NOMOTHETE_API_KEY、NOMOTHETE_MODEL。\n`, `            write NOMOTHETE_BASE_URL, NOMOTHETE_API_KEY, and NOMOTHETE_MODEL to ${ENV_PATH}.\n`),
     )
     return
   }
 
-  console.log('\n  配置模型，三个问题。答案写入工作目录的 .env，下次不再询问。\n')
+  console.log(tr('\n  配置模型，三个问题。答案写入工作目录的 .env，下次不再询问。\n', '\n  Configure the model with three questions. Answers go into .env in the working directory, and setup will not ask again.\n'))
 
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   let baseURL: string
@@ -97,18 +98,18 @@ export async function runSetup(force = false): Promise<void> {
     // Enter keeps what is there, and nothing there means the default — which is
     // left unwritten, so it is the default that answers and not a copy of it.
     const currentBase = env('BASE_URL') ?? ''
-    baseURL = (await rl.question(`  端点（OpenAI 兼容）[${currentBase || DEFAULTS.baseURL}]：`)).trim() || currentBase
+    baseURL = (await rl.question(tr(`  端点（OpenAI 兼容）[${currentBase || DEFAULTS.baseURL}]：`, `  Endpoint (OpenAI-compatible) [${currentBase || DEFAULTS.baseURL}]: `))).trim() || currentBase
 
     const currentModel = env('MODEL') ?? ''
-    model = (await rl.question(`  模型 id [${currentModel || DEFAULTS.model}]：`)).trim() || currentModel
+    model = (await rl.question(tr(`  模型 id [${currentModel || DEFAULTS.model}]：`, `  Model ID [${currentModel || DEFAULTS.model}]: `))).trim() || currentModel
   } finally {
     rl.close()
   }
 
   let apiKey = ''
   while (!apiKey) {
-    apiKey = (await askSecret('  API key（不回显）：')).trim()
-    if (!apiKey) console.log('  —— API key 不能为空。')
+    apiKey = (await askSecret(tr('  API key（不回显）：', '  API key (input hidden): '))).trim()
+    if (!apiKey) console.log(tr('  —— API key 不能为空。', '  API key cannot be empty.'))
   }
 
   const patch = {
@@ -118,17 +119,17 @@ export async function runSetup(force = false): Promise<void> {
   }
   writeEnv(patch)
   applyEnv(patch)
-  console.log(`\n  已写入 · ${ENV_PATH}`)
+  console.log(tr(`\n  已写入 · ${ENV_PATH}`, `\n  Written to · ${ENV_PATH}`))
 
   // Advisory only. A wrong key, a wrong base URL and a mistyped model id all
   // look identical an hour later; one cheap request tells them apart now.
-  process.stdout.write('  正在测试连接…')
+  process.stdout.write(tr('  正在测试连接…', '  Testing connection…'))
   const probe = await probeEndpoint(loadProfiles()[0])
   console.log(`\r  ${probe.ok ? '✓' : '!'} ${probe.message}${' '.repeat(10)}`)
   if (probe.modelListed === false && probe.sample?.length) {
     const more = (probe.count ?? 0) > probe.sample.length ? ' …' : ''
-    console.log(`    端点列出：${probe.sample.join('、')}${more}`)
-    console.log('    如需更改：重跑 nomothete --setup，或启动后在界面左下角「设置」中修改。')
+    console.log(tr(`    端点列出：${probe.sample.join('、')}${more}`, `    Endpoint listed: ${probe.sample.join(', ')}${more}`))
+    console.log(tr('    如需更改：重跑 nomothete --setup，或启动后在界面左下角「设置」中修改。', '    To change it, rerun nomothete --setup or edit it in “Settings” at the lower left after startup.'))
   }
   console.log('')
 }

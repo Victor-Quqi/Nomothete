@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
+import { tr } from './i18n.ts'
 
 /** Which light the room is in. `system` follows the OS, and keeps following it. */
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
 export const THEME_LABEL: Record<ThemeChoice, string> = {
-  system: '跟随系统',
-  light: '浅色',
-  dark: '深色',
+  system: tr('跟随系统', 'System'),
+  light: tr('浅色', 'Light'),
+  dark: tr('深色', 'Dark'),
 }
 
 // The script at the top of index.html reads the same key with the same rule,

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Family, GenerateAsk, StrategyInfo } from '../types.ts'
+import { tr } from '../i18n.ts'
 
 const WIDTHS = [2, 4, 6]
 
@@ -79,7 +80,7 @@ export function BatchComposer({
           ref={panel}
           className="composer"
           role="dialog"
-          aria-label="再来一批"
+          aria-label={tr('再来一批', 'Another batch')}
           style={{ bottom: box.bottom, right: box.right }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -91,7 +92,7 @@ export function BatchComposer({
             autoFocus
             value={direction}
             maxLength={200}
-            placeholder="这一批往哪边走，可不写。比如：和潮汐有关"
+            placeholder={tr('这一批往哪边走，可不写。比如：和潮汐有关', 'Where should this batch go? Optional. For example: something about tides')}
             onChange={e => setDirection(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit()
@@ -127,24 +128,24 @@ export function BatchComposer({
           <div className="composer__foot">
             {chosen.length === 0 ? (
               <span className="composer__width">
-                自动挑
+                {tr('自动挑', 'Auto-pick ')}
                 {WIDTHS.map(n => (
                   <button key={n} className="composer__n" data-on={n === width} onClick={() => setWidth(n)}>
                     {n}
                   </button>
                 ))}
-                种方法
+                {tr('种方法', ' methods')}
               </span>
             ) : (
               <span className="composer__width">
-                只用选中的 {chosen.length} 种
+                {tr(`只用选中的 ${chosen.length} 种`, `Use only ${chosen.length} selected ${chosen.length === 1 ? 'method' : 'methods'}`)}
                 <button className="composer__clear" onClick={() => setChosen([])}>
-                  清空
+                  {tr('清空', 'Clear')}
                 </button>
               </span>
             )}
             <button className="dock__act" onClick={submit}>
-              生成 <kbd>↵</kbd>
+              {tr('生成', 'Generate')} <kbd>↵</kbd>
             </button>
           </div>
         </motion.div>

@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { motion } from 'motion/react'
 import type { Family, TasteProfile } from '../types.ts'
 
@@ -37,7 +38,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
     return (
       <div className="empty">
         <div className="empty__g">·</div>
-        <p>评价几个名字后，这里会列出推断。</p>
+        <p>{tr('评价几个名字后，这里会列出推断。', 'Mark a few names to see inferred preferences here.')}</p>
       </div>
     )
   }
@@ -47,24 +48,24 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
       <div className="taste__stat">
         <div className="taste__num taste__num--up">
           {profile.positives}
-          <small>喜欢</small>
+          <small>{tr('喜欢', 'Liked')}</small>
         </div>
         <div className="taste__num taste__num--down">
           {profile.negatives}
-          <small>不喜欢</small>
+          <small>{tr('不喜欢', 'Rejected')}</small>
         </div>
       </div>
 
       {profile.traits.length > 0 && (
         <>
-          <div className="section-h">推断</div>
+          <div className="section-h">{tr('推断', 'Inferred preferences')}</div>
           {profile.traits.map(t => (
             <div className="trait" key={t.id}>
               <span className="trait__arrow" data-dir={t.direction}>
                 {t.direction === 'toward' ? '→' : '←'}
               </span>
               <span>
-                {t.statement} <span className="trait__n">（依据 {t.n} 次评价）</span>
+                {t.statement} <span className="trait__n">{tr(`（依据 ${t.n} 次评价）`, ` (based on ${t.n} mark${t.n === 1 ? '' : 's'})`)}</span>
               </span>
             </div>
           ))}
@@ -73,7 +74,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
 
       {profile.familyScores.length > 0 && (
         <>
-          <div className="section-h">词族倾向</div>
+          <div className="section-h">{tr('词族倾向', 'Family preferences')}</div>
           <div className="bars">
             {profile.familyScores.map(f => (
               <Bar key={f.id} label={f.label} score={f.score} n={f.n} hue={familyById.get(f.id)?.hue ?? 38} />
@@ -84,7 +85,7 @@ export function TastePanel({ profile, familyById }: { profile: TasteProfile; fam
 
       {profile.strategyScores.length > 0 && (
         <>
-          <div className="section-h">思路倾向</div>
+          <div className="section-h">{tr('思路倾向', 'Method preferences')}</div>
           <div className="bars">
             {profile.strategyScores.map(s => (
               <Bar key={s.id} label={s.label} score={s.score} n={s.n} hue={familyById.get(s.family)?.hue ?? 38} />

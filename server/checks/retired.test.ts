@@ -9,7 +9,7 @@ test('retired word checks are removed from storage, candidate payloads and taste
   process.env.NOMOTHETE_DB = join(dir, 'test.db')
   const { closeDb, getDb } = await import('../db.ts')
   const { createSession, getCandidate, listCandidates } = await import('../store.ts')
-  const { CHECK_MANIFEST, persistCheck } = await import('./index.ts')
+  const { checkManifest, persistCheck } = await import('./index.ts')
   const { buildProfile } = await import('../naming/taste.ts')
   try {
     const session = createSession({ brief: 'Migration test' })
@@ -28,7 +28,7 @@ test('retired word checks are removed from storage, candidate payloads and taste
     assert.equal(getDb().prepare("SELECT COUNT(*) AS n FROM checks WHERE checkId = 'dictionary'").get()?.n, 0)
     assert.deepEqual(getCandidate('candidate')?.checks?.map(c => c.checkId), ['availability'])
     assert.deepEqual(listCandidates(session.id)[0].checks?.map(c => c.checkId), ['availability'])
-    assert.ok(!CHECK_MANIFEST.some(c => c.id === 'dictionary'))
+    assert.ok(!checkManifest().some(c => c.id === 'dictionary'))
     const profile = buildProfile([], ['time', 'work', 'world', 'home'].map(text => ({ text, verdict: 2 })))
     assert.ok(!profile.traits.some(t => t.id === 'realword'))
     assert.equal(profile.positives, 4)

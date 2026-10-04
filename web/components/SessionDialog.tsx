@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -53,7 +54,7 @@ export function SessionDialog({ action, onClose, onSubmit }: {
       await onSubmit(title.trim())
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '请求失败，请重试。')
+      setError(err instanceof Error ? err.message : tr('请求失败，请重试。', 'Request failed. Try again.'))
     } finally {
       pending.current = false
       setBusy(false)
@@ -88,26 +89,26 @@ export function SessionDialog({ action, onClose, onSubmit }: {
     >
       <form onSubmit={e => { e.preventDefault(); void submit() }} aria-busy={busy}>
         <div className="session-dialog__head">
-          <h2 id={labelId}>{rename ? '重命名会话' : '删除会话'}</h2>
-          <button type="button" className="session-dialog__close" onClick={close} disabled={busy} aria-label="关闭">
+          <h2 id={labelId}>{rename ? tr('重命名会话', 'Rename session') : tr('删除会话', 'Delete session')}</h2>
+          <button type="button" className="session-dialog__close" onClick={close} disabled={busy} aria-label={tr('关闭', 'Close')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
           </button>
         </div>
         {rename ? (
           <div className="session-dialog__field">
-            <input ref={input} autoFocus aria-label="会话名" value={title} disabled={busy} onChange={e => { setTitle(e.target.value); setError('') }} autoComplete="off" />
+            <input ref={input} autoFocus aria-label={tr('会话名', 'Session name')} value={title} disabled={busy} onChange={e => { setTitle(e.target.value); setError('') }} autoComplete="off" />
           </div>
         ) : (
           <div id={detailId} className="session-dialog__description">
             <p className="session-dialog__name">{action.title}</p>
-            <p>全部候选名及评价也会删除，无法恢复。</p>
+            <p>{tr('全部候选名及评价也会删除，无法恢复。', 'All names and marks will be deleted and cannot be recovered.')}</p>
           </div>
         )}
         {error && <p className="session-dialog__error" role="alert">{error}</p>}
         <div className="session-dialog__actions">
-          <button ref={cancel} type="button" className="session-dialog__button" disabled={busy} onClick={close}>取消</button>
+          <button ref={cancel} type="button" className="session-dialog__button" disabled={busy} onClick={close}>{tr('取消', 'Cancel')}</button>
           <button type="submit" className={`session-dialog__button ${rename ? 'session-dialog__save' : 'session-dialog__delete'}`} disabled={busy || (rename && !title.trim())}>
-            {busy ? (rename ? '保存中…' : '删除中…') : (rename ? '保存' : '删除')}
+            {busy ? (rename ? tr('保存中…', 'Saving…') : tr('删除中…', 'Deleting…')) : (rename ? tr('保存', 'Save') : tr('删除', 'Delete'))}
           </button>
         </div>
       </form>

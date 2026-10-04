@@ -1,6 +1,7 @@
 import { generateText, stepCountIs, tool, type ModelMessage } from 'ai'
 import { z } from 'zod'
 import { activeProfile, resolveModel } from '../llm.ts'
+import { tr } from '../i18n.ts'
 import { KeenableError, type Page, type SearchHit } from './keenable.ts'
 import type { Claim, Evidence, RationaleInput } from './judge.ts'
 import type { VerificationTrace } from './store.ts'
@@ -22,7 +23,7 @@ export function researchTools(io: ResearchIO, signal: AbortSignal, trace: Verifi
   let blocked: string | undefined
   const errorFor = (err: unknown) => {
     if (signal.aborted) throw err
-    const error = err instanceof KeenableError ? err.message : '资料服务没有响应'
+    const error = err instanceof KeenableError ? err.message : tr('资料服务没有响应', 'The reference service did not respond.')
     if (err instanceof KeenableError && err.kind === 'rate-limited') blocked = error
     errors.push(error)
     return { error }
@@ -33,7 +34,7 @@ export function researchTools(io: ResearchIO, signal: AbortSignal, trace: Verifi
       inputSchema: z.object({ query: z.string(), site: z.string() }),
       execute: async ({ query, site }) => {
         if (blocked) return { error: blocked }
-        if (searches >= 8) return { error: '本次搜索次数已用完' }
+        if (searches >= 8) return { error: tr('本次搜索次数已用完', 'The search limit for this check has been reached.') }
         searches++
         try {
           const result = await io.search({ query, site: site || undefined, maxResults: 5, snippetChars: 600 }, signal)
@@ -51,7 +52,7 @@ export function researchTools(io: ResearchIO, signal: AbortSignal, trace: Verifi
       inputSchema: z.object({ url: z.string().url(), offset: z.number().int().min(0) }),
       execute: async ({ url, offset }) => {
         if (blocked) return { error: blocked }
-        if (reads >= 8 || chars >= 48_000) return { error: '本次资料读取额度已用完' }
+        if (reads >= 8 || chars >= 48_000) return { error: tr('本次资料读取额度已用完', 'The reading limit for this check has been reached.') }
         reads++
         try {
           let page = pages.get(url)
@@ -109,7 +110,7 @@ export async function researchClaims(input: RationaleInput & { claims: Claim[] }
       messages.push(...result.response.messages.filter(message => message.content.length > 0))
       continue
     }
-    state.errors.push('模型返回空响应，资料查找未完成')
+    state.errors.push(tr('模型返回空响应，资料查找未完成', 'The model returned an empty response, so the source check is incomplete.'))
   }
   return { evidence: state.evidence, notes, errors: state.errors }
 }

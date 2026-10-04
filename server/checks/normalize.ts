@@ -18,6 +18,8 @@
  *          `serde_json` exists ⇒ `serde-json` is refused.
  */
 
+import { tr } from '../i18n.ts'
+
 export type RegistryId = 'npm' | 'pypi' | 'crates'
 
 export const REGISTRIES: { id: RegistryId; label: string }[] = [
@@ -71,21 +73,21 @@ export function validateForRegistry(
   registry: RegistryId,
   name: string,
 ): { ok: true } | { ok: false; reason: string } {
-  if (name.length === 0) return { ok: false, reason: '空名字' }
+  if (name.length === 0) return { ok: false, reason: tr('空名字', 'Empty name') }
   switch (registry) {
     case 'npm':
-      if (name.length > 214) return { ok: false, reason: '超过 214 字符' }
-      if (/^[._]/.test(name)) return { ok: false, reason: '不能以 . 或 _ 开头' }
-      if (name !== name.toLowerCase()) return { ok: false, reason: 'npm 不接受大写' }
-      if (!/^[a-z0-9._~-]+$/.test(name)) return { ok: false, reason: '含 npm 不接受的字符' }
+      if (name.length > 214) return { ok: false, reason: tr('超过 214 字符', 'Over 214 characters') }
+      if (/^[._]/.test(name)) return { ok: false, reason: tr('不能以 . 或 _ 开头', 'Cannot start with . or _') }
+      if (name !== name.toLowerCase()) return { ok: false, reason: tr('npm 不接受大写', 'npm does not accept uppercase') }
+      if (!/^[a-z0-9._~-]+$/.test(name)) return { ok: false, reason: tr('含 npm 不接受的字符', 'Contains characters npm does not accept') }
       return { ok: true }
     case 'pypi':
       if (!/^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(name))
-        return { ok: false, reason: '不符合 PEP 508 名字格式' }
+        return { ok: false, reason: tr('不符合 PEP 508 名字格式', 'Does not match PEP 508 name format') }
       return { ok: true }
     case 'crates':
-      if (name.length > 64) return { ok: false, reason: '超过 64 字符' }
-      if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) return { ok: false, reason: '必须以字母开头，只含字母数字与 -_' }
+      if (name.length > 64) return { ok: false, reason: tr('超过 64 字符', 'Over 64 characters') }
+      if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) return { ok: false, reason: tr('必须以字母开头，只含字母数字与 -_', 'Must start with a letter and contain only letters, numbers, - and _') }
       return { ok: true }
   }
 }

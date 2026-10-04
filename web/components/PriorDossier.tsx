@@ -1,13 +1,14 @@
+import { tr } from '../i18n.ts'
 import { useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { Fold } from './Fold.tsx'
 import type { Prior, Strength } from '../types.ts'
 
 const STRENGTH_LABEL: Record<Strength, string> = {
-  strong: '证据充分',
-  moderate: '证据一般',
-  thin: '证据很弱',
-  contradicted: '已被推翻',
+  strong: tr('证据充分', 'Strong evidence'),
+  moderate: tr('证据一般', 'Some evidence'),
+  thin: tr('证据很弱', 'Thin evidence'),
+  contradicted: tr('已被推翻', 'Overturned'),
 }
 
 /**
@@ -47,14 +48,14 @@ export function PriorDossier({
               <div className="prior__row">
                 <span className={`strength strength--${p.strength}`}>{STRENGTH_LABEL[p.strength]}</span>
                 <button className="prior__more" onClick={() => setOpen(expanded ? null : p.id)}>
-                  {expanded ? '收起 ▴' : '为什么 ▾'}
+                  {expanded ? tr('收起 ▴', 'Collapse ▴') : tr('为什么 ▾', 'Why ▾')}
                 </button>
               </div>
               <AnimatePresence initial={false}>
                 {expanded && (
                   <Fold className="prior__evidence" duration={0.3}>
                     {p.evidence}
-                    <h5>何时不适用</h5>
+                    <h5>{tr('何时不适用', 'When it does not apply')}</h5>
                     {p.overturnedBy}
                   </Fold>
                 )}

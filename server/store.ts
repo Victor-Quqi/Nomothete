@@ -1,4 +1,5 @@
 import { getDb, newId, nowMs } from './db.ts'
+import { tr } from './i18n.ts'
 import { loadChecks, readCheckRow } from './checks/index.ts'
 import type { CheckResult } from './checks/types.ts'
 import { DEFAULT_PRIOR_IDS } from './naming/priors.ts'
@@ -421,6 +422,6 @@ export function listBatches(sessionId: string): Batch[] {
 /** Anything left `running` when the process died is not running any more. */
 export function reconcileBatches() {
   getDb()
-    .prepare("UPDATE batches SET state = 'failed', error = '服务重启，这一批被中断' WHERE state = 'running'")
-    .run()
+    .prepare("UPDATE batches SET state = 'failed', error = ? WHERE state = 'running'")
+    .run(tr('服务重启，这一批被中断', 'The server restarted, so this batch was interrupted.'))
 }

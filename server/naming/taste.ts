@@ -10,6 +10,7 @@
  * paragraph in the next prompt.
  */
 import { syllables } from '../checks/normalize.ts'
+import { tr } from '../i18n.ts'
 import type { Candidate, Seed, Verdict } from '../store.ts'
 import { FAMILY_BY_ID, STRATEGIES, STRATEGY_BY_ID, type FamilyId } from './strategies.ts'
 
@@ -80,7 +81,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
     const a = sAcc.get(s.id)
     return {
       id: s.id,
-      label: s.label,
+      label: tr(s.label, s.labelEn),
       family: s.family,
       // Shrunk toward zero so one click never dominates.
       score: a ? a.sum / (a.n + 1.5) : 0,
@@ -88,12 +89,15 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
     }
   }).filter(s => s.n > 0)
 
-  const familyScores = [...fAcc.entries()].map(([id, a]) => ({
-    id,
-    label: FAMILY_BY_ID.get(id)?.label ?? id,
-    score: a.sum / (a.n + 1.5),
-    n: a.n,
-  }))
+  const familyScores = [...fAcc.entries()].map(([id, a]) => {
+    const f = FAMILY_BY_ID.get(id)
+    return {
+      id,
+      label: f ? tr(f.label, f.labelEn) : id,
+      score: a.sum / (a.n + 1.5),
+      n: a.n,
+    }
+  })
 
   // ── morphological traits, always with n attached ──────────────────────────
   const traits: Trait[] = []
@@ -112,8 +116,8 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
         direction: pSyl < nSyl ? 'toward' : 'away',
         statement:
           pSyl < nSyl
-            ? `你在往更短的名字走：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`
-            : `你不怕长词：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`,
+            ? tr(`你在往更短的名字走：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`, `You lean toward shorter names: liked names average ${pSyl.toFixed(1)} syllables, rejected names ${nSyl.toFixed(1)}.`)
+            : tr(`你不怕长词：喜欢的平均 ${pSyl.toFixed(1)} 音节，不喜欢的 ${nSyl.toFixed(1)} 音节。`, `You like longer names: liked names average ${pSyl.toFixed(1)} syllables, rejected names ${nSyl.toFixed(1)}.`),
       })
     }
 
@@ -124,7 +128,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
         id: 'plosive',
         n: posNames.length,
         direction: 'toward',
-        statement: `你喜欢的 ${posNames.length} 个名字里有 ${pPlos} 个以爆破音开头（p t k b d g）。`,
+        statement: tr(`你喜欢的 ${posNames.length} 个名字里有 ${pPlos} 个以爆破音开头（p t k b d g）。`, `Of the ${posNames.length} names you liked, ${pPlos} start with a plosive (p t k b d g).`),
       })
     }
 
@@ -133,7 +137,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: 'length',
       n: posNames.length,
       direction: 'toward',
-      statement: `你喜欢的名字平均 ${pLen.toFixed(1)} 个字符。`,
+      statement: tr(`你喜欢的名字平均 ${pLen.toFixed(1)} 个字符。`, `Names you liked average ${pLen.toFixed(1)} characters.`),
     })
   }
 
@@ -144,7 +148,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: `family-${topFam.id}`,
       n: topFam.n,
       direction: 'toward',
-      statement: `「${topFam.label}」这个方向你偏正面，后面会多出一些。`,
+      statement: tr(`「${topFam.label}」这个方向你偏正面，后面会多出一些。`, `Your marks favour “${topFam.label}”, so more names will come from this family.`),
     })
   }
   if (botFam && botFam.n >= 2 && botFam.score < -0.4 && botFam.id !== topFam?.id) {
@@ -152,11 +156,15 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
       id: `family-neg-${botFam.id}`,
       n: botFam.n,
       direction: 'away',
-      statement: `「${botFam.label}」这个方向你偏负面，后面会少出一些，但不会完全不出。`,
+      statement: tr(`「${botFam.label}」这个方向你偏负面，后面会少出一些，但不会完全不出。`, `Your marks lean against “${botFam.label}”, so fewer names will come from this family, though it will still appear.`),
     })
   }
 
   const statement = composeStatement({ positives, negatives })
+  const strategyLabel = (id: string) => {
+    const s = STRATEGY_BY_ID.get(id)
+    return s ? tr(s.label, s.labelEn) : tr('你自己给的种子', 'A name you supplied')
+  }
 
   return {
     observations: rated.length,
@@ -167,12 +175,12 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
     traits,
     loved: positives.map(p => ({
       name: p.name,
-      strategy: STRATEGY_BY_ID.get(p.strategyId)?.label ?? '你自己给的种子',
+      strategy: strategyLabel(p.strategyId),
       note: p.note ?? undefined,
     })),
     rejected: negatives.map(p => ({
       name: p.name,
-      strategy: STRATEGY_BY_ID.get(p.strategyId)?.label ?? '你自己给的种子',
+      strategy: strategyLabel(p.strategyId),
       note: p.note ?? undefined,
     })),
     statement,
@@ -188,7 +196,7 @@ export function buildProfile(candidates: Candidate[], seeds: Seed[] = []): Taste
  */
 function composeStatement(x: { positives: Rated[]; negatives: Rated[] }): string {
   if (x.positives.length === 0 && x.negatives.length === 0) return ''
-  return `来自你的 ${x.positives.length} 个喜欢、${x.negatives.length} 个不喜欢。`
+  return tr(`来自你的 ${x.positives.length} 个喜欢、${x.negatives.length} 个不喜欢。`, `Based on ${x.positives.length} ${x.positives.length === 1 ? 'name' : 'names'} you liked and ${x.negatives.length} ${x.negatives.length === 1 ? 'name' : 'names'} you rejected.`)
 }
 
 /**

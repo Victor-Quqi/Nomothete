@@ -1,3 +1,4 @@
+import { tr } from './i18n.ts'
 import type { ClaimFinding, Verification } from './types.ts'
 
 /** A fixed public engine. The query is the claim's own search terms or the name; never the brief or a note. */
@@ -27,7 +28,7 @@ export function discrepancyLine(v: Verification | null | undefined): string | nu
   if (v?.state !== 'done') return null
   const n = v.claims.filter(c => c.verdict === 'contradicted').length
   if (!n) return null
-  return n === 1 ? '取义说明与资料不符' : `取义说明有 ${n} 处与资料不符`
+  return n === 1 ? tr('取义说明与资料不符', 'Meaning differs from sources') : tr(`取义说明有 ${n} 处与资料不符`, `Meaning differs from sources in ${n} places`)
 }
 
 /** Source host for a link label. */

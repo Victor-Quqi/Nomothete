@@ -8,6 +8,7 @@
  * "terrible name". So it gets its own checks rather than a footnote.
  */
 import { env } from '../env.ts'
+import { tr } from '../i18n.ts'
 import { probe } from './http.ts'
 import { npmNormalize } from './normalize.ts'
 import { npmNeighbourhood } from '../../shared/npmNeighbourhood.ts'
@@ -16,7 +17,7 @@ import type { Check, CheckContext } from './types.ts'
 /** How crowded the npm namespace already is around this word. Free, one call. */
 export const npmNeighbourhoodCheck: Check = {
   id: 'neighbourhood',
-  label: '同名邻域',
+  get label() { return tr('同名邻域', 'Neighbours') },
   tier: 'free',
   when: 'always',
 
@@ -48,7 +49,7 @@ export const npmNeighbourhoodCheck: Check = {
   },
 
   describe(data, name) {
-    const { status, headline } = npmNeighbourhood(data, name)
+    const { status, headline } = npmNeighbourhood(data, name, tr)
     return { status, headline }
   },
 }
@@ -56,7 +57,7 @@ export const npmNeighbourhoodCheck: Check = {
 /** How many repositories already carry this name. Rate limited; upvote first. */
 export const githubCheck: Check = {
   id: 'github',
-  label: 'GitHub',
+  get label() { return 'GitHub' },
   tier: 'ratelimited',
   when: 'after-upvote',
 
@@ -101,9 +102,13 @@ export const githubCheck: Check = {
       top?: { name: string; stars: number }[]
     }
     if (rateLimited) {
-      return { status: 'error', headline: 'GitHub 限流', detail: '设置 NOMOTHETE_GITHUB_TOKEN 可提高频率上限。' }
+      return {
+        status: 'error',
+        headline: tr('GitHub 限流', 'GitHub: rate limited'),
+        detail: tr('设置 NOMOTHETE_GITHUB_TOKEN 可提高频率上限。', 'Set NOMOTHETE_GITHUB_TOKEN to raise the rate limit.'),
+      }
     }
-    if (total === 0) return { status: 'clear', headline: '没有同名仓库' }
+    if (total === 0) return { status: 'clear', headline: tr('没有同名仓库', 'No repositories with this name') }
 
     const hits = top ?? []
     const notable = hits.filter(i => i.stars >= 100)
@@ -111,15 +116,22 @@ export const githubCheck: Check = {
     // Sheer volume is a Searchability signal on its own: even if every hit is
     // tiny, a thousand of them still swallow the search results.
     const crowded = total >= 400
+    const exactZh = exact.length > 0 ? `${exact.map(e => e.name).join('、')} 与它完全同名。` : ''
+    const exactEn = exact.length > 0 ? `${exact.map(e => e.name).join(', ')} exactly match it.` : ''
+    const sizeZh = notable.length > 0
+      ? `最大的是 ${notable.map(i => `${i.name}（★${i.stars.toLocaleString()}）`).join('、')}。`
+      : '命中的仓库都很小。'
+    const sizeEn = notable.length > 0
+      ? `Largest: ${notable.map(i => `${i.name} (★${i.stars.toLocaleString()})`).join(', ')}.`
+      : 'All matching repositories are small.'
 
     return {
       status: notable.length > 0 || exact.length > 0 || crowded ? 'caution' : 'clear',
-      headline: `${total} 个仓库名包含这个词`,
-      detail:
-        (exact.length > 0 ? `${exact.map(e => e.name).join('、')} 与它完全同名。` : '') +
-        (notable.length > 0
-          ? `最大的是 ${notable.map(i => `${i.name}（★${i.stars.toLocaleString()}）`).join('、')}。`
-          : '命中的仓库都很小。'),
+      headline: tr(
+        `${total} 个仓库名包含这个词`,
+        `${total} repository name${total === 1 ? '' : 's'} contain${total === 1 ? 's' : ''} this word`,
+      ),
+      detail: tr(exactZh + sizeZh, `${exactEn}${exact.length > 0 ? ' ' : ''}${sizeEn}`),
     }
   },
 }
@@ -127,7 +139,7 @@ export const githubCheck: Check = {
 /** .com, .dev and .io, via RDAP. Rate limited; upvote first. */
 export const domainCheck: Check = {
   id: 'domain',
-  label: '域名',
+  get label() { return tr('域名', 'Domains') },
   tier: 'ratelimited',
   when: 'after-upvote',
 
@@ -172,20 +184,21 @@ export const domainCheck: Check = {
     // .dev and .io free, as they nearly always are) there is nothing left, and
     // the check hands back no sentence rather than a longer copy of its own pill.
     const unsaid = all.filter(r => r.state !== 'free' && !(taken && r.tld === 'com'))
+    const detailZh = unsaid
+      .map(r => `${label}.${r.tld}：${r.state === 'registered' ? '已注册' : '查询失败'}`)
+      .join('　')
+    const detailEn = unsaid
+      .map(r => `${label}.${r.tld}: ${r.state === 'registered' ? 'registered' : 'check failed'}`)
+      .join(' ')
 
     return {
       status: taken ? 'caution' : free.length > 0 ? 'clear' : 'caution',
       headline: taken
-        ? `${label}.com 已注册`
+        ? tr(`${label}.com 已注册`, `${label}.com is registered`)
         : free.length > 0
-          ? `${free.map(f => `.${f.tld}`).join(' ')} 查无注册记录`
-          : '.com .dev .io 均已注册',
-      detail:
-        unsaid.length > 0
-          ? unsaid
-              .map(r => `${label}.${r.tld}：${r.state === 'registered' ? '已注册' : '查询失败'}`)
-              .join('　')
-          : undefined,
+          ? tr(`${free.map(f => `.${f.tld}`).join(' ')} 查无注册记录`, `${free.map(f => `.${f.tld}`).join(', ')}: no registration record`)
+          : tr('.com .dev .io 均已注册', '.com, .dev, and .io are all registered'),
+      detail: unsaid.length > 0 ? tr(detailZh, detailEn) : undefined,
     }
   },
 }

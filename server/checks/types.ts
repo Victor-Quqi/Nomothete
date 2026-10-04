@@ -10,6 +10,7 @@
  * Vocabulary discipline (CONTEXT.md): `clear` means "no record found" and
  * nothing stronger. It is never rendered as 可用 or 安全.
  */
+import { tr } from '../i18n.ts'
 
 export type CheckTier = 'local' | 'free' | 'ratelimited' | 'paid'
 
@@ -76,9 +77,11 @@ export interface Check {
   describe(data: Record<string, unknown>, name: string): CheckReading | null
 }
 
-export const TIER_LABEL: Record<CheckTier, string> = {
-  local: '本地，0ms',
-  free: '免费网络',
-  ratelimited: '限速',
-  paid: '付费',
+export function tierLabel(tier: CheckTier): string {
+  switch (tier) {
+    case 'local': return tr('本地，0ms', 'Local, 0 ms')
+    case 'free': return tr('免费网络', 'Free network')
+    case 'ratelimited': return tr('限速', 'Rate limited')
+    case 'paid': return tr('付费', 'Paid')
+  }
 }

@@ -1,3 +1,4 @@
+import { tr } from '../i18n.ts'
 import { useEffect, type ReactNode } from 'react'
 import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
 
@@ -82,7 +83,7 @@ export function Drawer({
             <div className="drawer__head">
               <div className="drawer__title">{title}</div>
               {actions}
-              <button className="drawer__x" onClick={onClose} aria-label="关闭">
+              <button className="drawer__x" onClick={onClose} aria-label={tr('关闭', 'Close')}>
                 ✕
               </button>
             </div>

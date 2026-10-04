@@ -5,9 +5,13 @@ import { PriorDossier } from './PriorDossier.tsx'
 import { VerdictDial } from './VerdictDial.tsx'
 import { RARITY_MAX, RARITY_MIN, rarityPercent, rarityWord, thresholdForRarity } from '../rarity.ts'
 import type { Bootstrap, Verdict } from '../types.ts'
+import { tr } from '../i18n.ts'
 
 const PLACEHOLDER =
-  '比如：一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。'
+  tr(
+    '比如：一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。',
+    'For example: a command-line tool that watches several directories, automatically archives scattered screenshots by source app and date, and deduplicates same-named files by content hash. For personal use, open source.',
+  )
 
 /**
  * Three briefs, one click away.
@@ -19,19 +23,28 @@ const PLACEHOLDER =
  */
 const EXAMPLES: { label: string; brief: string }[] = [
   {
-    label: '命令行工具',
+    label: tr('命令行工具', 'Command-line tool'),
     brief:
-      '一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。',
+      tr(
+        '一个命令行工具，监视一堆目录，把散落的截图按来源应用和日期自动归档，重名的按内容哈希去重。给自己用的，会开源。',
+        'A command-line tool that watches several directories, automatically archives scattered screenshots by source app and date, and deduplicates same-named files by content hash. For personal use, open source.',
+      ),
   },
   {
-    label: '库',
+    label: tr('库', 'Library'),
     brief:
-      '一个 TypeScript 库，把任意异步函数变成可重放的状态机：每一步的输入输出都落盘，进程崩了之后从最后一个成功的步骤继续，而不是从头再来。',
+      tr(
+        '一个 TypeScript 库，把任意异步函数变成可重放的状态机：每一步的输入输出都落盘，进程崩了之后从最后一个成功的步骤继续，而不是从头再来。',
+        'A TypeScript library that turns any async function into a replayable state machine: it saves each step’s inputs and outputs, then resumes after a crash from the last successful step instead of starting over.',
+      ),
   },
   {
-    label: '编辑器插件',
+    label: tr('编辑器插件', 'Editor plugin'),
     brief:
-      '一个编辑器插件，在你改动某个函数时，把仓库里所有依赖它的调用点安静地列在侧边，按「改了会炸」的可能性排序，不做任何自动修改。',
+      tr(
+        '一个编辑器插件，在你改动某个函数时，把仓库里所有依赖它的调用点安静地列在侧边，按「改了会炸」的可能性排序，不做任何自动修改。',
+        'An editor plugin that lists every call site in the repository that depends on a function you edit, sorted by how likely the change is to break it, with no automatic edits.',
+      ),
   },
 ]
 
@@ -112,14 +125,14 @@ export function Opening({
         transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
       >
         <h1 className="opening__title">
-          给这个东西
+          {tr('给这个东西', 'Give this thing')}
           <br />
-          起一个<em>名字</em>。
+          {tr('起一个', 'a ')}<em>{tr('名字', 'name')}</em>{tr('。', '.')}
         </h1>
 
         <div className="field">
           <label className="field__label" htmlFor="brief">
-            这个项目是做什么的？写得越具体越好
+            {tr('这个项目是做什么的？写得越具体越好', 'What does this project do? Be as specific as you can.')}
           </label>
           <div className="field__box">
             <textarea
@@ -136,7 +149,7 @@ export function Opening({
           <AnimatePresence initial={false}>
             {brief.trim() === '' && (
               <Fold className="examples">
-                <span>示例</span>
+                <span>{tr('示例', 'Examples')}</span>
                 {EXAMPLES.map(e => (
                   <button
                     key={e.label}
@@ -159,12 +172,12 @@ export function Opening({
             moves when they do. */}
         <div className="opening__actions">
           <button className="btn btn--ghost btn--sm" aria-expanded={more} onClick={() => setMore(m => !m)}>
-            {more ? '收起' : '更多设置'} {more ? '▴' : '▾'}
+            {more ? tr('收起', 'Hide') : tr('更多设置', 'More settings')} {more ? '▴' : '▾'}
           </button>
           <div className="opening__go">
             <span className="opening__hint" aria-hidden="true">⌘↵</span>
             <button className="act" disabled={!ready} onClick={submit}>
-              {busy ? '正在开始…' : '开始取名'}
+              {busy ? tr('正在开始…', 'Starting…') : tr('开始取名', 'Start naming')}
               <span className="act__arrow" aria-hidden="true">→</span>
             </button>
           </div>
@@ -174,14 +187,14 @@ export function Opening({
           {more && (
             <Fold duration={0.36}>
               <div className="field">
-                <div className="field__label">已想到的名字</div>
+                <div className="field__label">{tr('已想到的名字', 'Names you already have')}</div>
                 {seeds.map((s, i) => (
                   <div className="seedrow" key={s.key}>
                     <input
                       className="seedrow__input"
                       value={s.text}
                       autoFocus={i === seeds.length - 1}
-                      placeholder="名字"
+                      placeholder={tr('名字', 'Name')}
                       onChange={e =>
                         setSeeds(list => list.map(x => (x.key === s.key ? { ...x, text: e.target.value } : x)))
                       }
@@ -198,7 +211,7 @@ export function Opening({
                     <button
                       className="seedrow__x"
                       onClick={() => setSeeds(list => list.filter(x => x.key !== s.key))}
-                      aria-label="删除这一行"
+                      aria-label={tr('删除这一行', 'Delete this row')}
                     >
                       ✕
                     </button>
@@ -208,13 +221,13 @@ export function Opening({
                   className="btn btn--ghost btn--sm"
                   onClick={() => setSeeds(list => [...list, { key: ++seedSeq.current, text: '', verdict: 0 }])}
                 >
-                  ＋ 添加
+                  {tr('＋ 添加', '+ Add')}
                 </button>
               </div>
 
               <div className="field">
                 <div className="field__label">
-                  罕见度下限
+                  {tr('罕见度下限', 'Rarity floor')}
                   <span className="field__value">
                     {rarityWord(rarityPercent(threshold))} · {rarityPercent(threshold)}%
                   </span>
@@ -232,7 +245,7 @@ export function Opening({
 
               {boot && (
                 <div className="field">
-                  <div className="field__label">取名规则</div>
+                  <div className="field__label">{tr('取名规则', 'Leanings')}</div>
                   <PriorDossier priors={boot.priors} enabled={priors} onChange={setPriors} />
                 </div>
               )}
@@ -242,10 +255,10 @@ export function Opening({
 
         {boot && !boot.provider.configured && (
           <div className="warnbox">
-            尚未配置模型：{boot.provider.problem}
+            {tr('尚未配置模型：', 'Model not configured: ')}{boot.provider.problem}
             <div style={{ marginTop: 10 }}>
               <button className="btn btn--sm" onClick={onConfigure}>
-                打开设置
+                {tr('打开设置', 'Open settings')}
               </button>
             </div>
           </div>

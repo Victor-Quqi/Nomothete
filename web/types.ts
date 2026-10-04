@@ -78,6 +78,7 @@ export type Verification =
 
 export interface AppSettings {
   autoVerify: boolean
+  language: 'zh' | 'en'
 }
 
 export interface Batch {

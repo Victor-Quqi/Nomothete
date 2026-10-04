@@ -16,6 +16,7 @@ server/
   envfile.ts           .env 的合并写入（只动自己那几行），三个配置入口共用
   setup.ts             首次启动的三个问题；无 TTY 时跳过而不是卡住
   settings.ts          界面可改的全局开关（存 SQLite，不受模型配置锁定）
+  i18n.ts              界面语言；tr(中文, English)，两种写法写在用的地方
   naming/
     strategies.ts      29 条 Strategy，六族
     priors.ts          P1–P9，连证据一起
@@ -36,9 +37,10 @@ server/
 web/
   store.ts             useAtelier()：全部状态 + EventSource + hash 路由
   api.ts  types.ts     线上契约的客户端镜像
+  i18n.ts              界面语言，载入时定下，切换即重载
   normalize.ts         归一化规则的客户端回声（详情面板里展示用）
   components/          Workspace / CandidatePlate / Drawer / CommandPalette / …
-    Settings.tsx       外观、联网核查与模型连接；密钥只写不读
+    Settings.tsx       外观、语言、联网核查与模型连接；密钥只写不读
     ThemePicker.tsx    跟随系统 / 浅色 / 深色
   styles.css           设计系统：token、氛围层、印章、刻度盘、抽屉
 scripts/
@@ -74,8 +76,10 @@ PUT    /api/config                       {baseURL?, model?, apiKey?, reasoningEf
                                          写 .env 并即时生效；地址、模型留空 = 默认；
                                          apiKey 留空 = 不动原来那把
 POST   /api/config/test                  向端点要一次 /models，确认钥匙与模型 id
-GET    /api/settings                     {autoVerify}
-PUT    /api/settings                     {autoVerify: boolean}；关掉时取消排队和进行中的核查
+GET    /api/settings                     {autoVerify, language}
+PUT    /api/settings                     {autoVerify?: boolean, language?: "zh" | "en"}；关掉核查时取消排队和进行中的；
+                                         language 决定服务端说的话（检查结论、提示、标签），
+                                         没设过时取系统语言
 ```
 
 候选的 `verification` 字段是取义核查的结果，`null` 表示没核查过：
