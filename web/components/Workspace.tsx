@@ -767,7 +767,8 @@ export function Workspace({
 
         {visible.length === 0 && (
           <div className="empty">
-            <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
+            {/* The tab's italic N, while the first batch is on its way. */}
+            {candidates.length === 0 ? <div className="empty__g empty__g--mark">N</div> : <div className="empty__g">∅</div>}
             <p>
               {candidates.length === 0
                 ? '第一批正在生成。'
