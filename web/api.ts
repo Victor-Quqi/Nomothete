@@ -2,6 +2,7 @@ import type {
   AppSettings,
   Bootstrap,
   Candidate,
+  GenerateAsk,
   ProbeResult,
   ProviderConfig,
   Session,
@@ -51,11 +52,14 @@ export const api = {
 
   deleteSession: (id: string) => call<{ ok: true }>(`/sessions/${id}`, { method: 'DELETE' }),
 
-  generate: (id: string, body: { width?: number; strategyIds?: string[] } = {}) =>
+  generate: (id: string, body: GenerateAsk = {}) =>
     call<{ generation: number; strategies: string[] }>(`/sessions/${id}/generate`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  keepDiscard: (discardId: string) =>
+    call<{ candidate: Candidate }>(`/discards/${discardId}/keep`, { method: 'POST', body: '{}' }),
 
   cancel: (id: string) => call<{ ok: true }>(`/sessions/${id}/cancel`, { method: 'POST', body: '{}' }),
 

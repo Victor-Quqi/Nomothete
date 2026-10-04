@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
-import { CHECK_MANIFEST, TIER_LABEL, fillMissingChecks } from './checks/index.ts'
+import { CHECK_MANIFEST, TIER_LABEL, fillMissingChecks, runChecks } from './checks/index.ts'
 import { DB_PATH, getDb } from './db.ts'
 import { env } from './env.ts'
 import { applyEnv, writeEnv } from './envfile.ts'
@@ -38,8 +38,10 @@ import {
   deleteSession,
   getCandidate,
   getSession,
+  keepDiscard,
   listBatches,
   listCandidates,
+  listDiscards,
   listSessions,
   reconcileBatches,
   setNote,
@@ -146,6 +148,7 @@ function sessionPayload(id: string) {
     session,
     candidates,
     batches: listBatches(id),
+    discards: listDiscards(id),
     running: isRunning(id),
     profile: profilePayload(candidates, session.seeds),
     // Slow tiers out right now. A page that lost the stream cannot tell a run
@@ -214,9 +217,14 @@ api.delete('/sessions/:id', (req, res) => {
 })
 
 api.post('/sessions/:id/generate', (req, res) => {
-  const { width, strategyIds } = req.body ?? {}
+  const { width, strategyIds, direction, parentId } = req.body ?? {}
   try {
-    const started = startGeneration(req.params.id, { width, strategyIds })
+    const started = startGeneration(req.params.id, {
+      width: typeof width === 'number' ? width : undefined,
+      strategyIds: Array.isArray(strategyIds) ? strategyIds.filter(id => typeof id === 'string') : undefined,
+      direction: typeof direction === 'string' ? direction : undefined,
+      parentId: typeof parentId === 'string' ? parentId : undefined,
+    })
     res.json(started)
   } catch (err) {
     res.status(409).json({ error: (err as Error).message })
@@ -315,6 +323,23 @@ api.post('/candidates/:id/recheck', (req, res) => {
   // `busy` also arrives as a notice and, without a stored result, on the card.
   const verification = requestVerification(candidate, { refresh: true })
   res.json({ ok: true, verification })
+})
+
+// Taken back by hand. It starts unrated and is checked like any name that arrives.
+api.post('/discards/:id/keep', (req, res) => {
+  const candidate = keepDiscard(req.params.id)
+  if (!candidate) {
+    res.status(404).json({ error: '找不到这个名字' })
+    return
+  }
+  publish(candidate.sessionId, { type: 'candidate', candidate })
+  publish(candidate.sessionId, { type: 'discard:kept', discardId: req.params.id })
+  void runChecks(candidate.id, candidate.name, {
+    deep: false,
+    signal: new AbortController().signal,
+    onResult: result => publish(candidate.sessionId, { type: 'check', candidateId: candidate.id, result }),
+  }).catch(() => {})
+  res.json({ candidate })
 })
 
 api.get('/sessions/:id/export', (req, res) => {

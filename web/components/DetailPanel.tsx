@@ -18,6 +18,7 @@ export function DetailPanel({
   onVerdict,
   onNote,
   onRecheck,
+  onFollow,
 }: {
   candidate: Candidate
   strategy?: StrategyInfo
@@ -31,6 +32,8 @@ export function DetailPanel({
   onVerdict: (v: Verdict) => void
   onNote: (note: string) => void
   onRecheck: () => void
+  /** Absent while a generation is running: one at a time. */
+  onFollow?: () => void
 }) {
   const [draft, setDraft] = useState(candidate.note ?? '')
   const [saying, setSaying] = useState(false)
@@ -103,7 +106,12 @@ export function DetailPanel({
         {candidate.rationale}
       </p>
 
-      <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
+      <div className="detail__verdict">
+        <VerdictDial verdict={candidate.verdict} onChange={onVerdict} />
+        <button className="btn btn--ghost btn--sm" disabled={!onFollow} onClick={onFollow}>
+          照这个名字再来一批 <kbd>F</kbd>
+        </button>
+      </div>
 
       <RationaleCheck key={candidate.id} candidate={candidate} autoVerify={autoVerify} />
 

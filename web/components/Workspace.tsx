@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BatchComposer } from './BatchComposer.tsx'
 import { BeforeCommit } from './BeforeCommit.tsx'
 import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Picker, type PickerOption } from './Picker.tsx'
@@ -8,7 +9,7 @@ import { CHECK_CONDITIONS, NO_CHECKS, conditionsOf } from '../checks.ts'
 import type { Atelier } from '../store.ts'
 import type { Batch, Candidate, StrategyInfo, Verdict } from '../types.ts'
 
-export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys' | 'settings'
+export type DrawerKind = 'detail' | 'priors' | 'taste' | 'brief' | 'keys' | 'settings' | 'discards'
 
 type Lane = 'all' | 'open' | 'up' | 'down'
 type Sort = 'arrival' | 'rare' | 'clean'
@@ -190,6 +191,10 @@ export function Workspace({
     if (!running) generate({ strategyIds: [strategyId] })
   }, [running, generate])
 
+  const dockRef = useRef<HTMLDivElement>(null)
+  const [composing, setComposing] = useState(false)
+  const closeComposer = useCallback(() => setComposing(false), [])
+
   const needle = find.trim().toLowerCase()
 
   // What the checks have said about each name, read once per change to the
@@ -281,10 +286,21 @@ export function Workspace({
     return out
   }, [present, counts, a.familyById, a.strategyById])
 
-  const batchOptions = useMemo<PickerOption[]>(
-    () => present.generations.map(g => ({ id: String(g), label: `第 ${g} 批`, n: counts.tally.get(`g:${g}`) ?? 0 })),
-    [present, counts],
-  )
+  // A batch asked for with something in mind says what, so it can be found again.
+  const batchOptions = useMemo<PickerOption[]>(() => {
+    const asked = new Map<number, string>()
+    for (const b of batches) {
+      if (asked.has(b.generation)) continue
+      const parent = b.parentId ? candidates.find(c => c.id === b.parentId)?.name : undefined
+      const said = parent ? `照 ${parent}` : b.direction
+      if (said) asked.set(b.generation, said.length > 16 ? `${said.slice(0, 15)}…` : said)
+    }
+    return present.generations.map(g => ({
+      id: String(g),
+      label: asked.has(g) ? `第 ${g} 批 · ${asked.get(g)}` : `第 ${g} 批`,
+      n: counts.tally.get(`g:${g}`) ?? 0,
+    }))
+  }, [present, counts, batches, candidates])
 
   const checkOptions = useMemo<PickerOption[]>(
     () =>
@@ -400,7 +416,8 @@ export function Workspace({
       if (
         document.querySelector('.drawer[aria-modal="true"]') ||
         document.querySelector('.palette') ||
-        document.querySelector('.picker__menu')
+        document.querySelector('.picker__menu') ||
+        document.querySelector('.composer')
       )
         return
 
@@ -474,6 +491,16 @@ export function Workspace({
         case 'g':
           e.preventDefault()
           if (!running) a.generate()
+          break
+        case 'G':
+          e.preventDefault()
+          if (!running) setComposing(true)
+          break
+        case 'f':
+          if (focusId && !running) {
+            e.preventDefault()
+            a.generate({ parentId: focusId })
+          }
           break
         case '/':
           e.preventDefault()
@@ -766,26 +793,16 @@ export function Workspace({
         )}
       </div>
 
-      <div className="dock">
+      <div className="dock" ref={dockRef}>
         <span className="dock__hint">
           {candidates.length} 个候选 · <b>{candidates.filter(c => c.verdict > 0).length}</b> 个心动
         </span>
         {/* What the threshold ate is a footnote to the count, not a filter, so
             it sits with the count rather than in a row of its own. */}
         {a.discards.length > 0 && (
-          <Tip
-            className="dock__discards"
-            // No title line: it would read 丢掉的 N 个 over a trigger that
-            // already reads 丢掉 N 个.
-            content={
-              <>
-                <p>{a.discards.slice(-14).map(d => d.name).join('　')}</p>
-                <em>自报罕见度低于阈值。</em>
-              </>
-            }
-          >
+          <button className="dock__discards" onClick={() => openDrawer('discards')}>
             · 丢掉 <s>{a.discards.length}</s> 个
-          </Tip>
+          </button>
         )}
         {running ? (
           <>
@@ -795,10 +812,31 @@ export function Workspace({
             </button>
           </>
         ) : (
-          <button className="dock__act" onClick={() => a.generate()}>
-            再来一批 <kbd>G</kbd>
-          </button>
+          <span className="dock__split">
+            <button className="dock__act" onClick={() => a.generate()}>
+              再来一批 <kbd>G</kbd>
+            </button>
+            <button
+              className="dock__act dock__more"
+              aria-label="指定方向或方法再来一批"
+              title="指定方向或方法 ⇧G"
+              aria-expanded={composing}
+              onClick={() => setComposing(c => !c)}
+            >
+              <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true">
+                <path d="M2.2 6l2.8-2.8L7.8 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            </button>
+          </span>
         )}
+        <BatchComposer
+          open={composing && !running}
+          anchor={dockRef}
+          families={a.boot?.families ?? []}
+          strategies={a.boot?.strategies ?? []}
+          onClose={closeComposer}
+          onGenerate={ask => a.generate(ask)}
+        />
       </div>
     </div>
   )

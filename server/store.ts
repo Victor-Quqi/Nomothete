@@ -53,6 +53,23 @@ export interface Batch {
   discarded: number
   error: string | null
   createdAt: number
+  /** What the user typed for this batch, if anything. */
+  direction: string | null
+  /** The Candidate this batch follows, if it was asked for from one. */
+  parentId: string | null
+}
+
+/** A name the rarity floor turned away: a Candidate's facts, minus all it gathers later. */
+export interface Discard {
+  id: string
+  sessionId: string
+  parentId: string | null
+  name: string
+  probability: number
+  rationale: string
+  strategyId: string
+  generation: number
+  createdAt: number
 }
 
 // ── sessions ────────────────────────────────────────────────────────────────
@@ -263,21 +280,124 @@ export function setNote(id: string, note: string): Candidate | null {
   return getCandidate(id)
 }
 
-export function existingNames(sessionId: string): string[] {
-  const rows = getDb().prepare('SELECT name FROM candidates WHERE sessionId = ?').all(sessionId) as { name: string }[]
-  return rows.map(r => r.name)
+/**
+ * Two names that differ only in case or punctuation are one name: every
+ * registry folds them together, and the prompt already asks for no respellings.
+ */
+export function nameKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/** Every name this session has seen, kept or turned away, as keys. */
+export function seenKeys(sessionId: string): Set<string> {
+  const rows = getDb()
+    .prepare('SELECT name FROM candidates WHERE sessionId = ? UNION ALL SELECT name FROM discards WHERE sessionId = ?')
+    .all(sessionId, sessionId) as { name: string }[]
+  return new Set(rows.map(r => nameKey(r.name)))
+}
+
+const EXCLUSION_CAP = 300
+
+/**
+ * The names a batch is told not to offer. Repeats come mostly from the same
+ * Strategy, which hands the model the same word material each time, so all of
+ * its own names go first, kept or turned away. Then every name the user rated,
+ * then the most recent of the rest.
+ */
+export function exclusionsFor(sessionId: string, strategyId: string): string[] {
+  const db = getDb()
+  const own = db
+    .prepare(
+      'SELECT name, createdAt FROM candidates WHERE sessionId = ? AND strategyId = ? ' +
+        'UNION ALL SELECT name, createdAt FROM discards WHERE sessionId = ? AND strategyId = ? ORDER BY createdAt DESC',
+    )
+    .all(sessionId, strategyId, sessionId, strategyId) as { name: string }[]
+  const rated = db
+    .prepare('SELECT name FROM candidates WHERE sessionId = ? AND verdict != 0 ORDER BY verdictAt DESC')
+    .all(sessionId) as { name: string }[]
+  const recent = db
+    .prepare(
+      'SELECT name, createdAt FROM candidates WHERE sessionId = ? ' +
+        'UNION ALL SELECT name, createdAt FROM discards WHERE sessionId = ? ORDER BY createdAt DESC',
+    )
+    .all(sessionId, sessionId) as { name: string }[]
+  const out = new Map<string, string>()
+  for (const { name } of [...own, ...rated, ...recent]) {
+    if (out.size >= EXCLUSION_CAP) break
+    const key = nameKey(name)
+    if (!out.has(key)) out.set(key, name)
+  }
+  return [...out.values()]
+}
+
+// ── discards ────────────────────────────────────────────────────────────────
+
+export function insertDiscard(input: Omit<Discard, 'id' | 'createdAt'>): Discard | null {
+  const discard: Discard = { ...input, id: newId('d'), createdAt: nowMs() }
+  try {
+    getDb()
+      .prepare(
+        'INSERT INTO discards (id, sessionId, parentId, name, probability, rationale, strategyId, generation, createdAt) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        discard.id,
+        discard.sessionId,
+        discard.parentId,
+        discard.name,
+        discard.probability,
+        discard.rationale,
+        discard.strategyId,
+        discard.generation,
+        discard.createdAt,
+      )
+  } catch {
+    return null // unique index on (sessionId, lower(name))
+  }
+  return discard
+}
+
+export function listDiscards(sessionId: string): Discard[] {
+  return getDb()
+    .prepare('SELECT * FROM discards WHERE sessionId = ? ORDER BY createdAt ASC')
+    .all(sessionId) as any as Discard[]
+}
+
+/** Move a turned-away name onto the wall, where it starts unrated like any other. */
+export function keepDiscard(id: string): Candidate | null {
+  const db = getDb()
+  const d = db.prepare('SELECT * FROM discards WHERE id = ?').get(id) as any as Discard | undefined
+  if (!d) return null
+  const candidate = insertCandidate({
+    sessionId: d.sessionId,
+    parentId: d.parentId && getCandidate(d.parentId) ? d.parentId : null,
+    name: d.name,
+    probability: d.probability,
+    rationale: d.rationale,
+    strategyId: d.strategyId,
+    generation: d.generation,
+  })
+  if (!candidate) return null
+  db.prepare('DELETE FROM discards WHERE id = ?').run(id)
+  touchSession(d.sessionId)
+  return candidate
 }
 
 // ── batches ─────────────────────────────────────────────────────────────────
 
-export function createBatch(sessionId: string, generation: number, strategyId: string): Batch {
+export function createBatch(
+  sessionId: string,
+  generation: number,
+  strategyId: string,
+  ask: { direction?: string | null; parentId?: string | null } = {},
+): Batch {
   const id = newId('b')
   getDb()
     .prepare(
-      'INSERT INTO batches (id, sessionId, generation, strategyId, state, kept, discarded, createdAt) ' +
-        "VALUES (?, ?, ?, ?, 'running', 0, 0, ?)",
+      'INSERT INTO batches (id, sessionId, generation, strategyId, state, kept, discarded, createdAt, direction, parentId) ' +
+        "VALUES (?, ?, ?, ?, 'running', 0, 0, ?, ?, ?)",
     )
-    .run(id, sessionId, generation, strategyId, nowMs())
+    .run(id, sessionId, generation, strategyId, nowMs(), ask.direction ?? null, ask.parentId ?? null)
   return getBatch(id)!
 }
 

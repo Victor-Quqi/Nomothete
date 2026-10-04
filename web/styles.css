@@ -1550,6 +1550,14 @@ kbd {
 }
 .drawer__x:hover { color: var(--text); background: rgb(var(--fg) / 0.06); }
 .drawer__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 20px 22px 40px; }
+.discards { list-style: none; margin: 0; padding: 0; }
+.discard { padding: 12px 0; border-bottom: 1px solid var(--hair); }
+.discard:first-child { padding-top: 0; }
+.discard__head { display: flex; align-items: baseline; gap: 10px; }
+.discard__name { font-family: var(--font-display); font-size: 19px; font-weight: 400; color: var(--text); }
+.discard__meta { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-4); }
+.discard__keep { flex: none; align-self: center; }
+.discard__rationale { margin: 4px 0 0; font-size: 13.5px; line-height: 1.7; color: var(--text-3); }
 .drawer__lead {
   font-size: 14px;
   line-height: 1.75;
@@ -1695,6 +1703,8 @@ kbd {
 }
 .detail__meta { margin: 0; font-size: 12px; }
 .detail .detail__rationale { margin: 22px 0 18px; font-size: 14px; line-height: 1.85; color: var(--text-2); }
+.detail__verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.detail__verdict kbd { border: none; background: none; padding: 0; color: var(--text-4); font-size: 12px; }
 .detail__checks { margin: 26px 0; padding: 10px 14px 12px; border-radius: 12px; background: rgb(var(--fg) / 0.025); }
 .detail__name:hover { color: var(--text-hi); }
 /* Only shown for a registry that stores the name under a different string, so
@@ -1897,7 +1907,6 @@ kbd {
   font-size: 13.5px;
   color: var(--text-4);
   white-space: nowrap;
-  cursor: default;
   margin-left: -4px;
 }
 .dock__discards:hover { color: var(--text-3); }
@@ -1941,6 +1950,68 @@ kbd {
   .dock__count { display: none; }
 }
 .dock__status b { font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--mark-soft); }
+.dock__split { display: inline-flex; gap: 4px; flex: none; }
+.dock__more { padding: 7px 10px; }
+
+/* 再来一批 with a say in it, standing on the dock. */
+.composer {
+  position: fixed;
+  z-index: 80;
+  width: min(460px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--hair-2);
+  background: var(--pop-bg);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: var(--shadow-pop);
+}
+.composer__direction {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-md);
+  background: var(--field-bg);
+  font-size: 14px;
+  color: var(--text);
+}
+.composer__direction::placeholder { color: var(--text-4); }
+.composer__families { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; }
+.composer__family { display: grid; grid-template-columns: 46px 1fr; align-items: start; }
+.composer__family-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-4);
+}
+.composer__strategies { display: flex; flex-wrap: wrap; gap: 5px; }
+.composer__family-label i {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: hsl(var(--fam-hue, 38) var(--dot-s) var(--dot-l));
+}
+.composer__strategy { padding: 3px 10px; font-size: 13px; }
+.composer__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.composer__width { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-3); }
+.composer__n {
+  min-width: 26px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--chip-edge);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.composer__n:hover { color: var(--text); }
+.composer__n[data-on='true'] { background: var(--chip-on-bg); border-color: var(--chip-on-edge); color: var(--chip-on-fg); }
+.composer__clear { margin-left: 6px; font-size: 13px; color: var(--text-4); border-bottom: 1px solid var(--hair); }
+.composer__clear:hover { color: var(--text-2); }
+.composer .dock__act kbd { font-size: 12px; }
 
 /* ── empty ───────────────────────────────────────────────────────────────── */
 .empty {

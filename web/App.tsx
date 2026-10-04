@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Atmosphere } from './components/Atmosphere.tsx'
 import { CommandPalette, type Command } from './components/CommandPalette.tsx'
 import { DetailPanel } from './components/DetailPanel.tsx'
+import { DiscardList } from './components/DiscardList.tsx'
 import { Drawer } from './components/Drawer.tsx'
 import { Opening } from './components/Opening.tsx'
 import { PriorDossier } from './components/PriorDossier.tsx'
@@ -28,6 +29,7 @@ const DRAWER_TITLE: Record<DrawerKind, string> = {
   brief: '项目简介',
   keys: '快捷键',
   settings: '设置',
+  discards: '丢掉的名字',
 }
 
 const KEYS: [string, string][] = [
@@ -40,6 +42,8 @@ const KEYS: [string, string][] = [
   ['s', '朗读名字'],
   ['c', '复制名字'],
   ['g', '再来一批'],
+  ['⇧G', '写方向、挑方法，再来一批'],
+  ['f', '照这个名字再来一批'],
   ['e', '导出 Markdown'],
   ['/', '搜索。↵ 跳到第一个结果，Esc 清空'],
   ['t', '你的口味'],
@@ -256,7 +260,12 @@ export function App() {
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}
             onRecheck={() => a.recheck(detail.id)}
+            onFollow={a.running ? undefined : () => a.generate({ parentId: detail.id })}
           />
+        )}
+
+        {drawer?.kind === 'discards' && (
+          <DiscardList discards={a.discards} strategyById={a.strategyById} onKeep={a.keepDiscard} />
         )}
 
         {drawer?.kind === 'settings' && (

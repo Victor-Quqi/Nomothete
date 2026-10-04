@@ -15,7 +15,9 @@ import type {
   Bootstrap,
   Candidate,
   CheckResult,
+  Discard,
   Family,
+  GenerateAsk,
   ProviderStatus,
   ServerEvent,
   Session,
@@ -29,12 +31,6 @@ export interface Toast {
   id: number
   message: string
   tone: 'plain' | 'good' | 'error'
-}
-
-export interface Discard {
-  name: string
-  probability: number
-  at: number
 }
 
 /** Same glyphs the dial uses, so an undo toast names what you will see. */
@@ -133,7 +129,7 @@ export function useAtelier() {
         setProfile(p.profile)
         setRunning(p.running)
         setChecking(new Set(p.checking))
-        setDiscards([])
+        setDiscards(p.discards)
       })
       .catch(err => {
         if (!alive) return
@@ -173,7 +169,6 @@ export function useAtelier() {
       switch (event.type) {
         case 'generation:start':
           setRunning(true)
-          setDiscards([])
           // The batches about to arrive belong to a generation the session
           // object loaded over REST has never heard of. Anything that shows
           // work in progress filters batches down to the current generation,
@@ -198,6 +193,8 @@ export function useAtelier() {
                     discarded: 0,
                     error: null,
                     createdAt: Date.now(),
+                    direction: event.direction,
+                    parentId: event.parentId,
                     phase: 'waiting',
                   },
                 ],
@@ -228,7 +225,11 @@ export function useAtelier() {
           break
 
         case 'candidate:discarded':
-          setDiscards(d => [...d.slice(-49), { name: event.name, probability: event.probability, at: Date.now() }])
+          setDiscards(d => (d.some(x => x.id === event.discard.id) ? d : [...d, event.discard]))
+          break
+
+        case 'discard:kept':
+          setDiscards(d => d.filter(x => x.id !== event.discardId))
           break
 
         case 'check':
@@ -303,6 +304,7 @@ export function useAtelier() {
           setProfile(p.profile)
           setRunning(p.running)
           setChecking(new Set(p.checking))
+          setDiscards(p.discards)
         })
         .catch(() => {})
         .finally(() => {
@@ -391,7 +393,7 @@ export function useAtelier() {
   )
 
   const generate = useCallback(
-    async (opts: { width?: number; strategyIds?: string[] } = {}) => {
+    async (opts: GenerateAsk = {}) => {
       if (!sessionId) return
       setRunning(true)
       try {
@@ -402,6 +404,17 @@ export function useAtelier() {
       }
     },
     [sessionId, toast],
+  )
+
+  const keepDiscard = useCallback(
+    async (discardId: string) => {
+      try {
+        await api.keepDiscard(discardId)
+      } catch (err) {
+        toast((err as Error).message, 'error')
+      }
+    },
+    [toast],
   )
 
   const cancel = useCallback(async () => {
@@ -611,6 +624,7 @@ export function useAtelier() {
     reloadSessions,
     createSession,
     generate,
+    keepDiscard,
     cancel,
     setVerdict,
     undo,

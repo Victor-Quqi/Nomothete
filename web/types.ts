@@ -90,8 +90,36 @@ export interface Batch {
   discarded: number
   error: string | null
   createdAt: number
+  /** What the user typed for this batch, if anything. */
+  direction: string | null
+  /** The Candidate this batch follows, if it was asked for from one. */
+  parentId: string | null
   /** Client-side only, and only while running. The server does not store it. */
   phase?: 'waiting' | 'thinking' | 'writing'
+}
+
+/** What one press of 再来一批 can ask for beyond the default. */
+export interface GenerateAsk {
+  /** How many Strategies, when none are named. */
+  width?: number
+  strategyIds?: string[]
+  /** A line typed for this batch. */
+  direction?: string
+  /** A Candidate to ask for more from. */
+  parentId?: string
+}
+
+/** A name the rarity floor turned away. */
+export interface Discard {
+  id: string
+  sessionId: string
+  parentId: string | null
+  name: string
+  probability: number
+  rationale: string
+  strategyId: string
+  generation: number
+  createdAt: number
 }
 
 export type FamilyId = 'root' | 'craft' | 'nature' | 'instrument' | 'formation' | 'tongue'
@@ -200,6 +228,7 @@ export interface SessionPayload {
   session: Session
   candidates: Candidate[]
   batches: Batch[]
+  discards: Discard[]
   running: boolean
   profile: TasteProfile
   /** Names whose slow tier the server is running now. */
@@ -208,12 +237,13 @@ export interface SessionPayload {
 
 export type ServerEvent =
   | { type: 'generation:start'; generation: number; strategies: string[] }
-  | { type: 'batch:start'; batchId: string; strategyId: string; generation: number }
+  | { type: 'batch:start'; batchId: string; strategyId: string; generation: number; direction: string | null; parentId: string | null }
   | { type: 'batch:phase'; batchId: string; strategyId: string; phase: 'thinking' | 'writing' }
   | { type: 'batch:done'; batchId: string; strategyId: string; kept: number; discarded: number }
   | { type: 'batch:failed'; batchId: string; strategyId: string; error: string }
   | { type: 'candidate'; candidate: Candidate }
-  | { type: 'candidate:discarded'; batchId: string; name: string; probability: number }
+  | { type: 'candidate:discarded'; batchId: string; discard: Discard }
+  | { type: 'discard:kept'; discardId: string }
   | { type: 'check'; candidateId: string; result: CheckResult }
   | { type: 'check:gone'; candidateId: string; checkId: string }
   | { type: 'check:running'; candidateId: string; running: boolean }

@@ -27,13 +27,18 @@ import { publish } from '../events.ts'
 import { activeProfile, resolveModel } from '../llm.ts'
 import {
   createBatch,
-  existingNames,
+  exclusionsFor,
   finishBatch,
+  getCandidate,
   getSession,
   insertCandidate,
+  insertDiscard,
   listCandidates,
   bumpGeneration,
+  nameKey,
+  seenKeys,
   touchSession,
+  type Candidate,
   type Session,
 } from '../store.ts'
 import { PRIOR_BY_ID } from './priors.ts'
@@ -110,7 +115,15 @@ function systemPrompt(chinese: boolean): string {
   ].join('\n')
 }
 
-function userPrompt(session: Session, strategy: Strategy, taste: string, exclusions: string[]): string {
+/** What one click asked for beyond a Strategy. */
+interface Ask {
+  /** A line the user typed for this batch. */
+  direction: string | null
+  /** The name the user asked for more from. */
+  parent: Candidate | null
+}
+
+function userPrompt(session: Session, strategy: Strategy, taste: string, exclusions: string[], ask: Ask): string {
   const priorLines = session.priors
     .map(id => PRIOR_BY_ID.get(id))
     .filter(p => p && p.instruction)
@@ -128,6 +141,23 @@ function userPrompt(session: Session, strategy: Strategy, taste: string, exclusi
       sampleLexicon(strategy, 12).map(l => `  · ${l}`).join('\n'),
   )
 
+  if (ask.parent) {
+    blocks.push(
+      `THE NAME TO FOLLOW\nThe user asked for more from this one: ${ask.parent.name}. ${ask.parent.rationale}` +
+        (ask.parent.note ? `\nTheir note on it: "${ask.parent.note}"` : '') +
+        `\nWork out what this name does for the project — where it comes from, how it sounds, the angle it takes — ` +
+        `and reach the same thing by another route, under the approach above. Not respellings of it, and not the ` +
+        `same word with something added.`,
+    )
+  }
+
+  if (ask.direction) {
+    blocks.push(
+      `WHAT THE USER ASKED OF THIS BATCH\n${ask.direction}\n` +
+        `Follow it inside the approach above. Where the two pull apart, the user's ask wins.`,
+    )
+  }
+
   if (priorLines.length) {
     blocks.push(
       `LEANINGS THE USER HAS LEFT SWITCHED ON\nThese come from a study of what developers actually praise and complain about. ` +
@@ -138,7 +168,7 @@ function userPrompt(session: Session, strategy: Strategy, taste: string, exclusi
   if (taste) blocks.push(`WHAT THIS USER HAS REACTED TO SO FAR\n${taste}`)
 
   if (exclusions.length) {
-    blocks.push(`ALREADY SHOWN — none of these, and nothing that is merely a respelling of one\n${exclusions.join(', ')}`)
+    blocks.push(`ALREADY OFFERED IN THIS SESSION — none of these, and nothing that is merely a respelling of one\n${exclusions.join(', ')}`)
   }
 
   blocks.push(
@@ -179,10 +209,20 @@ async function runBatch(
   strategy: Strategy,
   generation: number,
   taste: string,
+  ask: Ask,
+  /** Name keys this session has already seen. Shared by the generation's batches, which run side by side. */
+  known: Set<string>,
   sessionSignal: AbortSignal,
 ): Promise<BatchOutcome> {
-  const batch = createBatch(session.id, generation, strategy.id)
-  publish(session.id, { type: 'batch:start', batchId: batch.id, strategyId: strategy.id, generation })
+  const batch = createBatch(session.id, generation, strategy.id, { direction: ask.direction, parentId: ask.parent?.id })
+  publish(session.id, {
+    type: 'batch:start',
+    batchId: batch.id,
+    strategyId: strategy.id,
+    generation,
+    direction: batch.direction,
+    parentId: batch.parentId,
+  })
 
   const stall = new AbortController()
   const ceiling = AbortSignal.timeout(CEILING_MS)
@@ -214,7 +254,8 @@ async function runBatch(
 
   /** One request. Returns how many elements the model actually produced. */
   async function attempt(): Promise<number> {
-    const exclusions = existingNames(session.id).slice(-120)
+    const exclusions = exclusionsFor(session.id, strategy.id)
+    if (ask.parent && !exclusions.includes(ask.parent.name)) exclusions.unshift(ask.parent.name)
     const stream = streamObject({
       model: resolveModel(profile, () => {
         lastChunkAt = Date.now()
@@ -223,7 +264,7 @@ async function runBatch(
       output: 'array',
       schema: CandidateSchema,
       system: systemPrompt(hasCJK(session.brief) || session.brief.trim() === ''),
-      prompt: userPrompt(session, strategy, taste, exclusions),
+      prompt: userPrompt(session, strategy, taste, exclusions, ask),
       temperature: 1,
       abortSignal: signal,
       // The SDK's default onError dumps the whole DOMException to the terminal.
@@ -248,27 +289,35 @@ async function runBatch(
       enter('writing')
       const name = cleanName(element.name ?? '')
       if (!name) continue
+      // Shown or turned away before, under this spelling or another one.
+      const key = nameKey(name)
+      if (known.has(key)) continue
+      known.add(key)
 
       const probability = Number.isFinite(element.probability)
         ? Math.min(1, Math.max(0, element.probability))
         : 0.5
-
-      // The absolute threshold, applied the moment the element lands. No
-      // waiting for the batch, no re-ranking — that is the whole point.
-      if (probability > session.threshold) {
-        discarded++
-        publish(session.id, { type: 'candidate:discarded', batchId: batch.id, name, probability })
-        continue
-      }
-
-      const candidate = insertCandidate({
+      const found = {
         sessionId: session.id,
+        parentId: ask.parent?.id ?? null,
         name,
         probability,
         rationale: (element.rationale ?? '').trim(),
         strategyId: strategy.id,
         generation,
-      })
+      }
+
+      // The absolute threshold, applied the moment the element lands. No
+      // waiting for the batch, no re-ranking — that is the whole point.
+      if (probability > session.threshold) {
+        const discard = insertDiscard(found)
+        if (!discard) continue
+        discarded++
+        publish(session.id, { type: 'candidate:discarded', batchId: batch.id, discard })
+        continue
+      }
+
+      const candidate = insertCandidate(found)
       if (!candidate) continue // already in this session
 
       kept++
@@ -334,6 +383,10 @@ export interface GenerateOptions {
   width?: number
   /** Force a specific set, e.g. when the user asks for one more of a kind. */
   strategyIds?: string[]
+  /** A line the user typed for this generation. */
+  direction?: string
+  /** A Candidate to ask for more from. */
+  parentId?: string
 }
 
 /**
@@ -345,21 +398,32 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
   if (!session) throw new Error('会话不存在')
   if (running.has(sessionId)) throw new Error('这个会话已经有一批在跑了')
 
+  const parent = opts.parentId ? getCandidate(opts.parentId) : null
+  if (opts.parentId && parent?.sessionId !== sessionId) throw new Error('候选不存在')
+  const direction = opts.direction?.trim().slice(0, 200) || null
+
   const candidates = listCandidates(sessionId)
   const profile = buildProfile(candidates, session.seeds)
-  const width = Math.max(1, Math.min(8, opts.width ?? (profile.observations === 0 ? 6 : 4)))
+  const width = Math.max(1, Math.min(8, opts.width ?? (parent ? 3 : profile.observations === 0 ? 6 : 4)))
 
   const recentlyUsed = candidates.slice(-30).map(c => c.strategyId)
+  // Following a name starts from the Strategy that made it, and goes one or two
+  // other ways besides.
   const strategyIds =
     opts.strategyIds?.length
-      ? opts.strategyIds
-      : profile.observations === 0 && candidates.length === 0
-        ? seedStrategies(width)
-        : pickStrategies(profile, width, recentlyUsed)
+      ? opts.strategyIds.filter(id => STRATEGY_BY_ID.has(id)).slice(0, 8)
+      : parent && STRATEGY_BY_ID.has(parent.strategyId)
+        ? [parent.strategyId, ...pickStrategies(profile, width, [...recentlyUsed, parent.strategyId]).filter(id => id !== parent.strategyId)].slice(0, width)
+        : profile.observations === 0 && candidates.length === 0
+          ? seedStrategies(width)
+          : pickStrategies(profile, width, recentlyUsed)
+  if (strategyIds.length === 0) throw new Error('没有可用的取名方法')
 
   const generation = bumpGeneration(sessionId)
   const fresh = getSession(sessionId)!
   const taste = profileForPrompt(profile)
+  const ask: Ask = { direction, parent }
+  const known = seenKeys(sessionId)
 
   const controller = new AbortController()
   running.set(sessionId, controller)
@@ -372,7 +436,7 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
         strategyIds.map(id => {
           const strategy = STRATEGY_BY_ID.get(id)
           if (!strategy) return Promise.resolve({ kept: 0, discarded: 0 })
-          return runBatch(fresh, strategy, generation, taste, controller.signal)
+          return runBatch(fresh, strategy, generation, taste, ask, known, controller.signal)
         }),
       )
     } finally {

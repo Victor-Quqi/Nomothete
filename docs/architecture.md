@@ -55,16 +55,19 @@ UI 不需要改：印章、颜色、档位说明、详情卡片都是从这个�
 GET    /api/bootstrap                    strategies / families / priors / checks / provider / sessions
 GET    /api/sessions                     列表（带候选数与心动数）
 POST   /api/sessions                     新建，默认立即开跑
-GET    /api/sessions/:id                 session + candidates + batches + running + profile
+GET    /api/sessions/:id                 session + candidates + batches + discards + running + profile
 PATCH  /api/sessions/:id                 改标题 / 简介 / priors / 阈值
 DELETE /api/sessions/:id
-POST   /api/sessions/:id/generate        {width?, strategyId?}
+POST   /api/sessions/:id/generate        {width?, strategyIds?, direction?, parentId?}
+                                         direction 只用于这一批；parentId 照这个候选再来，
+                                         新名字带上它作 parentId
 POST   /api/sessions/:id/cancel
 GET    /api/sessions/:id/taste
 GET    /api/sessions/:id/stream          SSE，支持 Last-Event-ID 重放
 POST   /api/candidates/:id/verdict       {verdict: -2..2}；正档同时请求取义核查（已有结果则复用）
 POST   /api/candidates/:id/note
 POST   /api/candidates/:id/recheck       限速档检查 + 重新核查取义说明
+POST   /api/discards/:id/keep            把一个被罕见度下限丢掉的名字放回墙上，未评价
 GET    /api/sessions/:id/export?format=json|md
 GET    /api/config                       当前来源与去向；钥匙只回末四位
 PUT    /api/config                       {baseURL?, model?, apiKey?, reasoningEffort?}

@@ -7,19 +7,21 @@
  * laptop lid was shut.
  */
 import { EventEmitter } from 'node:events'
-import type { Candidate } from './store.ts'
+import type { Candidate, Discard } from './store.ts'
 import type { CheckResult } from './checks/types.ts'
 import type { Verification } from './verify/store.ts'
 
 export type ServerEvent =
   | { type: 'generation:start'; generation: number; strategies: string[] }
-  | { type: 'batch:start'; batchId: string; strategyId: string; generation: number }
+  | { type: 'batch:start'; batchId: string; strategyId: string; generation: number; direction: string | null; parentId: string | null }
   /** Transient, not persisted: what the thread on the loom should be saying. */
   | { type: 'batch:phase'; batchId: string; strategyId: string; phase: 'thinking' | 'writing' }
   | { type: 'batch:done'; batchId: string; strategyId: string; kept: number; discarded: number }
   | { type: 'batch:failed'; batchId: string; strategyId: string; error: string }
   | { type: 'candidate'; candidate: Candidate }
-  | { type: 'candidate:discarded'; batchId: string; name: string; probability: number }
+  | { type: 'candidate:discarded'; batchId: string; discard: Discard }
+  /** A turned-away name was taken back; its Candidate arrives as `candidate`. */
+  | { type: 'discard:kept'; discardId: string }
   | { type: 'check'; candidateId: string; result: CheckResult }
   /** A re-run found nothing where the stored answer had found something. */
   | { type: 'check:gone'; candidateId: string; checkId: string }

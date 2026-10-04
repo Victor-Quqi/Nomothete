@@ -99,6 +99,21 @@ CREATE TABLE IF NOT EXISTS batches (
 );
 CREATE INDEX IF NOT EXISTS batches_session ON batches(sessionId, createdAt);
 
+-- Names the rarity floor turned away. Kept so that later batches are told not
+-- to offer them again, and so that one can be taken back onto the wall.
+CREATE TABLE IF NOT EXISTS discards (
+  id          TEXT PRIMARY KEY,
+  sessionId   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  parentId    TEXT,
+  name        TEXT NOT NULL,
+  probability REAL NOT NULL,
+  rationale   TEXT NOT NULL,
+  strategyId  TEXT NOT NULL,
+  generation  INTEGER NOT NULL,
+  createdAt   INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS discards_unique_name ON discards(sessionId, lower(name));
+
 -- The local index. Every registry answer we ever receive is folded in here, so
 -- the second question about a normalised form is answered in 0 ms. A full dump
 -- can be ingested into the same table; see scripts/build-index.ts.
@@ -153,6 +168,12 @@ export function getDb(): DatabaseSync {
         ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
         COMMIT;
       `)
+    }
+    // What a batch was asked for beyond its Strategy: a direction typed for it,
+    // or the name it follows.
+    const batchColumns = db.prepare('PRAGMA table_info(batches)').all()
+    if (!batchColumns.some(column => column.name === 'direction')) {
+      db.exec('ALTER TABLE batches ADD COLUMN direction TEXT; ALTER TABLE batches ADD COLUMN parentId TEXT;')
     }
   }
   return db
