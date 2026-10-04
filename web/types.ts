@@ -202,6 +202,8 @@ export interface SessionPayload {
   batches: Batch[]
   running: boolean
   profile: TasteProfile
+  /** Names whose slow tier the server is running now. */
+  asking: string[]
 }
 
 export type ServerEvent =

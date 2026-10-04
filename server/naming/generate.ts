@@ -404,6 +404,10 @@ export function startGeneration(sessionId: string, opts: GenerateOptions = {}): 
  * the sentence this build would use to report them.
  */
 export function startDeepChecks(sessionId: string, candidateId: string, name: string, all = false) {
+  // One run per name at a time: a second press while the first is out would
+  // only put the same questions to every registry twice.
+  if (deepRuns.has(candidateId)) return
+  deepRuns.add(candidateId)
   const controller = new AbortController()
   void runChecks(candidateId, name, {
     deep: true,
@@ -411,5 +415,14 @@ export function startDeepChecks(sessionId: string, candidateId: string, name: st
     signal: controller.signal,
     onResult: result => publish(sessionId, { type: 'check', candidateId, result }),
     onGone: checkId => publish(sessionId, { type: 'check:gone', candidateId, checkId }),
-  }).catch(() => {})
+  })
+    .catch(() => {})
+    .finally(() => deepRuns.delete(candidateId))
+}
+
+/** Names whose slow tier this process is running. A restart forgets them, as it stops them. */
+const deepRuns = new Set<string>()
+
+export function deepRunning(candidateId: string): boolean {
+  return deepRuns.has(candidateId)
 }

@@ -133,6 +133,7 @@ export function useAtelier() {
         setBatches(p.batches)
         setProfile(p.profile)
         setRunning(p.running)
+        setAsked(new Set(p.asking))
         setDiscards([])
       })
       .catch(err => {
@@ -160,18 +161,16 @@ export function useAtelier() {
 
   useEffect(() => {
     if (!sessionId) return
-    const source = new EventSource(`/api/sessions/${sessionId}/stream`)
+    let source: EventSource | null = null
+    let retry: ReturnType<typeof setTimeout> | undefined
+    let stopped = false
+    let dropped = false
+    let lastId = ''
+    let heardAt = Date.now()
+    /** Events that land while a snapshot is on its way wait for it; applied first, the snapshot would undo them. */
+    let held: ServerEvent[] | null = null
 
-    source.onopen = () => setConnected(true)
-    source.onerror = () => setConnected(false)
-
-    source.onmessage = ev => {
-      let event: ServerEvent
-      try {
-        event = JSON.parse(ev.data)
-      } catch {
-        return
-      }
+    const apply = (event: ServerEvent) => {
       switch (event.type) {
         case 'generation:start':
           setRunning(true)
@@ -280,7 +279,84 @@ export function useAtelier() {
       }
     }
 
-    return () => source.close()
+    // What happened while the stream was down is only on the server now: a
+    // restart empties the replay buffer, and stops whatever the old process
+    // was running. So the page asks for the whole session again.
+    const resync = () => {
+      held = []
+      api
+        .session(sessionId)
+        .then(p => {
+          if (stopped) return
+          setSession(p.session)
+          setCandidates(p.candidates)
+          setBatches(p.batches)
+          setProfile(p.profile)
+          setRunning(p.running)
+          setAsked(new Set(p.asking))
+        })
+        .catch(() => {})
+        .finally(() => {
+          const waiting = held ?? []
+          held = null
+          if (!stopped) waiting.forEach(apply)
+        })
+    }
+
+    const connect = () => {
+      const from = lastId ? `?lastEventId=${encodeURIComponent(lastId)}` : ''
+      source = new EventSource(`/api/sessions/${sessionId}/stream${from}`)
+      heardAt = Date.now()
+      source.addEventListener('beat', () => (heardAt = Date.now()))
+      source.onopen = () => {
+        heardAt = Date.now()
+        setConnected(true)
+        if (dropped) resync()
+        dropped = false
+      }
+      source.onerror = () => {
+        setConnected(false)
+        dropped = true
+        // The browser retries a dropped stream by itself, but an answer that is
+        // not a stream — what a proxy says while the server behind it restarts
+        // — makes it stop for good. From there, retrying is this page's job.
+        if (source?.readyState === EventSource.CLOSED && !stopped) {
+          clearTimeout(retry)
+          retry = setTimeout(connect, 2000)
+        }
+      }
+      source.onmessage = ev => {
+        heardAt = Date.now()
+        if (ev.lastEventId) lastId = ev.lastEventId
+        let event: ServerEvent
+        try {
+          event = JSON.parse(ev.data)
+        } catch {
+          return
+        }
+        if (held) held.push(event)
+        else apply(event)
+      }
+    }
+
+    // A proxy can hold the page's end of the stream open after the server
+    // behind it has gone; then nothing arrives and nothing errors, forever. The
+    // server beats every 10s, so silence past 25s is a dead stream.
+    const watchdog = setInterval(() => {
+      if (source?.readyState !== EventSource.OPEN || Date.now() - heardAt < 25_000) return
+      source.close()
+      setConnected(false)
+      dropped = true
+      connect()
+    }, 5000)
+
+    connect()
+    return () => {
+      stopped = true
+      clearTimeout(retry)
+      clearInterval(watchdog)
+      source?.close()
+    }
   }, [sessionId, toast, scheduleProfile])
 
   // ── actions ───────────────────────────────────────────────────────────────

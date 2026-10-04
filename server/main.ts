@@ -27,7 +27,7 @@ import {
   resolveReasoningEffort,
   type ProviderKind,
 } from './llm.ts'
-import { cancel, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
+import { cancel, deepRunning, isRunning, startDeepChecks, startGeneration } from './naming/generate.ts'
 import { PRIORS } from './naming/priors.ts'
 import { FAMILIES, STRATEGIES } from './naming/strategies.ts'
 import { nameSession } from './naming/title.ts'
@@ -148,6 +148,9 @@ function sessionPayload(id: string) {
     batches: listBatches(id),
     running: isRunning(id),
     profile: profilePayload(candidates, session.seeds),
+    // Slow tiers out right now. A page that lost the stream cannot tell a run
+    // still going from one that stopped with the last process; this can.
+    asking: candidates.filter(c => deepRunning(c.id)).map(c => c.id),
   }
 }
 
@@ -178,6 +181,10 @@ async function backfillChecks(sessionId: string, candidates: Candidate[]) {
       onResult: result => publish(sessionId, { type: 'check', candidateId: c.id, result }),
       onGone: checkId => publish(sessionId, { type: 'check:gone', candidateId: c.id, checkId }),
     }).catch(() => {})
+    // An upvote buys the slow tier. One whose run never answered — the process
+    // running it stopped — is asked again rather than left saying 正在查.
+    const deepAnswered = (c.checks ?? []).some(k => k.tier === 'ratelimited')
+    if (c.verdict > 0 && !deepAnswered) startDeepChecks(sessionId, c.id, c.name)
   }
 }
 
@@ -255,7 +262,9 @@ api.get('/sessions/:id/stream', (req, res) => {
   }
   ch.on('event', onEvent)
 
-  const beat = setInterval(() => res.write(': beat\n\n'), 20_000)
+  // An event, not a comment: a page cannot see comments, and it has to hear
+  // something regularly to notice a stream that died without saying so.
+  const beat = setInterval(() => res.write('event: beat\ndata: 1\n\n'), 10_000)
   req.on('close', () => {
     clearInterval(beat)
     ch.off('event', onEvent)
