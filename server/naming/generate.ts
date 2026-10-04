@@ -408,6 +408,7 @@ export function startDeepChecks(sessionId: string, candidateId: string, name: st
   // only put the same questions to every registry twice.
   if (deepRuns.has(candidateId)) return
   deepRuns.add(candidateId)
+  publish(sessionId, { type: 'check:running', candidateId, running: true })
   const controller = new AbortController()
   void runChecks(candidateId, name, {
     deep: true,
@@ -417,7 +418,10 @@ export function startDeepChecks(sessionId: string, candidateId: string, name: st
     onGone: checkId => publish(sessionId, { type: 'check:gone', candidateId, checkId }),
   })
     .catch(() => {})
-    .finally(() => deepRuns.delete(candidateId))
+    .finally(() => {
+      deepRuns.delete(candidateId)
+      publish(sessionId, { type: 'check:running', candidateId, running: false })
+    })
 }
 
 /** Names whose slow tier this process is running. A restart forgets them, as it stops them. */

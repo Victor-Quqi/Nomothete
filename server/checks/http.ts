@@ -11,21 +11,26 @@ let inflight = 0
 const queue: (() => void)[] = []
 
 // Thirty names checked at once is thirty requests in twelve seconds, and npm
-// answered half of them with a Cloudflare 429. Space them out per host.
+// answered half of them with a Cloudflare 429. Space them out per host. Each
+// host queues on its own and a request takes a shared slot only at the front of
+// that queue: waiting out npm's spacing while holding one left GitHub and the
+// domain lookups behind every registry probe in the process.
 const MIN_GAP_MS = 350
-const nextSlot = new Map<string, number>()
+const lanes = new Map<string, Promise<void>>()
 
-async function pace(url: string) {
-  let host: string
-  try {
-    host = new URL(url).host
-  } catch {
-    return
-  }
-  const now = Date.now()
-  const at = Math.max(now, nextSlot.get(host) ?? 0)
-  nextSlot.set(host, at + MIN_GAP_MS)
-  if (at > now) await new Promise(r => setTimeout(r, at - now))
+/** Wait for this host's turn. Call the result when the request starts, with the gap the next one keeps. */
+async function turn(url: string): Promise<(gap: number) => void> {
+  const host = URL.parse(url)?.host ?? url
+  const ahead = lanes.get(host)
+  let open!: () => void
+  const mine = new Promise<void>(resolve => (open = resolve))
+  lanes.set(host, mine)
+  if (ahead) await ahead
+  return gap =>
+    setTimeout(() => {
+      if (lanes.get(host) === mine) lanes.delete(host)
+      open()
+    }, gap)
 }
 
 function acquire(): Promise<void> {
@@ -63,9 +68,14 @@ export async function probe(
     return { status: hit.status, body: hit.body, cached: true }
   }
 
+  const start = await turn(url)
+  if (opts.signal?.aborted) {
+    start(0)
+    throw opts.signal.reason
+  }
   await acquire()
+  start(MIN_GAP_MS)
   try {
-    await pace(url)
     const res = await fetch(url, {
       method: opts.method ?? 'GET',
       signal: opts.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(12_000)]) : AbortSignal.timeout(12_000),

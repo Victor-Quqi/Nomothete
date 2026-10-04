@@ -203,7 +203,7 @@ export interface SessionPayload {
   running: boolean
   profile: TasteProfile
   /** Names whose slow tier the server is running now. */
-  asking: string[]
+  checking: string[]
 }
 
 export type ServerEvent =
@@ -216,6 +216,7 @@ export type ServerEvent =
   | { type: 'candidate:discarded'; batchId: string; name: string; probability: number }
   | { type: 'check'; candidateId: string; result: CheckResult }
   | { type: 'check:gone'; candidateId: string; checkId: string }
+  | { type: 'check:running'; candidateId: string; running: boolean }
   | { type: 'verdict'; candidateId: string; verdict: number }
   | { type: 'verification'; candidateId: string; verification: Verification | null }
   | { type: 'generation:done'; generation: number }

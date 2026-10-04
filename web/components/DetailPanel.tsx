@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NO_CHECKS, deepRunning, groupChecks } from '../checks.ts'
+import { NO_CHECKS, groupChecks } from '../checks.ts'
 import { REGISTRIES, registryForm } from '../normalize.ts'
 import { isMute, speakName } from '../speak.ts'
 import { CheckFinding, RecheckLine } from './CheckList.tsx'
@@ -13,7 +13,7 @@ export function DetailPanel({
   strategy,
   family,
   manifest,
-  asked,
+  checking,
   autoVerify,
   onVerdict,
   onNote,
@@ -24,8 +24,8 @@ export function DetailPanel({
   family?: Family
   /** What the server can check, so the drawer can name what it has not done yet. */
   manifest?: Bootstrap['checks']
-  /** Its slow tier was started by hand and nothing has come back yet. */
-  asked: boolean
+  /** The server is running its slow tier. */
+  checking: boolean
   /** Whether rationale verification runs on its own; off shows a browser search instead. */
   autoVerify: boolean
   onVerdict: (v: Verdict) => void
@@ -114,7 +114,7 @@ export function DetailPanel({
         <RecheckLine
           checks={checks}
           manifest={manifest}
-          running={deepRunning(checks, candidate.verdict, asked)}
+          running={checking}
           onRecheck={onRecheck}
         />
       </div>

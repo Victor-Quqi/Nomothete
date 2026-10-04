@@ -251,7 +251,7 @@ export function App() {
             strategy={a.strategyById.get(detail.strategyId)}
             family={a.familyById.get(a.strategyById.get(detail.strategyId)?.family ?? '')}
             manifest={a.boot?.checks}
-            asked={a.asked.has(detail.id)}
+            checking={a.checking.has(detail.id)}
             autoVerify={a.boot?.settings.autoVerify ?? true}
             onVerdict={v => a.setVerdict(detail.id, v)}
             onNote={note => a.setNote(detail.id, note)}

@@ -96,6 +96,11 @@ export function validateForRegistry(
  * we enumerate the two shapes that actually occur in registries: separators
  * inserted at morpheme boundaries, and — on PyPI — the confusable glyphs.
  *
+ * Only spellings the registry's own lookup would not already fold are listed.
+ * PyPI's API answers `pylo_graph` with `pylo-graph`, so one separator stands
+ * for all three there. crates.io's lookup applies its whole rule, which leaves
+ * nothing to list: the exact-name query already asked.
+ *
  * This is what a full local index would answer in 0 ms. Probing the enumeration
  * over the network is the bounded stand-in; see docs/architecture.md.
  */
@@ -105,7 +110,9 @@ export function collisionCandidates(registry: RegistryId, name: string, limit = 
 
   if (registry === 'npm' || registry === 'pypi') {
     const core = base.replace(/[^a-z0-9]/g, '')
-    const separators = registry === 'npm' ? ['-', '.', '_'] : ['-', '_', '.']
+    const separators = registry === 'npm' ? ['-', '.', '_'] : ['-']
+    // No separator at all. `react-native` → `reactnative`.
+    out.add(core)
     // One separator, at each interior position. `reactnative` → `react-native`.
     for (let i = 1; i < core.length && out.size < limit; i++) {
       for (const sep of separators) {
@@ -140,27 +147,6 @@ export function collisionCandidates(registry: RegistryId, name: string, limit = 
       for (const v of acc) {
         if (v !== core) out.add(v)
         if (out.size >= limit * 2) break
-      }
-    }
-  }
-
-  if (registry === 'crates') {
-    const positions = [...base].flatMap((ch, i) => (ch === '-' || ch === '_' ? [i] : []))
-    if (positions.length > 0 && positions.length <= 8) {
-      let acc: string[] = ['']
-      let cursor = 0
-      for (const pos of positions) {
-        const chunk = base.slice(cursor, pos)
-        acc = acc.flatMap(prefix => ['-', '_'].map(s => prefix + chunk + s))
-        cursor = pos + 1
-      }
-      const tail = base.slice(cursor)
-      for (const v of acc.map(a => a + tail)) if (v !== base) out.add(v)
-    } else {
-      for (let i = 1; i < base.length; i++) {
-        out.add(base.slice(0, i) + '-' + base.slice(i))
-        out.add(base.slice(0, i) + '_' + base.slice(i))
-        if (out.size >= limit) break
       }
     }
   }

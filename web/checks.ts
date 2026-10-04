@@ -70,15 +70,6 @@ export function deepDone(checks: CheckResult[]): boolean {
 }
 
 /**
- * The slow tier is in flight: a ▲ or the button started it, and nothing from it
- * has come back. Both surfaces ask this the same way, so neither offers to start
- * a run that is already running.
- */
-export function deepRunning(checks: CheckResult[], verdict: number, asked: boolean): boolean {
-  return (verdict > 0 || asked) && !deepDone(checks)
-}
-
-/**
  * What the wall can be narrowed to by what the checks found. Worded the way the
  * cards word it — 查无记录, never "available" — because a filter is one more
  * place the same fact is stated.

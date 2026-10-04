@@ -150,7 +150,7 @@ function sessionPayload(id: string) {
     profile: profilePayload(candidates, session.seeds),
     // Slow tiers out right now. A page that lost the stream cannot tell a run
     // still going from one that stopped with the last process; this can.
-    asking: candidates.filter(c => deepRunning(c.id)).map(c => c.id),
+    checking: candidates.filter(c => deepRunning(c.id)).map(c => c.id),
   }
 }
 

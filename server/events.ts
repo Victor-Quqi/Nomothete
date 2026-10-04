@@ -23,6 +23,8 @@ export type ServerEvent =
   | { type: 'check'; candidateId: string; result: CheckResult }
   /** A re-run found nothing where the stored answer had found something. */
   | { type: 'check:gone'; candidateId: string; checkId: string }
+  /** The slow tier started or finished for this name. */
+  | { type: 'check:running'; candidateId: string; running: boolean }
   | { type: 'verdict'; candidateId: string; verdict: number }
   /** Rationale verification changed state. Null: nothing to show (a cancelled first run). */
   | { type: 'verification'; candidateId: string; verification: Verification | null }

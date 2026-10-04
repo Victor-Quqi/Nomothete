@@ -68,12 +68,11 @@ export function useAtelier() {
 
   const [toasts, setToasts] = useState<Toast[]>([])
   /**
-   * Names whose slow tier was started by hand. The server never writes a
-   * pending row, so nothing else remembers that a run is in flight — and both
-   * the seal on the plate and the button in the drawer have to say the same
-   * thing about it, so neither of them is where it can live.
+   * Names whose slow tier the server is running. Nothing in the stored checks
+   * says so, and the seal on the plate and the button in the drawer have to
+   * agree about it, so neither of them is where it can live.
    */
-  const [asked, setAsked] = useState<ReadonlySet<string>>(() => new Set())
+  const [checking, setChecking] = useState<ReadonlySet<string>>(() => new Set())
   const toastSeq = useRef(0)
 
   // Judging with the keyboard is fast enough to overshoot by one row. The stack
@@ -133,7 +132,7 @@ export function useAtelier() {
         setBatches(p.batches)
         setProfile(p.profile)
         setRunning(p.running)
-        setAsked(new Set(p.asking))
+        setChecking(new Set(p.checking))
         setDiscards([])
       })
       .catch(err => {
@@ -238,6 +237,16 @@ export function useAtelier() {
           )
           break
 
+        case 'check:running':
+          setChecking(s => {
+            if (s.has(event.candidateId) === event.running) return s
+            const next = new Set(s)
+            if (event.running) next.add(event.candidateId)
+            else next.delete(event.candidateId)
+            return next
+          })
+          break
+
         case 'check:gone':
           setCandidates(cs =>
             cs.map(c =>
@@ -293,7 +302,7 @@ export function useAtelier() {
           setBatches(p.batches)
           setProfile(p.profile)
           setRunning(p.running)
-          setAsked(new Set(p.asking))
+          setChecking(new Set(p.checking))
         })
         .catch(() => {})
         .finally(() => {
@@ -464,12 +473,13 @@ export function useAtelier() {
 
   const recheck = useCallback(
     async (candidateId: string) => {
-      setAsked(s => new Set(s).add(candidateId))
+      // Shown at the press: the server's word that it started follows on the
+      // stream, and nothing should flicker back to the button in between.
+      setChecking(s => new Set(s).add(candidateId))
       try {
         await api.recheck(candidateId)
-        toast('深度检查已排队', 'plain')
       } catch (err) {
-        setAsked(s => {
+        setChecking(s => {
           const next = new Set(s)
           next.delete(candidateId)
           return next
@@ -595,7 +605,7 @@ export function useAtelier() {
     connected,
     loadingSession,
     toasts,
-    asked,
+    checking,
     ...lookups,
     open,
     reloadSessions,

@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { NO_CHECKS, deepDone, deepRunning } from '../checks.ts'
+import { NO_CHECKS, deepDone } from '../checks.ts'
 import { waitingLabels } from './CheckList.tsx'
 import { Seals } from './Seals.tsx'
 import { Tip } from './Tip.tsx'
@@ -57,8 +57,8 @@ interface Props {
   autoScroll: false | 'smooth' | 'instant'
   /** The search in force, lowercased; empty when there is none. */
   mark: string
-  /** Its slow tier was started by hand and nothing has come back yet. */
-  asked: boolean
+  /** The server is running its slow tier. */
+  checking: boolean
   /** What the server can check, so the card can name what it has not done yet. */
   manifest?: Bootstrap['checks']
   onFocus: (id: string) => void
@@ -78,7 +78,7 @@ function PlateInner({
   focused,
   autoScroll,
   mark,
-  asked,
+  checking,
   manifest,
   onFocus,
   onVerdict,
@@ -150,13 +150,12 @@ function PlateInner({
   const checks = candidate.checks ?? NO_CHECKS
   // The slow tier starts on its own after a ▲, and the drawer's button is the
   // other way in. Either way the plate says so while it runs.
-  const deep = deepRunning(checks, candidate.verdict, asked)
-  const pending = checks.length === 0 ? '正在检查…' : deep ? '正在查注册表和 GitHub…' : null
+  const pending = checks.length === 0 ? '正在检查…' : checking ? '正在查注册表和 GitHub…' : null
   // Liking a name is not the price of checking it, so the offer stays on the
   // card — in the head, with the card's other quiet verbs, out of sight until
   // the plate has focus. It is a verb, not a finding, and never sat well
   // among the seals.
-  const canAsk = checks.length > 0 && !deep && !deepDone(checks)
+  const canAsk = checks.length > 0 && !checking && !deepDone(checks)
 
   const discrepancy = discrepancyLine(candidate.verification)
 

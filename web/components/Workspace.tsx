@@ -725,7 +725,7 @@ export function Workspace({
                 // redraws the plates it lights.
                 mark={visibleIds.has(c.id) ? needle : ''}
                 autoScroll={visibleIds.has(c.id) && focusId === c.id ? kbd : false}
-                asked={a.asked.has(c.id)}
+                checking={a.checking.has(c.id)}
                 manifest={a.boot?.checks}
                 onFocus={focusPlate}
                 onVerdict={a.setVerdict}
