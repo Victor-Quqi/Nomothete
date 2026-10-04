@@ -1,4 +1,5 @@
 import type { CheckResult } from './types.ts'
+import { REGISTRIES } from './normalize.ts'
 import { npmNeighbourhood } from '../shared/npmNeighbourhood.ts'
 
 /**
@@ -75,4 +76,59 @@ export function deepDone(checks: CheckResult[]): boolean {
  */
 export function deepRunning(checks: CheckResult[], verdict: number, asked: boolean): boolean {
   return (verdict > 0 || asked) && !deepDone(checks)
+}
+
+/**
+ * What the wall can be narrowed to by what the checks found. Worded the way the
+ * cards word it — 查无记录, never "available" — because a filter is one more
+ * place the same fact is stated.
+ */
+export const CHECK_CONDITIONS: { id: string; label: string; /** Inside 没有…的名字, where the label does not read. */ phrase?: string }[] = [
+  { id: 'quiet', label: '没有发现', phrase: '查重没有发现' },
+  ...REGISTRIES.map(r => ({ id: r.id, label: `${r.label} 查无记录` })),
+  { id: 'com', label: '.com 查无注册记录' },
+]
+
+/**
+ * Which conditions hold for one name, and which have been asked at all. A
+ * condition whose check has not answered does not hold: an unchecked name is
+ * not one the checks found nothing on.
+ *
+ * A registry holds only if nothing on it shares the name, which is more than
+ * the exact form being free: a writing that normalises to the same thing, from
+ * the local index or the slow probe, refuses the name just the same.
+ */
+export function conditionsOf(checks: CheckResult[], name: string): { held: Set<string>; asked: Set<string> } {
+  const held = new Set<string>()
+  const asked = new Set<string>()
+  const by = new Map(checks.map(c => [c.checkId, c]))
+
+  const availability = by.get('availability')
+  const answers: { id: string; state: string }[] = availability?.data?.registries ?? []
+  if (answers.length > 0) {
+    asked.add('quiet')
+    if (availability!.status === 'clear' && groupChecks(checks, name).findings.length === 0) held.add('quiet')
+  }
+  const local: { registry: string }[] = by.get('local-index')?.data?.hits ?? []
+  const probed: { id: string; collisions: string[] }[] = by.get('publishability')?.data?.perRegistry ?? []
+  for (const r of REGISTRIES) {
+    const state = answers.find(x => x.id === r.id)?.state
+    if (!state) continue
+    asked.add(r.id)
+    if (
+      state === 'clear' &&
+      !local.some(h => h.registry === r.id) &&
+      !probed.find(p => p.id === r.id)?.collisions.length
+    )
+      held.add(r.id)
+  }
+
+  const com = (by.get('domain')?.data?.results as { tld: string; state: string }[] | undefined)?.find(
+    d => d.tld === 'com' && d.state !== 'unknown',
+  )
+  if (com) {
+    asked.add('com')
+    if (com.state === 'free') held.add('com')
+  }
+  return { held, asked }
 }

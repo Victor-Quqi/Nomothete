@@ -4,6 +4,7 @@ import { CandidatePlate, type PlateAction } from './CandidatePlate.tsx'
 import { Picker, type PickerOption } from './Picker.tsx'
 import { Tip } from './Tip.tsx'
 import { useGridTransition } from './useGridTransition.ts'
+import { CHECK_CONDITIONS, NO_CHECKS, conditionsOf } from '../checks.ts'
 import type { Atelier } from '../store.ts'
 import type { Batch, Candidate, StrategyInfo, Verdict } from '../types.ts'
 
@@ -86,6 +87,27 @@ function trouble(c: Candidate): number {
   return (c.checks ?? []).filter(k => k.status !== 'clear' && k.status !== 'error').length
 }
 
+/**
+ * Name and rationale each on their own, so a query never matches across the
+ * seam between them — the plate has to be able to light what matched.
+ */
+function matches(c: Candidate, needle: string): boolean {
+  return c.name.toLowerCase().includes(needle) || c.rationale.toLowerCase().includes(needle)
+}
+
+/**
+ * What an empty wall is short of, in the terms the bar above it uses: where
+ * it looked (第 2 批「语言」里) and what it looked for (心动、npm 查无记录).
+ */
+function emptyLine(scope: (string | false | null)[], wants: (string | false | null)[]): string {
+  const where = scope.filter(Boolean).join('')
+  const what = wants.filter(Boolean)
+  const kinds = what.length > 1 ? `${what.slice(0, -1).join('、')}且${what.at(-1)}` : what.join('')
+  return `${where ? `${where}里` : ''}没有${kinds}${kinds ? '的' : ''}名字。`
+}
+
+type Facet = 'lane' | 'origin' | 'batch' | 'checks'
+
 export function Workspace({
   a,
   openDrawer,
@@ -100,7 +122,11 @@ export function Workspace({
   // the two plates whose focus changed.
   const [focusId, setFocusId] = useState<string | null>(null)
   const [lane, setLane] = useState<Lane>('all')
-  const [family, setFamily] = useState<string | null>(null)
+  /** A word family as `f:id`, or a single strategy as `s:id`. */
+  const [origin, setOrigin] = useState<string | null>(null)
+  const [batch, setBatch] = useState<number | null>(null)
+  /** Check conditions that must all hold; ids from CHECK_CONDITIONS. */
+  const [conditions, setConditions] = useState<string[]>([])
   const [sort, setSort] = useState<Sort>('arrival')
   const [find, setFind] = useState('')
   const [kbd, setKbd] = useState<false | 'smooth' | 'instant'>(false)
@@ -160,39 +186,119 @@ export function Workspace({
     if (!running) generate({ strategyIds: [strategyId] })
   }, [running, generate])
 
-  const laneCounts = useMemo(() => {
-    const m = new Map<Lane, number>()
-    for (const l of LANES) m.set(l.id, candidates.filter(l.test).length)
-    return m
-  }, [candidates])
+  const needle = find.trim().toLowerCase()
 
-  const familiesPresent = useMemo(() => {
-    const seen = new Map<string, number>()
+  // What the checks have said about each name, read once per change to the
+  // list rather than once per name per count.
+  const facts = useMemo(
+    () => new Map(candidates.map(c => [c.id, conditionsOf(c.checks ?? NO_CHECKS, c.name)])),
+    [candidates],
+  )
+
+  // What there is to filter by. A choice no name on the wall could meet is
+  // not offered at all.
+  const present = useMemo(() => {
+    const families = new Map<string, Set<string>>()
+    const generations = new Set<number>()
+    const asked = new Set<string>()
     for (const c of candidates) {
       const fam = a.strategyById.get(c.strategyId)?.family
-      if (fam) seen.set(fam, (seen.get(fam) ?? 0) + 1)
+      if (fam) families.set(fam, (families.get(fam) ?? new Set<string>()).add(c.strategyId))
+      generations.add(c.generation)
+      for (const id of facts.get(c.id)!.asked) asked.add(id)
     }
-    return [...seen.entries()]
-  }, [candidates, a.strategyById])
+    return { families, generations: [...generations].sort((x, y) => y - x), asked }
+  }, [candidates, facts, a.strategyById])
 
-  const familyOptions = useMemo<PickerOption[]>(
+  /** Whether a name is on the wall, optionally as if one facet were not set. */
+  const passes = useMemo(() => {
+    const laneTest = LANES.find(l => l.id === lane)!.test
+    return (c: Candidate, skip?: Facet) => {
+      if (skip !== 'lane' && !laneTest(c)) return false
+      if (
+        skip !== 'origin' &&
+        origin &&
+        origin !== `s:${c.strategyId}` &&
+        origin !== `f:${a.strategyById.get(c.strategyId)?.family}`
+      )
+        return false
+      if (skip !== 'batch' && batch !== null && c.generation !== batch) return false
+      if (skip !== 'checks' && !conditions.every(id => facts.get(c.id)!.held.has(id))) return false
+      return !needle || matches(c, needle)
+    }
+  }, [lane, origin, batch, conditions, needle, facts, a.strategyById])
+
+  // Each count is what clicking it would show, with the other conditions left
+  // as they are — so no chip promises names the wall then leaves out. Check
+  // conditions add up rather than replace each other, so theirs count what is
+  // on the wall and also meets them.
+  const counts = useMemo(() => {
+    const lanes = new Map<Lane, number>(LANES.map(l => [l.id, 0]))
+    const tally = new Map<string, number>()
+    const bump = (key: string) => tally.set(key, (tally.get(key) ?? 0) + 1)
+    let anyOrigin = 0
+    let anyBatch = 0
+    let anyCheck = 0
+    for (const c of candidates) {
+      if (passes(c, 'lane')) for (const l of LANES) if (l.test(c)) lanes.set(l.id, lanes.get(l.id)! + 1)
+      if (passes(c, 'origin')) {
+        anyOrigin++
+        bump(`f:${a.strategyById.get(c.strategyId)?.family}`)
+        bump(`s:${c.strategyId}`)
+      }
+      if (passes(c, 'batch')) {
+        anyBatch++
+        bump(`g:${c.generation}`)
+      }
+      if (passes(c, 'checks')) {
+        anyCheck++
+        if (passes(c)) for (const id of facts.get(c.id)!.held) bump(`c:${id}`)
+      }
+    }
+    return { lanes, tally, anyOrigin, anyBatch, anyCheck }
+  }, [candidates, passes, facts, a.strategyById])
+
+  const originOptions = useMemo<PickerOption[]>(() => {
+    // With one family on the wall its row would only repeat 不限, so its
+    // strategies stand alone; a family with one strategy has nothing to split.
+    const several = present.families.size > 1
+    const out: PickerOption[] = []
+    for (const [fam, strategies] of present.families) {
+      const f = a.familyById.get(fam)
+      const hue = f?.hue ?? 38
+      if (several) out.push({ id: `f:${fam}`, label: f?.label ?? fam, hue, n: counts.tally.get(`f:${fam}`) ?? 0 })
+      if (strategies.size > 1 || !several) {
+        for (const id of strategies) {
+          const label = a.strategyById.get(id)?.label ?? id
+          out.push({ id: `s:${id}`, label, hue, n: counts.tally.get(`s:${id}`) ?? 0, sub: several })
+        }
+      }
+    }
+    return out
+  }, [present, counts, a.familyById, a.strategyById])
+
+  const batchOptions = useMemo<PickerOption[]>(
+    () => present.generations.map(g => ({ id: String(g), label: `第 ${g} 批`, n: counts.tally.get(`g:${g}`) ?? 0 })),
+    [present, counts],
+  )
+
+  const checkOptions = useMemo<PickerOption[]>(
     () =>
-      familiesPresent.map(([id, n]) => {
-        const f = a.familyById.get(id)
-        return { id, label: f?.label ?? id, hue: f?.hue ?? 38, n }
-      }),
-    [familiesPresent, a.familyById],
-  )
-  const familyTotal = useMemo(
-    () => familiesPresent.reduce((t, [, n]) => t + n, 0),
-    [familiesPresent],
+      CHECK_CONDITIONS.filter(k => present.asked.has(k.id)).map(k => ({
+        id: k.id,
+        label: k.label,
+        n: counts.tally.get(`c:${k.id}`) ?? 0,
+      })),
+    [present, counts],
   )
 
-  // A family that stops being represented stops being a filter — otherwise an
+  // A choice that stops being offered stops being a filter — otherwise an
   // undo can leave the wall empty with no chip left to say why.
   useEffect(() => {
-    if (family && !familiesPresent.some(([id]) => id === family)) setFamily(null)
-  }, [family, familiesPresent])
+    if (origin && !originOptions.some(o => o.id === origin)) setOrigin(null)
+    if (batch !== null && !present.generations.includes(batch)) setBatch(null)
+    if (conditions.some(id => !present.asked.has(id))) setConditions(cs => cs.filter(id => present.asked.has(id)))
+  }, [origin, originOptions, batch, conditions, present])
 
   const ordered = useMemo(() => {
     const list = [...candidates]
@@ -206,21 +312,21 @@ export function Workspace({
     return list
   }, [candidates, sort])
 
-  const visible = useMemo(() => {
-    const laneTest = LANES.find(l => l.id === lane)!.test
-    const needle = find.trim().toLowerCase()
-    return ordered.filter(c => {
-      if (!laneTest(c)) return false
-      if (family && a.strategyById.get(c.strategyId)?.family !== family) return false
-      if (needle && !`${c.name} ${c.rationale}`.toLowerCase().includes(needle)) return false
-      return true
-    })
-  }, [ordered, lane, family, find, a.strategyById])
+  const visible = useMemo(() => ordered.filter(c => passes(c)), [ordered, passes])
   const visibleIds = useMemo(() => new Set(visible.map(c => c.id)), [visible])
   const { capture: capturePositions, captureCommit, capturePane } = useGridTransition(gridRef, visible, detailId)
   const captureGrid = () => {
     capturePositions()
     setKbd(false)
+  }
+
+  const clearFilters = () => {
+    captureGrid()
+    setLane('all')
+    setOrigin(null)
+    setBatch(null)
+    setConditions([])
+    setFind('')
   }
 
   useEffect(() => {
@@ -279,7 +385,7 @@ export function Workspace({
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
       if (typing) {
-        if (e.key === 'Escape') (el as HTMLElement).blur()
+        if (e.key === 'Escape' && !e.isComposing) (el as HTMLElement).blur()
         return
       }
       // A modal drawer is the only thing on screen, so the keys belong to it.
@@ -426,7 +532,7 @@ export function Workspace({
         {LANES.map(l => (
           <button
             key={l.id}
-            className={`chip${lane === l.id ? ' chip--on' : ''}`}
+            className={`chip${lane === l.id ? ' chip--on' : counts.lanes.get(l.id) ? '' : ' chip--none'}`}
             onClick={() => {
               if (lane === l.id) return
               captureGrid()
@@ -434,62 +540,127 @@ export function Workspace({
             }}
           >
             {l.label}
-            <span className="chip__n">{laneCounts.get(l.id) ?? 0}</span>
+            <span className="chip__n">{counts.lanes.get(l.id)}</span>
           </button>
         ))}
-        {/* The four verdicts are the reading position and stay in the open. The
-            word families are a detour most sessions never take, so they fold
-            into one chip that says which detour you are on. */}
-        {familiesPresent.length > 1 && (
-          <>
-            <span style={{ width: 8 }} />
-            <Picker
-              options={familyOptions}
-              value={family}
-              onPick={id => {
-                if (family === id) return
-                captureGrid()
-                setFamily(id)
-              }}
-              clearLabel="全部词族"
-              clearN={familyTotal}
-              title="按词族筛选"
-            />
-          </>
+        {/* The four verdicts are the reading position and stay in the open.
+            Everything else is a detour most sessions take rarely, so each
+            folds into one chip that says which detour you are on — and is
+            there only once there are two ways to go. */}
+        {(originOptions.length > 1 || batchOptions.length > 1 || checkOptions.length > 0) && (
+          <span style={{ width: 8 }} />
+        )}
+        {originOptions.length > 1 && (
+          <Picker
+            options={originOptions}
+            value={origin}
+            onPick={id => {
+              if (id === origin) return
+              captureGrid()
+              setOrigin(id)
+            }}
+            label="词族"
+            clearLabel="不限"
+            clearN={counts.anyOrigin}
+            title="按词族筛选"
+          />
+        )}
+        {batchOptions.length > 1 && (
+          <Picker
+            options={batchOptions}
+            value={batch === null ? null : String(batch)}
+            onPick={id => {
+              const g = id === null ? null : Number(id)
+              if (g === batch) return
+              captureGrid()
+              setBatch(g)
+            }}
+            label="批次"
+            clearLabel="不限"
+            clearN={counts.anyBatch}
+            title="按批次筛选"
+          />
+        )}
+        {checkOptions.length > 0 && (
+          <Picker
+            options={checkOptions}
+            value={conditions}
+            onPick={id => {
+              if (id === null && conditions.length === 0) return
+              captureGrid()
+              setConditions(cs => (id === null ? [] : cs.includes(id) ? cs.filter(x => x !== id) : [...cs, id]))
+            }}
+            label="查重"
+            clearLabel="不限"
+            clearN={counts.anyCheck}
+            title="按查重结果筛选"
+          />
         )}
 
-        <span className="filters__spacer" />
+        {/* Search and order keep to the right edge, on the second line too
+            when the bar runs out of room. */}
+        <span className="filters__end">
+          {/* The field grows when it takes focus, but the slot it sits in does
+              not: a row that re-wraps under the cursor is a row that moves the
+              card you were about to click. Enter goes to the first match, the
+              way / came here from the wall; Escape drops the query. */}
+          <span className="filters__findslot">
+            <input
+              ref={findRef}
+              className="filters__find"
+              value={find}
+              placeholder="搜索 /"
+              onChange={e => {
+                captureGrid()
+                setFind(e.target.value)
+              }}
+              onKeyDown={e => {
+                // An input method takes Enter and Escape to settle what is being
+                // composed; those keys are not meant for the field.
+                if (e.nativeEvent.isComposing) return
+                if (e.key === 'Enter' && visible.length > 0) {
+                  e.preventDefault()
+                  e.currentTarget.blur()
+                  setKbd('smooth')
+                  setFocusId(visible[0].id)
+                  follow(visible[0].id)
+                } else if (e.key === 'Escape' && find) {
+                  captureGrid()
+                  setFind('')
+                }
+              }}
+            />
+            {find && (
+              <button
+                className="filters__clear"
+                aria-label="清空搜索"
+                onClick={() => {
+                  captureGrid()
+                  setFind('')
+                }}
+              >
+                <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true">
+                  <path d="M2.6 2.6l4.8 4.8M7.4 2.6L2.6 7.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </span>
 
-        {/* The field grows when it takes focus, but the slot it sits in does
-            not: a row that re-wraps under the cursor is a row that moves the
-            card you were about to click. */}
-        <span className="filters__findslot">
-          <input
-            ref={findRef}
-            className="filters__find"
-            value={find}
-            placeholder="搜索 /"
-            onChange={e => {
-              captureGrid()
-              setFind(e.target.value)
+          {/* Three orderings, one of which is always in force: the chip wears the
+              one in force, which is the only one worth a whole word on the bar. */}
+          <Picker
+            options={SORTS}
+            value={sort}
+            onPick={id => {
+              if (id && id !== sort) {
+                captureGrid()
+                setSort(id as Sort)
+              }
             }}
+            align="right"
+            title="排序"
           />
         </span>
-
-        {/* Three orderings, one of which is always in force: the chip wears the
-            one in force, which is the only one worth a whole word on the bar. */}
-        <Picker
-          options={SORTS}
-          value={sort}
-          onPick={id => {
-            if (id && id !== sort) {
-              captureGrid()
-              setSort(id as Sort)
-            }
-          }}
-          align="right"
-          title="排序"
-        />
       </div>
 
       <div className="canvas">
@@ -519,6 +690,9 @@ export function Workspace({
                 strategy={a.strategyById.get(c.strategyId)}
                 family={a.familyById.get(a.strategyById.get(c.strategyId)?.family ?? '')}
                 focused={visibleIds.has(c.id) && focusId === c.id}
+                // Hidden plates get none, so a keystroke in the field only
+                // redraws the plates it lights.
+                mark={visibleIds.has(c.id) ? needle : ''}
                 autoScroll={visibleIds.has(c.id) && focusId === c.id ? kbd : false}
                 asked={a.asked.has(c.id)}
                 manifest={a.boot?.checks}
@@ -536,7 +710,27 @@ export function Workspace({
         {visible.length === 0 && (
           <div className="empty">
             <div className="empty__g">{candidates.length === 0 ? 'ν' : '∅'}</div>
-            <p>{candidates.length === 0 ? '第一批正在生成。' : '没有符合的名字。'}</p>
+            <p>
+              {candidates.length === 0
+                ? '第一批正在生成。'
+                : emptyLine(
+                    [
+                      batch !== null && `第 ${batch} 批`,
+                      origin && originOptions.some(o => o.id === origin) &&
+                        `「${originOptions.find(o => o.id === origin)!.label}」`,
+                    ],
+                    [
+                      lane !== 'all' && LANES.find(l => l.id === lane)!.label,
+                      ...CHECK_CONDITIONS.filter(k => conditions.includes(k.id)).map(k => k.phrase ?? k.label),
+                      find.trim() && `含“${find.trim()}”`,
+                    ],
+                  )}
+            </p>
+            {candidates.length > 0 && (
+              <button className="btn btn--ghost btn--sm empty__act" onClick={clearFilters}>
+                清除筛选
+              </button>
+            )}
           </div>
         )}
       </div>

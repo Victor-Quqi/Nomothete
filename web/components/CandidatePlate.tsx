@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NO_CHECKS, deepDone, deepRunning } from '../checks.ts'
 import { waitingLabels } from './CheckList.tsx'
@@ -26,6 +26,25 @@ const VERDICT_CLASS: Record<number, string> = {
  */
 const SECOND_LOOK_MS = 2600
 
+/**
+ * The search, lit where it matched. A query that only the rationale answers
+ * otherwise leaves a plate on the wall with nothing to say why.
+ */
+function Marked({ text, mark }: { text: string; mark: string }) {
+  const lower = text.toLowerCase()
+  // Lowering can change a string's length; offsets into it then point at the
+  // wrong stretch of the original, and no light is better than a wrong one.
+  if (!mark || lower.length !== text.length) return text
+  const out: ReactNode[] = []
+  let at = 0
+  for (let i = lower.indexOf(mark); i >= 0; i = lower.indexOf(mark, at)) {
+    out.push(text.slice(at, i), <mark key={i}>{text.slice(i, i + mark.length)}</mark>)
+    at = i + mark.length
+  }
+  out.push(text.slice(at))
+  return out
+}
+
 /** Keyboard verbs the focused plate answers to. Dispatched by Workspace. */
 export type PlateAction = 'note' | 'speak' | 'copy'
 
@@ -36,6 +55,8 @@ interface Props {
   focused: boolean
   /** Only keyboard navigation drags the viewport around; hover never does. */
   autoScroll: false | 'smooth' | 'instant'
+  /** The search in force, lowercased; empty when there is none. */
+  mark: string
   /** Its slow tier was started by hand and nothing has come back yet. */
   asked: boolean
   /** What the server can check, so the card can name what it has not done yet. */
@@ -56,6 +77,7 @@ function PlateInner({
   family,
   focused,
   autoScroll,
+  mark,
   asked,
   manifest,
   onFocus,
@@ -204,7 +226,7 @@ function PlateInner({
 
       <div className="plate__head">
         <h3 className={`plate__name${saying ? ' plate__name--speaking' : ''}`} onClick={speak}>
-          {candidate.name}
+          <Marked text={candidate.name} mark={mark} />
         </h3>
         {canAsk && (
           <Tip
@@ -272,7 +294,9 @@ function PlateInner({
         </Tip>
       </div>
 
-      <p className="plate__rationale">{candidate.rationale}</p>
+      <p className="plate__rationale">
+        <Marked text={candidate.rationale} mark={mark} />
+      </p>
       {discrepancy && (
         <button className="plate__verify" onClick={open}>
           {discrepancy}
