@@ -12,7 +12,7 @@ export function transitionPane(grid: HTMLElement, anchor: PaneAnchor | null, ope
   const shellStyle = getComputedStyle(shell)
   const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
   const columnWidth = shell.clientWidth - parseFloat(shellStyle.getPropertyValue('--rail-w')) -
-    (open ? parseFloat(shellStyle.getPropertyValue('--drawer-w')) : 0)
+    (open ? parseFloat(shellStyle.getPropertyValue('--pane-w')) : 0)
   const targetWidth = columnWidth - padding - (canvas.offsetWidth - canvas.clientWidth)
   const filters = shell.querySelector<HTMLElement>('.filters')
   let interrupted = false

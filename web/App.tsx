@@ -242,7 +242,7 @@ export function App() {
 
       <Drawer
         open={!!drawer}
-        variant={drawer?.kind === 'settings' ? 'settings' : undefined}
+        variant={drawer?.kind === 'settings' ? 'settings' : drawer?.kind === 'detail' ? 'pane' : undefined}
         onClose={closeDrawer}
         title={drawer ? DRAWER_TITLE[drawer.kind] : ''}
         // Reading a name is not a thing you have to finish. The wall stays lit

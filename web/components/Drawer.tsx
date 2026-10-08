@@ -2,7 +2,7 @@ import { tr } from '../i18n.ts'
 import { useEffect, type ReactNode } from 'react'
 import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
 
-function DrawerPanel({ modal, children, variant }: { modal: boolean; children: ReactNode; variant?: 'settings' }) {
+function DrawerPanel({ modal, children, variant }: { modal: boolean; children: ReactNode; variant?: 'settings' | 'pane' }) {
   const [present, remove] = usePresence()
   const reducedMotion = useReducedMotion()
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Drawer({
   onClose: () => void
   children: ReactNode
   actions?: ReactNode
-  variant?: 'settings'
+  variant?: 'settings' | 'pane'
   /**
    * Dim the page behind and swallow clicks on it. Right for a form you have to
    * finish; wrong for reading one name off a wall of them, where the scrim is

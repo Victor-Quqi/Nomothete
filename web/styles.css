@@ -195,6 +195,17 @@
 
   --rail-w: 264px;
   --drawer-w: 420px;
+  /* The detail pane grows with the screen: a reading column, not a sliver
+     beside six columns of cards. Capped where a line of its text would get
+     long. */
+  --pane-w: clamp(var(--drawer-w), 36vw, 760px);
+}
+/* Registered so scripts reading the shell's style get the pane's width in
+   pixels, not the clamp() it is written as. */
+@property --pane-w {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 420px;
 }
 
 /* Daylight: the proof. Paper, one ink, and gold leaf.
@@ -482,7 +493,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
    re-laying 227 cards to show a keyboard cheatsheet is a lot of motion for
    nothing. */
 .shell { transition: grid-template-columns 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.shell--pane { grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--drawer-w); }
+.shell--pane { grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--pane-w); }
 
 /* ── session rail ────────────────────────────────────────────────────────── */
 .rail {
@@ -1683,6 +1694,10 @@ kbd {
 .bar__n { width: 30px; text-align: right; font-family: var(--font-mono); font-size: 13px; color: var(--text-4); flex: none; }
 
 /* detail drawer */
+.drawer--pane { width: min(var(--pane-w), 100vw); }
+/* A wider pane gets a wider margin, so the text does not hug the hairline. */
+.drawer--pane .drawer__head { padding-inline: clamp(22px, 5%, 40px); }
+.drawer--pane .drawer__body { padding-inline: clamp(22px, 5%, 40px); }
 .detail { padding: 6px 2px 0; }
 .detail .section-h::after { content: none; }
 .detail > .verify { margin: 24px 0; }
@@ -2274,7 +2289,7 @@ input[type='range']:focus-visible::-moz-range-thumb {
 
 /* ── responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1080px) {
-  :root { --rail-w: 0px; }
+  :root { --rail-w: 0px; --pane-w: var(--drawer-w); }
   .rail { display: none; }
   .shell { grid-template-columns: 0px minmax(0, 1fr) 0px; }
   .shell > .rail + div { grid-column: 2; }
