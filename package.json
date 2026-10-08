@@ -30,7 +30,7 @@
     "prepack": "npm run build",
     "start": "node bin/nomothete.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
-    "test": "node --test --experimental-strip-types server/**/*.test.ts"
+    "test": "node --test --experimental-strip-types \"server/**/*.test.ts\""
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
