@@ -28,7 +28,7 @@ test('collision variants skip spellings the registry lookup already folds', () =
 test('a host waiting out its spacing does not hold up other hosts', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'nomothete-probe-'))
   process.env.NOMOTHETE_DB = join(dir, 'test.db')
-  const { closeDb } = await import('../db.ts')
+  const { closeDb, getDb } = await import('../db.ts')
   const { probe, probeAll } = await import('./http.ts')
   const started = new Map<string, number>()
   t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
@@ -36,6 +36,8 @@ test('a host waiting out its spacing does not hold up other hosts', async t => {
     return new Response('{}', { status: 404 })
   })
   try {
+    // Opening the database is not part of the wait being measured.
+    getDb()
     const t0 = Date.now()
     const slow = probeAll(Array.from({ length: 12 }, (_, i) => `https://slow.test/${i}`))
     const other = await probe('https://other.test/x')
