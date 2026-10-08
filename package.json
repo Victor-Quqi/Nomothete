@@ -28,6 +28,7 @@
     "dev:web": "vite",
     "build": "vite build",
     "prepack": "npm run build",
+    "preversion": "npm run typecheck && npm test",
     "start": "node bin/nomothete.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
     "test": "node --test --experimental-strip-types \"server/**/*.test.ts\""
